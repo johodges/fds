@@ -3731,7 +3731,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                      VOL = R(I)*DX(I)*DY(J)*DZ(K)*ALPHA_CC
                      RAD_Q_SUM = RAD_Q_SUM + (BBF*CHI_R(I,J,K)*Q(I,J,K) + KAPPA_GAS(I,J,K)*UIID(I,J,K,IBND))*VOL
                      KFST4_SUM = KFST4_SUM + KFST4_GAS(I,J,K)*VOL
-                     IF (LOCAL_CORRECTION) THEN
+                     IF (RTE_LOCAL_CORRECTION) THEN
                         RTE_COR(I,J,K) = MIN(C_MAX,MAX(C_MIN,(CHI_R(I,J,K)*Q(I,J,K)+KAPPA_GAS(I,J,K)*UII(I,J,K))/KFST4_GAS(I,J,K)))
                      ELSE
                         RTE_COR(I,J,K) = RTE_SOURCE_CORRECTION_FACTOR
@@ -3785,7 +3785,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                      VOL = R(I)*DX(I)*DY(J)*DZ(K)*ALPHA_CC
                      RAD_Q_SUM_PARTIAL = RAD_Q_SUM_PARTIAL + (CHI_R(I,J,K)*Q(I,J,K)+KAPPA_GAS(I,J,K)*UII(I,J,K))*VOL
                      KFST4_SUM_PARTIAL = KFST4_SUM_PARTIAL + KFST4_GAS(I,J,K)*VOL
-                     IF (LOCAL_CORRECTION) THEN
+                     IF (RTE_LOCAL_CORRECTION) THEN
                         RTE_COR(I,J,K) = MIN(C_MAX,MAX(C_MIN,(CHI_R(I,J,K)*Q(I,J,K)+KAPPA_GAS(I,J,K)*UII(I,J,K))/KFST4_GAS(I,J,K)))
                      ELSE
                         RTE_COR(I,J,K) = RTE_SOURCE_CORRECTION_FACTOR
