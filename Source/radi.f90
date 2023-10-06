@@ -3735,6 +3735,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                         RTE_COR(I,J,K) = MIN(C_MAX,MAX(C_MIN,(CHI_R(I,J,K)*Q(I,J,K)+KAPPA_GAS(I,J,K)*UII(I,J,K))/KFST4_GAS(I,J,K)))
                      ELSE
                         RTE_COR(I,J,K) = RTE_SOURCE_CORRECTION_FACTOR
+                     ENDIF
                ENDIF
             ENDDO
          ENDDO
