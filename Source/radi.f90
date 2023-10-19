@@ -3801,7 +3801,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                   IF (CC_IBM) THEN
                      IF (CCVAR(I,J,K,CC_CGSC)==CC_SOLID) CYCLE
                   ENDIF
-                  IF (CHI_R(I,J,K)*Q(I,J,K)>QR_CLIP) 
+                  IF (CHI_R(I,J,K)*Q(I,J,K)>QR_CLIP) THEN
                      IF (RTE_LOCAL_CORRECTION) THEN
                         RTE_COR = MIN(C_MAX,MAX(C_MIN,(CHI_R(I,J,K)*Q(I,J,K)+KAPPA_GAS(I,J,K)*UII(I,J,K))/KFST4_GAS(I,J,K)))
                      ELSE
