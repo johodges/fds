@@ -3807,8 +3807,8 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                      ELSE
                         RTE_COR = RTE_SOURCE_CORRECTION_FACTOR
                      ENDIF
+                     KFST4_GAS(I,J,K) = KFST4_GAS(I,J,K)*RTE_COR
                   ENDIF
-                  KFST4_GAS(I,J,K) = KFST4_GAS(I,J,K)*RTE_COR
                ENDDO
             ENDDO
          ENDDO
