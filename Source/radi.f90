@@ -3803,11 +3803,10 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                   ENDIF
                   IF (CHI_R(I,J,K)*Q(I,J,K)>QR_CLIP) THEN
                      IF (RTE_LOCAL_CORRECTION) THEN
-                        RTE_COR = MIN(C_MAX,MAX(C_MIN,(CHI_R(I,J,K)*Q(I,J,K)+KAPPA_GAS(I,J,K)*UII(I,J,K))/KFST4_GAS(I,J,K)))
+                        KFST4_GAS(I,J,K) = CHI_R(I,J,K)*Q(I,J,K)+KAPPA_GAS(I,J,K)*UII(I,J,K)
                      ELSE
-                        RTE_COR = RTE_SOURCE_CORRECTION_FACTOR
+                        KFST4_GAS(I,J,K) = KFST4_GAS(I,J,K)*RTE_SOURCE_CORRECTION_FACTOR
                      ENDIF
-                     KFST4_GAS(I,J,K) = KFST4_GAS(I,J,K)*RTE_COR
                   ENDIF
                ENDDO
             ENDDO
