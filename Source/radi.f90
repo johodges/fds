@@ -3488,6 +3488,7 @@ TYPE(BOUNDARY_RADIA_TYPE), POINTER :: BR,BR_UP,BR_DOWN
 TYPE(BOUNDARY_COORD_TYPE), POINTER :: BC
 TYPE(INITIALIZATION_TYPE), POINTER :: IN
 CHARACTER(20) :: FORMT
+REAL(EB), PARAMETER :: WGT=0.5_EB
 
 ! Variables added for the WSGG model
 REAL(EB) :: X_H2O, X_CO2, MOL_RAT,PARTIAL_P,R_MIXTURE,TOTAL_P
@@ -3732,7 +3733,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                      RAD_Q_SUM = RAD_Q_SUM + (BBF*CHI_R(I,J,K)*Q(I,J,K) + KAPPA_GAS(I,J,K)*UIID(I,J,K,IBND))*VOL
                      KFST4_SUM = KFST4_SUM + KFST4_GAS(I,J,K)*VOL
                      IF (RTE_LOCAL_CORRECTION) THEN
-                        RTE_COR(I,J,K) = MIN(C_MAX,MAX(C_MIN,(CHI_R(I,J,K)*Q(I,J,K)+KAPPA_GAS(I,J,K)*UII(I,J,K))/KFST4_GAS(I,J,K)))
+                        RTE_COR(I,J,K) = RTE_COR(I,J,K)*WGT+(1._EB-WGT)*MIN(C_MAX,MAX(C_MIN,(CHI_R(I,J,K)*Q(I,J,K)+KAPPA_GAS(I,J,K)*UII(I,J,K))/KFST4_GAS(I,J,K)))
                      ELSE
                         RTE_COR(I,J,K) = RTE_SOURCE_CORRECTION_FACTOR
                      ENDIF
@@ -3786,7 +3787,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                      RAD_Q_SUM_PARTIAL = RAD_Q_SUM_PARTIAL + (CHI_R(I,J,K)*Q(I,J,K)+KAPPA_GAS(I,J,K)*UII(I,J,K))*VOL
                      KFST4_SUM_PARTIAL = KFST4_SUM_PARTIAL + KFST4_GAS(I,J,K)*VOL
                      IF (RTE_LOCAL_CORRECTION) THEN
-                        RTE_COR(I,J,K) = MIN(C_MAX,MAX(C_MIN,(CHI_R(I,J,K)*Q(I,J,K)+KAPPA_GAS(I,J,K)*UII(I,J,K))/KFST4_GAS(I,J,K)))
+                        RTE_COR(I,J,K) = RTE_COR(I,J,K)*WGT + (1._EB-WGT)*MIN(C_MAX,MAX(C_MIN,(CHI_R(I,J,K)*Q(I,J,K)+KAPPA_GAS(I,J,K)*UII(I,J,K))/KFST4_GAS(I,J,K)))
                      ELSE
                         RTE_COR(I,J,K) = RTE_SOURCE_CORRECTION_FACTOR
                      ENDIF
