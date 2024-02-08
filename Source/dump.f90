@@ -3551,7 +3551,7 @@ OS => WALL_STORAGE
 DO ITW=1,N_THIN_WALL_CELLS
    TW => THIN_WALL(ITW)
    RC=0 ; IC=0 ; LC=0
-   CALL PACK_THIN_WALL(NM,OS,TW,TW%SURF_INDEX,RC,IC,UNPACK_IT=.FALSE.,COUNT_ONLY=.FALSE.)
+   CALL PACK_THIN_WALL(NM,OS,TW,TW%SURF_INDEX,RC,IC,LC,UNPACK_IT=.FALSE.,COUNT_ONLY=.FALSE.)
    WRITE(LU_CORE(NM)) TW%SURF_INDEX
    WRITE(LU_CORE(NM)) OS%REALS,OS%INTEGERS,OS%LOGICALS
 ENDDO
@@ -3768,7 +3768,7 @@ DO ITW=1,N_THIN_WALL_CELLS
    RC=0 ; IC=0 ; LC=0
    CALL ALLOCATE_STORAGE(NM,SURF_INDEX=SURF_INDEX,THIN_WALL_INDEX=ITW)
    TW => MESHES(NM)%THIN_WALL(ITW)
-   CALL PACK_THIN_WALL(NM,OS,TW,SURF_INDEX,RC,IC,UNPACK_IT=.TRUE.,COUNT_ONLY=.FALSE.)
+   CALL PACK_THIN_WALL(NM,OS,TW,SURF_INDEX,RC,IC,LC,UNPACK_IT=.TRUE.,COUNT_ONLY=.FALSE.)
 ENDDO
 
 READ(LU_RESTART(NM)) N_CFACE_CELLS_DIM
@@ -6271,6 +6271,7 @@ IF (.NOT.VTK3D) THEN
 
       ENDIF
 
+<<<<<<< HEAD
       ! Dump out the slice file to a .sf file
 
       IF (.NOT.PLOT3D) THEN
@@ -6321,6 +6322,40 @@ IF (.NOT.VTK3D) THEN
                            IFACT = (I - I1)*NY*NZ
                            QQ_PACK(1+IFACT+JFACT+KFACT) = QQ(I,J,K,1)
                         ENDDO
+=======
+   ! Dump out the slice file to a .sf file
+
+   IF (.NOT.PLOT3D) THEN
+      SL => SLICE(IQ)
+      IF (SL%SLICETYPE=='STRUCTURED') THEN ! write out slice file using original slice file format
+         STIME = REAL(T_BEGIN + (T-T_BEGIN)*TIME_SHRINK_FACTOR,FB)
+         OPEN(LU_SLCF(IQ,NM),FILE=FN_SLCF(IQ,NM),FORM='UNFORMATTED',STATUS='OLD',POSITION='APPEND')
+         WRITE(LU_SLCF(IQ,NM)) STIME
+         IF (.NOT. SL%DEBUG) WRITE(LU_SLCF(IQ,NM)) (((QQ(I,J,K,1),I=I1,I2),J=J1,J2),K=K1,K2)
+         IF (SL%DEBUG) THEN
+             SLICE_MIN = STIME + REAL(IQ, FB)
+             SLICE_MAX = STIME + REAL(IQ, FB)
+             WRITE(LU_SLCF(IQ,NM)) (((SLICE_MAX  ,I=I1,I2),J=J1,J2),K=K1,K2)
+         ENDIF
+         CLOSE(LU_SLCF(IQ,NM))
+
+         IF (SL%RLE) THEN
+            IQ3 = IQ + 2*N_SLCF_MAX
+            OPEN(LU_SLCF(IQ3,NM),FILE=FN_SLCF(IQ3,NM),FORM='UNFORMATTED',STATUS='OLD',POSITION='APPEND')
+            NX = I2 + 1 - I1
+            NY = J2 + 1 - J1
+            NZ = K2 + 1 - K1
+            IF (NX*NY*NZ>0) THEN
+               ALLOCATE(QQ_PACK(NX*NY*NZ))
+
+               DO K = K1, K2
+                  KFACT = (K-K1)
+                  DO J = J1, J2
+                     JFACT = (J-J1)*NZ
+                     DO I = I1, I2
+                        IFACT = (I - I1)*NY*NZ
+                        QQ_PACK(1+IFACT+JFACT+KFACT) = QQ(I,J,K,1)
+>>>>>>> master
                      ENDDO
                   ENDDO
 
@@ -6465,6 +6500,7 @@ IF (.NOT.VTK3D) THEN
          END DO
       END DO
       WRITE(LU_PL3D(NM+NMESHES),'(1X,E13.6,1X,E13.6)')PLOT3D_MIN,PLOT3D_MAX
+<<<<<<< HEAD
       CLOSE(LU_PL3D(NM+NMESHES))
    ENDIF
 
@@ -6663,6 +6699,25 @@ IF (VTK3D) THEN
          VTK_ERROR = A_VTK_FILE%FINALIZE()
       ENDIF
    ENDDO UNIQUE_LOOPA
+=======
+   END DO
+   PLOT3D_MIN = 10.0_FB**30
+   PLOT3D_MAX = -PLOT3D_MIN
+   DO K = 0, KBAR
+      DO J = 0, JBAR
+         DO I = 0, IBAR
+           UVEL = MAX(MIN(QQ(I,J,K,2),1E6_FB),-1E6_FB)
+           VVEL = MAX(MIN(QQ(I,J,K,3),1E6_FB),-1E6_FB)
+           WVEL = MAX(MIN(QQ(I,J,K,4),1E6_FB),-1E6_FB)
+           VEL = SQRT(UVEL*UVEL + VVEL*VVEL + WVEL*WVEL)
+           PLOT3D_MIN = MIN(PLOT3D_MIN,VEL)
+           PLOT3D_MAX = MAX(PLOT3D_MAX,VEL)
+         END DO
+      END DO
+   END DO
+   WRITE(LU_PL3D(NM+NMESHES),'(1X,E13.6,1X,E13.6)')PLOT3D_MIN,PLOT3D_MAX
+   CLOSE(LU_PL3D(NM+NMESHES))
+>>>>>>> master
 ENDIF
 
 CONTAINS
@@ -7622,6 +7677,8 @@ IND_SELECT: SELECT CASE(IND)
    CASE( 9)  ! PRESSURE
       GAS_PHASE_OUTPUT_RES = PBAR(KK,PRESSURE_ZONE(II,JJ,KK)) + &
                              RHO(II,JJ,KK)*(0.5_EB*(H(II,JJ,KK)+HS(II,JJ,KK))-KRES(II,JJ,KK)) - P_0(KK)
+      IF (TUNNEL_PRECONDITIONER) GAS_PHASE_OUTPUT_RES = GAS_PHASE_OUTPUT_RES + &
+                                                        RHO(II,JJ,KK)*0.5_EB*(H_BAR(I_OFFSET(NM)+II)+H_BAR_S(I_OFFSET(NM)+II))
    CASE(10)  ! VELOCITY
       SELECT CASE(ABS(VELO_INDEX))
          CASE DEFAULT
@@ -7638,6 +7695,8 @@ IND_SELECT: SELECT CASE(IND)
       GAS_PHASE_OUTPUT_RES = Q(II,JJ,KK)*0.001_EB
    CASE(12)  ! H
       GAS_PHASE_OUTPUT_RES = 0.5_EB*(HS(II,JJ,KK)+H(II,JJ,KK))
+      IF (TUNNEL_PRECONDITIONER) GAS_PHASE_OUTPUT_RES = GAS_PHASE_OUTPUT_RES + &
+                                                        0.5_EB*(H_BAR(I_OFFSET(NM)+II)+H_BAR_S(I_OFFSET(NM)+II))
    CASE(13)  ! MIXTURE FRACTION
       ! requires FUEL + AIR --> PROD (SIMPLE_CHEMISTRY, N_SIMPLE_CHEMISTRY_REACTIONS=1)
       ! f = Z_FUEL + Z_PROD/(1+S), where S is the mass stoichiometric coefficient for AIR
@@ -10504,7 +10563,7 @@ PROF_LOOP: DO N=1,N_PROF
       ELSE
          WRITE(TCFORM,'(3A,I5,5A)') "(",FMT_R,",',',I5,',',",2*NWP+1,"(",FMT_R,",','),",FMT_R,")"
          WRITE(LU_PROF(N),TCFORM) STIME,NWP+1,(X_S_NEW(I),I=0,NWP),&
-                                 (PF_TEMP(I)+DX_WGT_S(I)*(PF_TEMP(I)-PF_TEMP(I)),I=0,NWP)
+                                 (PF_TEMP(I)+DX_WGT_S(I)*(PF_TEMP(I+1)-PF_TEMP(I)),I=0,NWP)
       ENDIF
    ELSE ! Final values only
       REWIND(LU_PROF(N))
@@ -11350,7 +11409,24 @@ CONTAINS
                ENDIF
             ENDDO
          ENDDO
+<<<<<<< HEAD
       ENDIF
+=======
+         IF (BF%DEBUG .EQ. 0) THEN
+            WRITE(LU_BNDF(NF,NM)) ((PPN(L,N),L=L1-1,L2),N=N1-1,N2)
+            DO L = L1-1, L2
+            DO N = N1-1, N2
+               BOUND_MIN = MIN(PPN(L,N),BOUND_MIN)
+               BOUND_MAX = MAX(PPN(L,N),BOUND_MAX)
+            ENDDO
+            ENDDO
+         ELSE
+            NBF_DEBUG = (2+L2-L1)*(2+N2-N1)
+            BOUND_MIN =  STIME + REAL(NF, FB)
+            BOUND_MAX =  STIME + REAL(NF, FB)
+            WRITE(LU_BNDF(NF,NM)) (BOUND_MAX,L=0,NBF_DEBUG-1)
+         ENDIF
+>>>>>>> master
 
       SELECT CASE(ABS(PA%IOR))
          CASE(1) ; L1=PA%JG1 ; L2=PA%JG2 ; N1=PA%KG1 ; N2=PA%KG2;
@@ -11375,7 +11451,18 @@ CONTAINS
                QQ_PACK(IFACT)=PP(L,N)
                IFACT = IFACT+1
             ENDDO
+<<<<<<< HEAD
          ENDDO
+=======
+         ELSE
+            NBF_DEBUG = (2+L2-L1)*(2+N2-N1)
+            BF_FACTOR = 0.0_FB
+            IF ( NBF_DEBUG .GT. 1 ) BF_FACTOR = 2.0_FB*STIME/REAL(NBF_DEBUG-1,FB)
+            BOUND_MIN =  STIME + REAL(NF, FB)
+            BOUND_MAX =  STIME + REAL(NF, FB)
+            WRITE(LU_BNDF(NF,NM)) (BOUND_MAX,L=0,NBF_DEBUG-1)
+         ENDIF
+>>>>>>> master
       ENDIF
 
    END SUBROUTINE PACK_VTK_BNDF
