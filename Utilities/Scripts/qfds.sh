@@ -104,6 +104,7 @@ function usage {
   echo " -n n - number of MPI processes per node [default: 1]"
   echo " -O n - run cases casea.fds, caseb.fds, ... using 1, ..., N OpenMP threads"
   echo "        where case is specified on the command line. N can be at most 9."
+  echo " -r use to specify the resource manager to use for qfds. Options are SLURM (default) and PBS."
   echo " -s   - stop job"
   echo " -t   - used for timing studies, run a job alone on a node (reserving $NCORES_COMPUTENODE cores)"
   echo " -T type - run dv (development) or db (debug) version of fds"
