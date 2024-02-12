@@ -202,10 +202,8 @@ rm -f $STATUS_FILE
 RESOURCE_MANAGER="NONE"
 if [ $missing_slurm -eq 0 ]; then
   RESOURCE_MANAGER="SLURM"
-else
-  echo "***error: The slurm resource manager was not found and is required."
-  exit
 fi
+
 if [ "$SLURM_MEM" != "" ]; then
  SLURM_MEM="#SBATCH --mem=$SLURM_MEM"
 fi
@@ -232,7 +230,7 @@ commandline=`echo $* | sed 's/-V//' | sed 's/-v//'`
 
 #*** read in parameters from command line
 
-while getopts 'Ab:Bd:e:EghHiIj:Lm:n:o:O:p:Pq:stT:U:vVw:y:YzZ:' OPTION
+while getopts 'Ab:Bd:e:EghHiIj:Lm:n:o:O:p:Pq:r:stT:U:vVw:y:YzZ:' OPTION
 do
 case $OPTION  in
   A) # used by timing scripts to identify benchmark cases
@@ -309,6 +307,9 @@ case $OPTION  in
   q)
    queue="$OPTARG"
    ;;
+  r)
+   RESOURCE_MANAGER="$OPTARG"
+   ;;
   s)
    stopjob=1
    ;;
@@ -353,6 +354,15 @@ case $OPTION  in
 esac
 done
 shift $(($OPTIND-1))
+
+if [ "$RESOURCE_MANAGER" == "NONE" ]; then
+  echo "***error: The slurm resource manager was not found and no other resource manager defined."
+  exit
+fi
+
+if [ "$RESOURCE_MANAGER" == "PBS" ]; then
+  walltime=999:99:99
+fi
 
 if [ "$showcommandline" == "1" ]; then
   echo $0 $commandline
@@ -695,20 +705,31 @@ fi
 
 stop_fds_if_requested
 
-#*** setup for SLURM
-
-QSUB="sbatch -p $queue"
-if [ "$use_intel_mpi" == "1" ]; then
-   MPIRUN="srun -N $nodes -n $n_mpi_processes --ntasks-per-node $n_mpi_processes_per_node --mpi=pmi2"
-else
-   MPIRUN="srun -N $nodes -n $n_mpi_processes --ntasks-per-node $n_mpi_processes_per_node"
+if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
+   #*** setup for SLURM
+   QSUB="sbatch -p $queue"
+   if [ "$use_intel_mpi" == "1" ]; then
+      MPIRUN="srun -N $nodes -n $n_mpi_processes --ntasks-per-node $n_mpi_processes_per_node --mpi=pmi2"
+   else
+      MPIRUN="srun -N $nodes -n $n_mpi_processes --ntasks-per-node $n_mpi_processes_per_node"
+   fi
+elif [ "$RESOURCE_MANAGER" == "PBS" ]; then
+   #*** setup for SLURM
+   QSUB="qsub"
+   if [ "$use_intel_mpi" == "1" ]; then
+      MPIRUN="mpiexec -np $n_mpi_processes"
+   else
+      MPIRUN="mpiexec -np $n_mpi_processes"
+   fi
 fi
 
 #*** Set walltime parameter only if walltime is specified as input argument
 
 walltimestring_slurm=
+walltimestring_pbs=
 if [ "$walltime" != "" ]; then
   walltimestring_slurm="--time=$walltime"
+  walltimestring_pbs="$walltime"
 fi
 
 #*** create a random script filename for submitting jobs
@@ -720,6 +741,7 @@ cat << EOF > $scriptfile
 # $0 $commandline
 EOF
 
+if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
 cat << EOF >> $scriptfile
 #SBATCH -J $JOBPREFIX$infile
 #SBATCH -e $outerr
@@ -730,42 +752,69 @@ cat << EOF >> $scriptfile
 #SBATCH --cpus-per-task=$n_openmp_threads
 #SBATCH --ntasks-per-node=$n_mpi_processes_per_node
 EOF
+elif [ "$RESOURCE_MANAGER" == "PBS" ]; then
+cat << EOF >> $scriptfile
+#PBS -N $JOBPREFIX$infile
+#PBS -e $outerr
+#PBS -o $outlog
+#PBS -q $queue
+#PBS -l nodes=$nodes:ppn=$n_mpi_processes_per_node,walltime=$walltimestring_pbs
+#PBS -v OMP_NUM_THREADS=$n_openmp_threads
+EOF
+fi
+if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
 if [ "$EMAIL" != "" ]; then
     cat << EOF >> $scriptfile
 #SBATCH --mail-user=$EMAIL
 #SBATCH --mail-type=ALL
 EOF
 fi
+elif [ "$RESOURCE_MANAGER" == "PBS" ]; then
+    cat << EOF >> $scriptfile
+#PBS -M $EMAIL
+#PBS -m abe
+EOF
+fi
+if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
 if [ "$MULTITHREAD" != "" ]; then
     cat << EOF >> $scriptfile
 #SBATCH $MULTITHREAD
 EOF
 fi
+fi
 
+if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
 if [ "$benchmark" == "yes" ]; then
 cat << EOF >> $scriptfile
 #SBATCH --exclusive
 #SBATCH --cpu-freq=Performance
 EOF
 fi
+fi
 
+if [ "$RESOURCE_MANAGER" = "SLURM" ]; then
 if [ "$SLURM_MEM" != "" ]; then
 cat << EOF >> $scriptfile
 $SLURM_MEM
 EOF
 fi
+fi
 
+if [ "$RESOURCE_MANAGER" = "SLURM" ]; then
 if [ "$SLURM_PSM" != "" ]; then
 cat << EOF >> $scriptfile
 $SLURM_PSM
 EOF
 fi
+fi
 
+if [ "$RESOURCE_MANAGER" = "SLURM" ]; then
 if [ "$walltimestring_slurm" != "" ]; then
       cat << EOF >> $scriptfile
 #SBATCH $walltimestring_slurm
 
 EOF
+fi
 fi
 
 if [ "$OPENMPCASES" == "" ]; then
