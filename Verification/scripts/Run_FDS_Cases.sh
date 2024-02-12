@@ -36,6 +36,7 @@ fi
 WAIT=
 CHECKCASES=
 RESTART=
+RESOURCE_MANAGER=
 
 function usage {
 echo "Run_FDS_Cases.sh [ -d -h -m max_iterations -q queue_name -s "
@@ -54,6 +55,7 @@ echo "-p - run picture cases"
 echo "-q queue_name - run cases using the queue queue_name [default: batch]"
 echo "-r - run restart test cases"
 echo "-s - stop FDS runs"
+echo "-S use to specify the resource manager to use for qfds. Options are SLURM (default) and PBS."
 echo "-W - wait for cases to complete before returning"
 exit
 }
@@ -98,7 +100,7 @@ export SVNROOT=`pwd`
 cd $CURDIR
 RUN_PICTURES=
 
-while getopts 'Cdhj:Jm:Opq:rsW' OPTION
+while getopts 'Cdhj:Jm:Opq:S:rsW' OPTION
 do
 case $OPTION in
   C)
@@ -139,6 +141,9 @@ case $OPTION in
   s)
    export STOPFDS=1
    ;;
+  S)
+   RESOURCE_MANAGER="-S $OPTARG"
+   ;;
   W)
    WAIT="1"
    ;;
@@ -166,7 +171,7 @@ fi
 if [ "$CHECKCASES" == "1" ]; then
   export QFDS="$SVNROOT/fds/Verification/scripts/Check_FDS_Cases.sh"
 else
-  export QFDS="$QFDSSH $INTEL2 $QUEUE $DEBUG" 
+  export QFDS="$QFDSSH $INTEL2 $QUEUE $DEBUG $RESOURCE_MANAGER" 
 fi
 
 cd $CURDIR
