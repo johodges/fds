@@ -104,7 +104,7 @@ function usage {
   echo " -n n - number of MPI processes per node [default: 1]"
   echo " -O n - run cases casea.fds, caseb.fds, ... using 1, ..., N OpenMP threads"
   echo "        where case is specified on the command line. N can be at most 9."
-  echo " -r use to specify the resource manager to use for qfds. Options are SLURM (default) and PBS."
+  echo " -S use to specify the resource manager to use for qfds. Options are SLURM (default) and PBS."
   echo " -s   - stop job"
   echo " -t   - used for timing studies, run a job alone on a node (reserving $NCORES_COMPUTENODE cores)"
   echo " -T type - run dv (development) or db (debug) version of fds"
@@ -231,7 +231,7 @@ commandline=`echo $* | sed 's/-V//' | sed 's/-v//'`
 
 #*** read in parameters from command line
 
-while getopts 'Ab:Bd:e:EghHiIj:Lm:n:o:O:p:Pq:r:stT:U:vVw:y:YzZ:' OPTION
+while getopts 'Ab:Bd:e:EghHiIj:Lm:n:o:O:p:Pq:sS:tT:U:vVw:y:YzZ:' OPTION
 do
 case $OPTION  in
   A) # used by timing scripts to identify benchmark cases
@@ -308,7 +308,7 @@ case $OPTION  in
   q)
    queue="$OPTARG"
    ;;
-  r)
+  S)
    RESOURCE_MANAGER="$OPTARG"
    ;;
   s)
@@ -361,7 +361,7 @@ if [ "$RESOURCE_MANAGER" == "NONE" ]; then
   exit
 fi
 
-if [ "$RESOURCE_MANAGER" == "PBS" ]; then
+if [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
   walltime=999:99:99
 fi
 
@@ -714,7 +714,7 @@ if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
    else
       MPIRUN="srun -N $nodes -n $n_mpi_processes --ntasks-per-node $n_mpi_processes_per_node"
    fi
-elif [ "$RESOURCE_MANAGER" == "PBS" ]; then
+elif [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
    #*** setup for SLURM
    QSUB="qsub"
    if [ "$use_intel_mpi" == "1" ]; then
@@ -753,7 +753,7 @@ cat << EOF >> $scriptfile
 #SBATCH --cpus-per-task=$n_openmp_threads
 #SBATCH --ntasks-per-node=$n_mpi_processes_per_node
 EOF
-elif [ "$RESOURCE_MANAGER" == "PBS" ]; then
+elif [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
 cat << EOF >> $scriptfile
 #PBS -N $JOBPREFIX$infile
 #PBS -e $outerr
@@ -770,11 +770,13 @@ if [ "$EMAIL" != "" ]; then
 #SBATCH --mail-type=ALL
 EOF
 fi
-elif [ "$RESOURCE_MANAGER" == "PBS" ]; then
+elif [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
+if [ "$EMAIL" != "" ]; then
     cat << EOF >> $scriptfile
 #PBS -M $EMAIL
 #PBS -m abe
 EOF
+fi
 fi
 if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
 if [ "$MULTITHREAD" != "" ]; then
