@@ -55,7 +55,9 @@ echo "-p - run picture cases"
 echo "-q queue_name - run cases using the queue queue_name [default: batch]"
 echo "-r - run restart test cases"
 echo "-s - stop FDS runs"
-echo "-S use to specify the resource manager to use for qfds. Options are SLURM (default) and PBS."
+echo "-S use to specify the resource manager to use for qfds. Options are SLURM and TORQUE."
+echo "   default attempts to identify the resource manager by checking response from srun (SLURM)"
+echo "   and qmgr (TORQUE)."
 echo "-W - wait for cases to complete before returning"
 exit
 }
@@ -100,7 +102,7 @@ export SVNROOT=`pwd`
 cd $CURDIR
 RUN_PICTURES=
 
-while getopts 'Cdhj:Jm:Opq:S:rsW' OPTION
+while getopts 'Cdhj:Jm:Opq:rsS:W' OPTION
 do
 case $OPTION in
   C)
