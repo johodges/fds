@@ -847,7 +847,7 @@ EOF
 
   if [[ $n_openmp_threads -gt 1 ]] && [[ "$use_intel_mpi" == "1" ]]; then
     cat << EOF >> $scriptfile
-#PBS -l naccesspolicy=SINGLEJOB -n
+#PBS -l naccesspolicy=SINGLEJOB
 EOF
   fi
 fi
