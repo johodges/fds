@@ -962,12 +962,21 @@ fi
 
 # wait until number of jobs running alread by user is less than USERMAX
 if [ "$USERMAX" != "" ]; then
-  nuser=`squeue | grep -v JOBID | awk '{print $4}' | grep $USER | wc -l`
-  while [ $nuser -gt $USERMAX ]
-  do
+  if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
     nuser=`squeue | grep -v JOBID | awk '{print $4}' | grep $USER | wc -l`
-    sleep 10
-  done
+    while [ $nuser -gt $USERMAX ]
+    do
+      nuser=`squeue | grep -v JOBID | awk '{print $4}' | grep $USER | wc -l`
+      sleep 1
+    done
+  elif [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
+    nuser=`qstat -u $USER | awk '{print $10}' | grep -E "Q|R" | wc -l`
+    while [ $nuser -gt $USERMAX ]
+    do
+      nuser=`qstat -u $USER | awk '{print $10}' | grep -E "Q|R" | wc -l`
+      sleep 1
+    done
+  fi
 fi
 
 #*** output info to screen
