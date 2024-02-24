@@ -533,6 +533,13 @@ let "nodes=($n_mpi_processes-1)/$n_mpi_processes_per_node+1"
 if test $nodes -lt 1 ; then
   nodes=1
 fi
+OVERSUBSCRIBE=""
+if [ "$QFDS_MAX_NODES_PER_JOB" != "" ] ; then
+  if [ $QFDS_MAX_NODES_PER_JOB -lt $nodes ]; then
+    OVERSUBSCRIBE="--bind-to none"
+    nodes=$QFDS_MAX_NODES_PER_JOB
+  fi
+fi
 
 # don't let other jobs run on nodes used by this job if you are using psm and more than 1 node
 if [ "$USE_PSM" != "" ]; then
@@ -759,9 +766,9 @@ elif [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
    #*** setup for SLURM
    QSUB="qsub -q $queue"
    if [ "$use_intel_mpi" == "1" ]; then
-      MPIRUN="$MPIRUNEXE $REPORT_BINDINGS $SOCKET_OPTION -np $n_mpi_processes"
+      MPIRUN="$MPIRUNEXE $REPORT_BINDINGS $SOCKET_OPTION $OVERSUBSCRIBE -np $n_mpi_processes"
    else
-      MPIRUN="$MPIRUNEXE $REPORT_BINDINGS $SOCKET_OPTION -np $n_mpi_processes"
+      MPIRUN="$MPIRUNEXE $REPORT_BINDINGS $SOCKET_OPTION $OVERSUBSCRIBE -np $n_mpi_processes"
    fi
 fi
 
