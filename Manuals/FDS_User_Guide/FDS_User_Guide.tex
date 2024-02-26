@@ -320,27 +320,27 @@ The project homepage provides detailed instructions on how to download executabl
 \end{center}
 
 \noindent
-The typical FDS/Smokeview distribution consists of an installation package or compressed archive, which is available for MS Windows, Mac~OS~X, and Linux.
+The typical FDS/Smokeview distribution consists of an installation package or compressed archive, which is available for MS Windows, macOS, and Linux.
 
 Old versions can be kept by copying the old version's installation directly to another location so that it is not overwritten when installing a new version.
 
 
 \section{Computer Hardware Requirements}
 
-The only hard requirement to run the compiled versions of FDS and Smokeview is a 64~bit Windows, Linux, or Mac OS X operating system. The single computer or compute cluster ought to have fast processors (CPUs), and at least 2 to 4~GB RAM per core. The CPU speed will determine how long the computation will take to finish, while the amount of RAM will determine how many mesh cells can be held in memory. A large hard drive is required to store the output of the calculations since the FDS output for a single calculation may consume more than 10~GB of storage space.
+The only hard requirement to run the compiled versions of FDS and Smokeview is a 64~bit Windows, Linux, or macOS operating system. The single computer or compute cluster ought to have fast processors (CPUs), and at least 2 to 4~GB RAM per core. The CPU speed will determine how long the computation will take to finish, while the amount of RAM will determine how many mesh cells can be held in memory. A large hard drive is required to store the output of the calculations since the FDS output for a single calculation may consume more than 10~GB of storage space.
 
 Most computers purchased within the past few years are adequate for running Smokeview with the caveat that additional memory (RAM) should be purchased to bring the memory size up to at least 2~GB. This is so the computer can display results without ``swapping'' to disk. For Smokeview it is also important to obtain a fast graphics card for the PC used to display the results of the FDS computations.
 
-Running FDS using MPI requires shared disk access to each computer on which cases will be run.  On Windows systems this involves a domain network with the ability to share folders.  On a Linux or Mac~OS~X system this involves NFS cross mounted files systems with ssh keys setup for passwordless login. For Multi-Mesh calculations, the FDS can operate over standard 100~Mb/s networks. A gigabit (1000~Mb/s) network will further reduce network communication times improving data transfer rates between instances of FDS running the parallel cases.
+Running FDS using MPI requires shared disk access to each computer on which cases will be run.  On Windows systems this involves a domain network with the ability to share folders.  On a Linux or macOS system this involves NFS cross mounted files systems with ssh keys setup for passwordless login. For Multi-Mesh calculations, the FDS can operate over standard 100~Mb/s networks. A gigabit (1000~Mb/s) network will further reduce network communication times improving data transfer rates between instances of FDS running the parallel cases.
 
 
 \section{Computer Operating System (OS) and Software Requirements}
 
-The goal of making FDS and Smokeview publicly available has been to enable practicing engineers to perform fairly sophisticated simulations at a reasonable cost. Thus, FDS and Smokeview have been designed for computers running Microsoft Windows, Mac OS~X, and Linux.
+The goal of making FDS and Smokeview publicly available has been to enable practicing engineers to perform fairly sophisticated simulations at a reasonable cost. Thus, FDS and Smokeview have been designed for computers running Microsoft Windows, macOS, and Linux.
 \begin{description}
 \item[{\bf MS Windows}] An installation package is available for the 64~bit Windows operating system. Running FDS/Smokeview any version of MS Windows released prior to Windows 7 is not recommended.
-\item[{\bf Mac OS X}] Pre-compiled executables are installed into a user selected directory using an installation script.  Mac OS~X 10.4.x or better is recommended. You can always download the latest version of FDS source and compile FDS for other versions of OS~X (See Appendix~\ref{info:compilation} for details).
-\item[{\bf Linux}] Pre-compiled executables are installed into a user selected directory using an installation script. If the pre-compiled FDS executable does not work (usually because of library incompatibilities), the FDS Fortran source code can be downloaded and compiled (See Appendix~\ref{info:compilation} for details). If Smokeview does not work on the Linux workstation, you can use the Windows version to view FDS output.
+\item[{\bf macOS}] Pre-compiled executables are installed into a user selected directory using an installation script.  macOS 10.4.x or later is recommended. You can always download the latest version of FDS source and compile FDS for other versions of macOS (See Chapter~\ref{info:compilation} for details).  Note that Rosetta allows running FDS compiled on x86-64 architecture on Apple silicon systems (M1 and M2 chips); therefore the FDS executable distributed with the macOS bundle will run on the newer Macs.  However, if compiling the source natively on Apple silicon with GNU and Open MPI, it is not currently possible to use the ULMAT pressure solver (which requires Intel MKL libraries), and hence the complex geometry features ({\ct GEOM} namelist) are not available.
+\item[{\bf Linux}] Pre-compiled executables are installed into a user selected directory using an installation script. If the pre-compiled FDS executable does not work (usually because of library incompatibilities), the FDS Fortran source code can be downloaded and compiled (See Chapter~\ref{info:compilation} for details). If Smokeview does not work on the Linux workstation, you can use the Windows version to view FDS output.
 \end{description}
 
 \section{Installation Testing}
@@ -367,12 +367,12 @@ FDS simulations can exploit multiple processing units on a single computer or mu
 
 When using a computer running Microsoft Windows, open up the Task Manager, Performance tab, and look for the number of {\em sockets}, {\em cores}, and {\em logical processors}\footnote{The terms sockets, cores, and logical processors are used by the Windows~10 Task Manager on a computer using an Intel processor. These terms might vary with different versions of Windows and different processors.}. The socket refers to the physical connector on the motherboard that has a power supply and a connection to random access memory (RAM). This is usually referred to as the central processing unit or CPU. Some motherboards have multiple sockets that can in turn support multiple CPUs, but for typical Windows desktops or laptops, there is one socket/CPU. Each CPU, however, typically has multiple cores, and each core is essentially an independent processing unit that shares access to power and memory. Sometimes cores are referred to as {\em physical cores} to distinguish them from {\em logical cores} or {\em logical processors}. A logical processor is one of multiple {\em threads} that can be supported by a core. For the purpose of running FDS on a Windows computer, the number of logical processors is the most important consideration.
 
-If you are running FDS under any variety of Linux or Mac~OS~X, you can determine the number of logical processors using the command ``lscpu'' for Linux or ``sysctl hw'' for OS~X. These operating systems might use slightly different terms, but the processors are similar if not the same as those on a Windows computer.
+If you are running FDS under any variety of Linux or macOS, you can determine the number of logical processors using the command ``lscpu'' for Linux or ``sysctl hw'' for OS~X. These operating systems might use slightly different terms, but the processors are similar if not the same as those on a Windows computer.
 
 
 \subsection{Two Ways to Use Multiple Processors}
 
-FDS can be run on a single computer, using one or more cores, or it can be run on multiple computers. Starting with FDS version~6.2.0, for each supported operating system (Windows, Linux, Mac~OS~X) there is a single\footnote{Previous releases of FDS contained two executables, one that ran on a single processor and one that ran on multiple processors. Starting with FDS~6.2.0, these two executables have been combined into one, and it can run either in serial or parallel mode.} executable file called {\ct fds} (with an {\ct .exe}\ file extension on Windows).
+FDS can be run on a single computer, using one or more cores, or it can be run on multiple computers. Starting with FDS version~6.2.0, for each supported operating system (Windows, Linux, macOS) there is a single\footnote{Previous releases of FDS contained two executables, one that ran on a single processor and one that ran on multiple processors. Starting with FDS~6.2.0, these two executables have been combined into one, and it can run either in serial or parallel mode.} executable file called {\ct fds} (with an {\ct .exe}\ file extension on Windows).
 
 There are two ways that FDS can be run in parallel; that is, exploit multiple cores on a single computer or multiple processors/cores distributed over multiple computers on a network or compute cluster. The first way is OpenMP (Open Multi-Processing)~\cite{Chapman:OpenMP} which allows a single computer to run a single or multiple mesh FDS simulation on multiple cores. The use of OpenMP does not require the computational domain to be broken up into multiple meshes, and it will still work with cases that have multiple meshes defined. The second way to run FDS in parallel is by way of MPI (Message Passing Interface). Here, the computational domain must be divided into multiple meshes and typically each mesh is assigned its own {\em process}. These processes can be limited to a single computer, or they can be distributed over a network.
 
@@ -400,7 +400,7 @@ Mesh   5 is assigned to MPI Process   4
 \end{lstlisting}
 This means that 5 MPI processes (numbered 0 to 4) have started and that each mesh is being handled by its own process. The processes may be on the same or different computers. Each computer has its own memory (RAM), but each individual MPI process has its own independent memory, even if the processes are on the same computer.
 
-There are different implementations of MPI, much like there are different Fortran and C compilers. Each implementation is essentially a library of subroutines called from FDS that transfer data from one process to another across a fast network. The format of the subroutine calls has been widely accepted in the community, allowing different vendors and organizations the freedom to develop better software while working within an open framework. For Mac OS~X, we use Open MPI, an open source implementation that is developed and maintained by a consortium of academic, research, and industry partners (www.open-mpi.org). For Windows and Linux, we use Intel MPI.
+There are different implementations of MPI, much like there are different Fortran and C compilers. Each implementation is essentially a library of subroutines called from FDS that transfer data from one process to another across a fast network. The format of the subroutine calls has been widely accepted in the community, allowing different vendors and organizations the freedom to develop better software while working within an open framework. For macOS, we use Open MPI, an open source implementation that is developed and maintained by a consortium of academic, research, and industry partners (www.open-mpi.org). For Windows and Linux, we use Intel MPI.
 
 MPI and OpenMP can be used together. For example, 4 MPI processes can be assigned to 4 different computers, and each MPI process can be supported by, say, 8 OpenMP threads, assuming each computer has 8 cores. Most of the speed up is achieved by the MPI. For a reasonably fast network, you can expect 4 MPI processes to speed up the computation time by a factor of about 0.9 times 4. The OpenMP can provide an extra factor up to about 2, regardless of the number of cores used beyond about 4.
 
@@ -468,9 +468,9 @@ The following procedure is intended for a Windows domain network; that is, a net
 
 
 
-\subsection{Linux and Mac OS X}
+\subsection{Linux and macOS}
 
-A compute cluster that consists of a rack of dedicated compute nodes usually runs one of several variants of the Linux operating system. In such an environment, it is suggested, or required, that you use a job scheduler like PBS/Torque or Slurm to submit jobs by writing a short script that includes the command that launches the job, the amount of resources you require, and so on. Tips for running FDS under Linux or Mac~OS~X can be found \href{https://github.com/firemodels/fds/wiki/Installing-and-Running-FDS-on-a-Linux-Cluster}{here}.
+A compute cluster that consists of a rack of dedicated compute nodes usually runs one of several variants of the Linux operating system. In such an environment, it is suggested, or required, that you use a job scheduler like PBS/Torque or Slurm to submit jobs by writing a short script that includes the command that launches the job, the amount of resources you require, and so on. Tips for running FDS under Linux or macOS can be found \href{https://github.com/firemodels/fds/wiki/Installing-and-Running-FDS-on-a-Linux-Cluster}{here}.
 
 If you opt to run the job without using a job scheduler, you can issue the commands directly at the command prompt:
 \begin{lstlisting}
@@ -483,7 +483,7 @@ comp1 slots=2
 comp2 slots=1
 comp3 slots=2
 \end{lstlisting}
-where {\ct compX} are the names of available nodes and {\ct slots} indicate the number of available cores on each node. The parameter {\ct slots} is optional. On a cluster shared by others, you should not run long jobs without a job scheduler. A job scheduler will avoid running multiple on the same nodes/cores. If you are using a single Linux or Mac OS X workstation, there is no need to define a host file. You just need to invoke the previously described {\ct mpiexec} line with a number of processors suitable to your case and computer.
+where {\ct compX} are the names of available nodes and {\ct slots} indicate the number of available cores on each node. The parameter {\ct slots} is optional. On a cluster shared by others, you should not run long jobs without a job scheduler. A job scheduler will avoid running multiple on the same nodes/cores. If you are using a single Linux or macOS workstation, there is no need to define a host file. You just need to invoke the previously described {\ct mpiexec} line with a number of processors suitable to your case and computer.
 
 
 
@@ -606,6 +606,7 @@ An FDS calculation may end before the specified time limit. Following is a list 
     \item the removal or creation of an obstruction, like the opening or closing of a door
     \item a high (>100 g/mol) molecular weight fuel molecule that is not in the FDS database, Appendix~\ref{info:predefined_species}. In such cases, reduce the molecular weight but maintain the atom ratios or define the fuel specific heat on {\ct SPEC}. See Sec.~\ref{user_defined_gas_species_props} for details.
     \item long, sealed tunnels, in which pressure fluctuations can cause spurious numerical artifacts. See Sec.~\ref{info:PRES} for details.
+    \item large number of automatically generated pressure zones. This can happen when a pre-processor simply converts CAD geometry stored as faces to thin obstructions. For example, on a 10 cm grid, a typical interior gypsum board wall will appear in an FDS input file as two thin obstructions representing the gypsum board enclosing a single grid cell wide volume of air. FDS will automatically identify these regions as pressure zones; however, they can sometimes result in instabilities developing. The pressure zones identified by FDS can be determined by reviewing the {\ct casename.out} file. Telling FDS to automatically fill these zones (see Section~\ref{info:filling_zones}) or manually fixing the geometry to fill the regions can reduce these issues.
     \end{itemize}
     There are various ways to solve the problem, depending on the situation. Try to diagnose and fix the problem before reporting it. The originator of the input file is by far the best person to diagnose the problem.
 \item[{\bf Inadequate Computer Resources}:] The calculation might be using more RAM than the machine has (you will see an error message like ``ERROR: Memory allocation failed for ZZ in the routine INIT'') , or the output files could have used up all the available disk space. In these situations, the computer may or may not produce an intelligible error message. Sometimes the computer is just unresponsive. It is your responsibility to ensure that the computer has adequate resources to do the calculation. Remember, there is no limit to how big or how long FDS calculations can be -- it depends on the resources of the computer. For any new simulation, try running the case with a modest-sized mesh, and gradually make refinements until the computer can no longer handle it. Then back off somewhat on the size of the calculation so that the computer can comfortably run the case. Trying to run with 90~\% to 100~\% of computer resources is risky; using MPI and mulitple machines would be better. If you are using a Linux/Unix machine, make sure that the stacksize is unlimited, which will allow FDS to access as much of the RAM as possible. Changing the stacksize limit differs with each shell type, so it is best to do an on-line search to find out how to ensure that the stacksize is unlimited.
@@ -679,7 +680,7 @@ which means that the first three materials of layer 1 have mass fractions of 0.5
 
 Note that character strings can be enclosed either by single or double quotation marks. Be careful not to create the input file by pasting text from something other than a simple text editor, in which case the punctuation marks may not transfer properly into the text file.
 
-Some text file encodings may not work on all systems. If file reading errors occur and no typographical errors can be found in the input file, try saving the input file using a different encoding. For example, the text file editor Notepad works fine on a Windows PC, but a file edited in Notepad may not work on Linux or Mac OS~X because of the difference in line endings between Windows and Unix/Linux operating systems. Other text editors, such as Notepad++, typically work better, but try a simple case first.
+Some text file encodings may not work on all systems. If file reading errors occur and no typographical errors can be found in the input file, try saving the input file using a different encoding. For example, the text file editor Notepad works fine on a Windows PC, but a file edited in Notepad may not work on Linux or macOS because of the difference in line endings between Windows and Unix/Linux operating systems. Other text editors, such as Notepad++, typically work better, but try a simple case first.
 
 
 \section{Input File Structure}
@@ -1249,7 +1250,7 @@ The namelist {\ct GEOM} describes one or more unstructured closed geometric surf
 \subsection{My First Geometry}
 \label{info:first_geom}
 
-To get you aquainted with the new geometry features, as much as possible, we have tried to allow for {\ct OBST} namelist parameters to be applied to {\ct GEOM}.  Therefore, subject to the limitations listed at the end of this section (see Sec.~\ref{info:geom_limitations}), you should be able to take a case built from {\ct OBST} and simply do a \emph{replace} with {\ct GEOM} to begin using unstructured geometry. For example, if you have a burner built like this
+To get you aquainted with the new geometry features we allow for some of {\ct OBST} namelist parameters to be applied to {\ct GEOM}.  Therefore, subject to the limitations listed at the end of this section (see Sec.~\ref{info:geom_limitations}), you should be able to take a case built from {\ct OBST} and simply do a \emph{replace} with {\ct GEOM} to begin using unstructured geometry. For example, if you have a burner built like this
 \begin{lstlisting}
 &OBST XB=-1,1,-1,1,0,0.5, SURF_IDS='FIRE','INERT','INERT' /
 \end{lstlisting}
@@ -1567,24 +1568,23 @@ One current limitation of the unstructured geometry algorithm is that a Cartesia
 \end{figure}
 
 
-\subsection{Current GEOM Limitations}
+\subsection{GEOM Limitations}
 \label{info:geom_limitations}
 
 \begin{itemize}
-\item Currently no control logic is available on {\ct GEOM} namelists.  That is adding or removing a {\ct GEOM} is not possible.
+\item Currently no control logic is available on {\ct GEOM} namelists.  That is, adding or removing a {\ct GEOM} is not possible.
 \item The {\ct MULT} construct cannot currently be applied to geometries.
 \item Thin geometries and corners cannot split cells, one side must be blocked. See Sec.~\ref{info:thin_geom}.
-\item A {\ct VENT} cannot be applied to a {\ct GEOM}.  Surface properties must be applied face by face via {\ct SURF\_ID}.
-\item No {\ct VENT} implies {\ct HVAC} cannot be applied to a {\ct GEOM} surface.  This is high on the priority list and should be available in the next maintenance release.
-\item Imposing a tangential velocity in geometries cannot be done. {\ct NO\_SLIP} conditions assume a zero tangential velocity. Allowing this capability is also a development priority.
-\item 3D heat transfer with complex geometry cannot be done.
 \item Backing external is allowed only on a single mesh.  If the back surface is on another mesh the backing will be set to {\ct VOID} (quietly).
-\item {\ct BURN\_AWAY} is not allowed.
-\item The {\ct HOLE} namelist is not currently connected to {\ct GEOM}.
-\item Subgrid geometries (smaller than a grid cell) are possible, but not recommended currently. Similarly, gaps should be defined over a cell size thick. These still require testing and are a development priority.
-\item Using triangular faces that are much smaller than the Cartesian grid cell is not recommended.
+\item A {\ct VENT} cannot be applied to a {\ct GEOM}.  Surface properties must be applied face by face via {\ct SURF\_ID}.
+\item No {\ct VENT} implies {\ct HVAC} cannot be applied to a {\ct GEOM} surface.  This is on our priority list and will be available in the future.
+\item Imposing a tangential velocity in geometries cannot be done. {\ct NO\_SLIP} conditions assume a zero tangential velocity. Allowing this capability is also a development priority.
+\item Neither 3D heat transfer nor {\ct BURN\_AWAY} are available in {\ct GEOM}.
+\item The {\ct HOLE} namelist does not apply to {\ct GEOM}.
+\item Subgrid geometries (smaller than a grid cell) are not recommended. They are currently not included in the treatment of momentum equations. Similarly, gaps should be defined over a cell size thick.
+\item Using triangular faces that are much smaller than the Cartesian grid cell is not recommended. Each face will be assigned boundary conditions at unneccesary resolution compared to Cartesian cells.
 \item Particles will interact with the {\ct GEOM}, but will not flow underneath a geometry due to surface tension.  That is, if particles are falling on top of a sphere, once they reach the equator they fall directly to the floor. They will behave as pellets, not droplets.
-\item Be cautious with soot deposition.  While the functionality for deposition exists with geometry, it has not yet undergone thorough testing.
+\item Be cautious with soot deposition.  While the functionality for deposition exists with geometry, it has not undergone thorough testing.
 \end{itemize}
 
 \subsection{The Big Picture, Run Time, and Accuracy}
@@ -2473,7 +2473,7 @@ You can specify an internal source for the solid obstruction using {\ct INTERNAL
 \item {\ct HT3D} cannot be applied to an exterior boundary; it must be applied to an {\ct OBST} for which at least one face in each coordinate direction is exposed.
 \item Avoid contact between 3-D and 1-D solids. If two sides of a 3-D solid touch 1-D solids, there will be no lateral heat conduction computed in that particular direction.
 \item If your 3-D obstruction extends beyond meshes that abut, FDS uses a special algorithm to identify all the meshes where this obstruction lives, and also those obstructions connected to it. However, if this algorithm fails to detect all the meshes and you recieve an error stating that there is a problem, add the parameter {\ct NEIGHBOR\_SEPARATION\_DISTANCE} to the {\ct MISC} line. Any mesh within this distance of another mesh will share geometry information for use in the 3-D heat conduction calculation. If you set this parameter to a value larger than the width of the computational domain, then all meshes will establish communication channels for exchanging boundary information.
-\item By default, the interior nodes are clustered near the surface and stretched out deeper within the solid. If you want to maintain uniform spacing, set {\ct CELL\_SIZE} on the {\ct SURF} line to indicate the desired interior node spacing. The {\ct CELL\_SIZE} is typically the same as the gas phase cells.
+\item By default, the interior nodes are clustered near the surface and stretched out deeper within the solid. If you want to maintain uniform spacing, set {\ct CELL\_SIZE} on the {\ct SURF} or {\ct OBST} line to indicate the desired interior node spacing. The {\ct CELL\_SIZE} is typically chosen to be comparable to the gas phase cells. If the obstruction is thin; that is, less than one gas phase cell thick, the specified {\ct CELL\_SIZE} will only apply to the heat conduction in the transverse, not normal, direction. The normal direction gridding will be controlled by the parameters {\ct STRETCH\_FACTOR} and {\ct CELL\_SIZE\_FACTOR}. This may be useful in cases where the specified {\ct CELL\_SIZE} is too coarse to resolve variations in surface definition along the normal dimension (see Section~\ref{checkerboard} for an example).
 \end{enumerate}
 
 \subsubsection{Example: Steel Assembly}
@@ -5539,19 +5539,13 @@ If you are using multiple meshes, the radiation solver cannot transfer energy fr
 The radiation solver is called before the start of the calculation to establish the radiation field in the event that you specify something to have a non-ambient temperature initially. By default, the radiation and wall boundary routines are iterated three times to establish thermal equilibrium. To change the number of iterations, set {\ct INITIAL\_RADIATION\_ITERATIONS} on the {\ct RADI} line.
 
 
-
-
-
-
-
 \section{Absorption Coefficient of Gases and Soot}
 \label{info:RADI_Gas_and_Soot}
 
 By default FDS employs a gray gas model for the radiation absorption coefficient. Other options are the wide band model (often called Box Model in the radiation literature), and the Weighted Sum of Gray Gases (WSGG) model. The models are discussed in detail in the FDS Technical Reference Guide~\cite{FDS_Math_Guide}.
 The radiation properties of most common gases involved in combustion processes (water vapor, carbon dioxide, carbon monoxide, fuel) and soot particles are automatically taken into account if the simulation involves combustion. In simulations with no combustion nor radiating species, it is possible to use a constant absorption coefficient by specifying {\ct KAPPA0} on the {\ct RADI} line.
 
-You can output the gray absorption coefficient using the output {\ct QUANTITY} {\ct 'ABSORPTION COEFFICIENT'}.
-The Wide Band and WSGG  models employ several values of the absorption coefficients for each location, and the {\ct 'ABSORPTION COEFFICIENT'} output quantity only shows one of them, making this output practically useless.
+You can output the gray absorption coefficient using {\ct QUANTITY=}{\ct 'ABSORPTION COEFFICIENT'}. The Wide Band and WSGG models employ several values of the absorption coefficients for each location, and the {\ct 'ABSORPTION COEFFICIENT'} output quantity only shows one of them, making this output impractical for multiband models.
 
 If aluminum oxide is being modeled, the optical properties of soot can be replaced by the optical properties of aluminum oxide by setting {\ct AEROSOL\_AL2O3=T} on {\ct MISC}. Any species with {\ct RADCAL\_ID='SOOT'} will be treated as aluminum oxide.
 
@@ -6603,13 +6597,13 @@ The pressure gradient force can be related to the average wind speed, $U$, over 
 \be
    \| \bF \| \approx \rho \, C_{\rm D} \, \frac{ U^2 }{H}
 \ee
-where $C_{\rm D}$ is a dimensionless drag coefficient ranging between $2 \times 10^{-3}$ for relatively smooth surfaces to $2 \times 10^{-2}$ for rough or forested surfaces. This relation is appropriate for neutrally stable conditions, i.e. windy and relatively low surface heating. For unstable conditions, i.e. light winds and strong surface heating, the relation becomes
+where $C_{\rm D}$ is a dimensionless drag coefficient ranging between $2 \times 10^{-3}$ for relatively smooth surfaces to $2 \times 10^{-2}$ for rough or forested surfaces. This relation is appropriate for neutrally stable conditions, i.e. windy and relatively low surface heating. For unstable conditions, i.e., light winds and strong surface heating, the relation becomes
 \be
    \| \bF \| \approx \rho \, b_{\rm D} \sqrt{g H \frac{\Delta \theta}{\theta} } \, \frac{ U }{H}
 \ee
 where $b_{\rm D} = 1.83 \times 10^{-3}$ and $\Delta \theta /\theta$ is the relative change in potential temperature between the ground and the mid-height of the boundary layer. Note that these relationships are approximate. You need to conduct some numerical experiments if you want to match a particular wind measurement.
 
-The {\ct PRESSURE\_GRADIENT\_FORCE} is input on the {\ct WIND} line in units of Pa/m, for example
+The {\ct PRESSURE\_GRADIENT\_FORCE} is input on the {\ct WIND} line in units of Pa/m, for example,
 \begin{lstlisting}
 &WIND PRESSURE_GRADIENT_FORCE=0.01, DIRECTION=315, INITIAL_SPEED=5 /
 \end{lstlisting}
@@ -6878,7 +6872,7 @@ This model is invoked by setting {\ct SURFACE\_OXIDATION\_MODEL} to {\ct T} on t
   h_m \, \ln(B+1) &=& Y_{\rm O_2,surf} \, \sigma \, A_{\rm char} \exp \left(  -\frac{E_{\rm char}}{R \, T} \right) \\[.1in]
   B  &=& \frac{Y_{\rm O_2,\infty} - Y_{\rm O_2,surf}}{\nu_{\rm O_2,char}+Y_{\rm O_2,surf}}
 \end{eqnarray}
-The mass transfer coefficient is $h_m = h/c_p$, using the heat and mass transfer analogy ($h$ is obtained from Eq.~(\ref{h_particles})). A linear approximation of $\ln(B + 1) \approx B$ is applied, allowing $Y_{\rm O_2,surf}$ to be calculated from a quadratic equation and substituted into Eq.~(\ref{r_char}). It is important to note that the transport equation assumes a single reaction for char that produces CO$_2$, as in Eq.~(\ref{lumped_char_reaction}). This approach also assumes the oxidation of char is a surface reaction where the details of temperature and oxygen gradients through the particle depth can be neglected and is therefore most applicable for thermally thin solids. These assumptions are not enforced by FDS in any way, however, and so consideration should be given when using the {\ct SURFACE\_OXIDATION\_MODEL}.
+The mass transfer coefficient is $h_m = h/c_p$, using the heat and mass transfer analogy ($h$ is obtained from Eq.~(\ref{h_particles})). A linear approximation of $\ln(B + 1) \approx B$ is applied, allowing $Y_{\rm O_2,surf}$ to be calculated from a quadratic equation and substituted into Eq.~(\ref{r_char}). It is important to note that the transport equation assumes a single reaction for char that produces CO$_2$, as in Eq.~(\ref{lumped_char_reaction}). This approach also assumes the oxidation of char is a surface reaction where the details of temperature and oxygen gradients through the particle depth can be neglected and is therefore most applicable for thermally thin solids. These assumptions are not enforced by FDS in any way, however, so consideration should be given when using the {\ct SURFACE\_OXIDATION\_MODEL}.
 
 
 \begin{table}[!ht]
@@ -7042,7 +7036,7 @@ Consider the sample case called {\ct WUI/char\_oxidation\_1.fds} where $m=0.0531
 \end{figure}
 
 
-The sample case called {\ct Verification/WUI/char\_oxidation\_2.fds} considers two pines needle both with an initial temperature $T_{\rm s,i}=293.15$~K introduced into an adiabatic box with a volume $V=0.125$~m$^3$ and initial temperature $T_{\rm g,i}=1073.15$~K. The needles are a cylinder with length $L=0.1$~m and radius $r=0.0005$~m. They are composed of plant matter with a density of $\rho_{\rm s}=500$~kg/m$^3$, specific heat $c_{\rm s}=1$~kJ/(kg$\cdot$K), and mass $m_{\rm p}=\pi r^2 L \rho_{\rm s}$ with one needle dry and the other needle having 20~\% moisture. The box is initially filled with nitrogen and oxygen, the latter with an initial mass fraction of 0.05. The vegetation undergoes three reactions, one in which $(1-\nu_{\rm char}) \, m_{\rm p}$ is converted to fuel gas and $\nu_{\rm char} \, m_{\rm p}$ to solid char, and the second in which the char oxidizes to form CO$_2$ gas and solid ash, and the third is the evaporation of moisture. The char yield $\nu_{\rm char}=0.25$ and the ash yield $\nu_{\rm ash}=0.02$. Note that the ash yield is the faction of char that is converted to ash, not the fraction of the original pine needle.
+The sample case called {\ct Verification/WUI/char\_oxidation\_2.fds} considers two pines needle both with an initial temperature $T_{\rm s,i}=293.15$~K introduced into an adiabatic box with a volume $V=0.125$~m$^3$ and initial temperature $T_{\rm g,i}=1073.15$~K. The needles are a cylinder with length $L=0.1$~m and radius $r=0.0005$~m. They are composed of plant matter, or 'pulp', with a density of $\rho_{\rm s}=500$~kg/m$^3$, specific heat $c_{\rm s}=1$~kJ/(kg$\cdot$K), and mass $m_{\rm p}=\pi r^2 L \rho_{\rm s}$ with one needle dry and the other needle having 20~\% moisture. The box is initially filled with nitrogen and oxygen, the latter with an initial mass fraction of 0.05. The vegetation undergoes three reactions, one in which $(1-\nu_{\rm char}) \, m_{\rm p}$ is converted to fuel gas and $\nu_{\rm char} \, m_{\rm p}$ to solid char, and the second in which the char oxidizes to form CO$_2$ gas and solid ash, and the third is the evaporation of moisture. The char yield $\nu_{\rm char}=0.25$ and the ash yield $\nu_{\rm ash}=0.02$. Note that the ash yield is the faction of char that is converted to ash, not the fraction of the original pine needle.
 
 To simplify calculation of the exact answer, all species and material $c$ values, except for the moisture, are set to $1$~kJ/(kg$\cdot$K). Energy is conserved if the enthalpy change of the particle is equal and opposite to the internal energy change of the gas. Note that it is internal energy and not enthalpy since the box is sealed and any pressure rise must be accounted for in the energy balance. For this case, since the gas species have a specified specific heat, their heat of formation are all 298.15~kJ/kg. Since there are four materials and three material reactions, following the discussion in Sec.~\ref{solid_phase_energy_conservation}, FDS will perform a least squares solution to determine the material heats of formation (the enthalpy at 298.15 K). The result of this calculation is a pulp heat of formation of 6145~kJ/kg, a char heat of formation of 25,290~kJ/kg, an ash heat of formation of -231~kJ/kg, and a moisture heat of formation of -2202~kJ/kg.
 
@@ -7064,7 +7058,7 @@ The particle will therefore lose 0.2410~kJ.
 \includegraphics[height=2.2in]{SCRIPT_FIGURES/char_oxidation_2_mass} \\
 \includegraphics[height=2.2in]{SCRIPT_FIGURES/char_oxidation_2_energy}
 \includegraphics[height=2.2in]{SCRIPT_FIGURES/char_oxidation_2_temp}
-\caption[The {\ct char\_oxidation\_2} test case]{(Top left) Mass of virgin foliage, char and ash. (Top right) Total mass of solid and fuel vapor, CO$_2$, and O$_2$. (Lower left) Energy lost by the pine needle (black) and gained by the gas (red). (Bottom right) Surface temperature of the pine needle and mean gas temperature of the enclosure.}
+\caption[The {\ct char\_oxidation\_2} test case]{(Top left) Mass of virgin foliage, char and ash. (Top right) Total mass of solid and fuel vapor, CO$_2$, and O$_2$. (Lower left) Energy lost by the pine needle (black) and gained by the gas (red). (Lower right) Surface temperature of the pine needle and mean gas temperature of the enclosure.}
 \label{char_oxidation_2_fig}
 \end{figure}
 
@@ -7205,7 +7199,7 @@ Additionally, the {\ct BULK\_DENSITY\_FILE} can be scaled using a {\ct BULK\_DEN
 \label{info:firebrands}
 \label{dragon_5a}
 
-Firebrands are small pieces of burning wood and vegetation that can be lofted into the air and blown by the wind ahead of a wildland fire front. Manzello et~al.~\cite{Manzello:FSJ2008a} have developed a variety of experimental apparatus designed to generate firebrands in a laboratory setting. The example input file called {\ct dragon\_5a} in the {\ct WUI} (Wildland-Urban Interface) folder is a very simple mock-up of one of these experiments. The word ``dragon'' is based on the nickname of the apparatus; 5a is the figure number in Ref.~\cite{Manzello:FSJ2008a} on which this example case is loosely based. In the experiment, 700~g of small dowels (length 50~mm, diameter 8~mm) made of Ponderosa Pine wood were poured into a small steel chamber equipped with several propane burners. The dowels were left to burn for roughly a minute subject to a slow induced air flow after which time the air flow was increased and firebrands were propelled horizontally out of a 15~cm duct 2.25~m above the lab floor. It is reported that after several replicate experiments, the average mass of the firebrands collected from pans on the floor was 57~g. The average diameter of the collected dowels was 5.6~mm, and the average length was 13.5~mm.
+Firebrands, or embers, are small pieces of burning wood and vegetation that can be lofted into the air and blown by the wind ahead of a wildland fire front. Manzello et~al.~\cite{Manzello:FSJ2008a} have developed a variety of experimental apparatus designed to generate firebrands in a laboratory setting. The example input file called {\ct dragon\_5a} in the {\ct WUI} (Wildland-Urban Interface) folder is a very simple mock-up of one of these experiments. The word ``dragon'' is based on the nickname of the apparatus; 5a is the figure number in Ref.~\cite{Manzello:FSJ2008a} on which this example case is loosely based. In the experiment, 700~g of small dowels (length 50~mm, diameter 8~mm) made of Ponderosa Pine wood were poured into a small steel chamber equipped with several propane burners. The dowels were left to burn for roughly a minute subject to a slow induced air flow after which time the air flow was increased and firebrands were propelled horizontally out of a 15~cm duct 2.25~m above the lab floor. It is reported that after several replicate experiments, the average mass of the firebrands collected from pans on the floor was 57~g. The average diameter of the collected dowels was 5.6~mm, and the average length was 13.5~mm.
 
 It is not possible to simulate the experiment in FDS exactly as it was performed. The reason is that in the experiment, all 700~g of the wooden dowels were poured into the heating chamber at once. FDS cannot handle such a dense packing of Lagrangian particles. Instead, the simulated dowels are introduced at a rate of 10 per second. FDS also does not have a mechanism to break-up the dowels, reducing their length from 50~mm to 13.5~mm. Thus, the initial cylindrical particles are 13.5~mm and remain that length throughout the simulation. The diameter of the cylindrical particles is reduced, however, from 8~mm to 5.6~mm, which takes the initial density of 440~kg/m$^3$ down to 71~kg/m$^3$ because the mass of the firebrands is assumed to be 8~\% of the original. The plot in Fig.~\ref{dragon_5a_fig} shows the increasing mass of firebrands thrown to the floor in the simulation after 100~s of particle insertion. The total mass of particles inserted into the apparatus is:
 \be \pi \, (0.004 \; {\rm m})^2 \times (0.0135 \; {\rm m}) \times (440 \; {\rm kg/m}^3) \times (10 \; {\rm part/s}) \times (100 \; {\rm s}) \approx 0.3 \; {\rm kg} \ee
@@ -7231,7 +7225,7 @@ Although in its early stages of development, a rudimentary ember generation algo
 \paragraph{Ember Removal}
 \label{info:ember_removal}
 
-In some cases, tracking embers may be prohibitively expensive and it may be sufficient simply to remove the particles from the calculation once they reach the ember thresholds.  If this is desired, add {\ct TRACK\_EMBERS=F} to the {\ct PART} line.
+In some cases, tracking embers may be prohibitively expensive or irrelevant to the problem and it may be sufficient simply to remove the particles from the calculation once they reach the ember thresholds.  If this is desired, add {\ct TRACK\_EMBERS=F} to the {\ct PART} line.
 
 
 \newpage
@@ -11346,7 +11340,7 @@ would output the velocity, flow loss, and the volume fractions of oxygen and soo
 \chapter{Alphabetical List of Input Parameters}
 \label{info:namelists}
 
-This appendix lists all of the input parameters for FDS in separate tables grouped by namelist, these tables are in alphabetical order along with the parameters within them. This is intended to be used as a quick reference and does not replace reading the detailed description of the parameters in the main body of this guide. See Table \ref{tbl:namelistgroups} for a cross-reference of relevant sections and the tables in this appendix. The reason for this statement is that many of the listed parameters are mutually exclusive -- specifying more than one can cause the program to either fail or run in an unpredictable manner. Also, some of the parameters trigger the code to work in a certain mode when specified. For example, specifying the thermal conductivity of a solid surface triggers the code to assume the material to be thermally-thick, mandating that other
+This chapter lists all of the input parameters for FDS in separate tables grouped by namelist, these tables are in alphabetical order along with the parameters within them. This is intended to be used as a quick reference and does not replace reading the detailed description of the parameters in the main body of this guide. See Table \ref{tbl:namelistgroups} for a cross-reference of relevant sections and the tables in this chapter. The reason for this statement is that many of the listed parameters are mutually exclusive -- specifying more than one can cause the program to either fail or run in an unpredictable manner. Also, some of the parameters trigger the code to work in a certain mode when specified. For example, specifying the thermal conductivity of a solid surface triggers the code to assume the material to be thermally-thick, mandating that other
 properties be specified as well. Simply prescribing as many properties as possible from a handbook is bad practice. Only prescribe those parameters which are necessary to describe the desired scenario. Note that you may use the character string {\ct FYI} on any namelist line to make a note or comment.
 
 %--------------------------------------------------------------------
@@ -11374,7 +11368,7 @@ properties be specified as well. Simply prescribing as many properties as possib
 % ignoreallkw: FYI
 %--------------------------------------------------------------------
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt BNDF}}{BNDF} (Boundary File Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -11382,12 +11376,14 @@ properties be specified as well. Simply prescribing as many properties as possib
 \label{tbl:BNDF} \\
 \hline
 \multicolumn{5}{|c|}{{\ct BNDF} (Boundary File Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct BNDF} (Boundary File Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline \hline
 \endhead
 {\ct CELL\_CENTERED}             & Logical     & Section \ref{info:BNDF}                      &           & {\ct F}   \\ \hline
 {\ct MATL\_ID}                   & Character   & Section \ref{info:solidoutputquantities}     &           &                 \\ \hline
@@ -11402,7 +11398,7 @@ properties be specified as well. Simply prescribing as many properties as possib
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt CATF}}{CATF} (Concatenate Input Files Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -11410,19 +11406,21 @@ properties be specified as well. Simply prescribing as many properties as possib
 \label{tbl:CATF} \\
 \hline
 \multicolumn{5}{|c|}{{\ct CATF} (Concatenate Input Files Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct CATF} (Concatenate Input Files Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct OTHER\_FILES}    & Character Array  & Section \ref{info:CATF}                 &           &   \\ \hline
 \end{longtable}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt CLIP}}{CLIP} (Clipping Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -11430,12 +11428,14 @@ properties be specified as well. Simply prescribing as many properties as possib
 \label{tbl:CLIP} \\
 \hline
 \multicolumn{5}{|c|}{{\ct CLIP} (Specified Upper and Lower Limits)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct CLIP} (Specified Upper and Lower Limits)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct CLIP\_DT\_RESTRICTIONS\_MAX}   & Integer        & Section~\ref{info:CLIP:dens}                 &            & 5      \\ \hline
 {\ct MAXIMUM\_DENSITY}              & Real           & Section~\ref{info:CLIP:dens}                 & kg/m$^3$   &        \\ \hline
@@ -11446,7 +11446,7 @@ properties be specified as well. Simply prescribing as many properties as possib
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt COMB}}{COMB} (General Combustion Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -11454,12 +11454,14 @@ properties be specified as well. Simply prescribing as many properties as possib
 \label{tbl:COMB} \\
 \hline
 \multicolumn{5}{|c|}{{\ct COMB} (General combustion parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct COMB} (General combustion parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct CHECK\_REALIZABILITY}                           & Logical    & Section~\ref{info:chem_integration}          &           & {\ct F}              \\ \hline
 {\ct COMPUTE\_ADIABATIC\_FLAME\_TEMPERATURE}         & Logical    & Section~\ref{info:extinction}                &           & {\ct F}              \\ \hline
@@ -11481,7 +11483,7 @@ properties be specified as well. Simply prescribing as many properties as possib
 \vspace{\baselineskip}
 
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt CSVF}}{CSVF} (Comma Separated Velocity Files)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -11489,12 +11491,14 @@ properties be specified as well. Simply prescribing as many properties as possib
 \label{tbl:CSVF} \\
 \hline
 \multicolumn{5}{|c|}{{\ct CSVF} (Comma Delimited Initialization Files)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct CSVF} (Comma Delimited Initialization Files)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct SPECFILE}        & Character      & Section~\ref{info:CSVF}      &            &         \\ \hline
 {\ct TMPFILE}         & Character      & Section~\ref{info:CSVF}      &            &         \\ \hline
@@ -11505,7 +11509,7 @@ properties be specified as well. Simply prescribing as many properties as possib
 \vspace{\baselineskip}
 
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt CTRL}}{CTRL} (Control Function Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -11513,12 +11517,14 @@ properties be specified as well. Simply prescribing as many properties as possib
 \label{tbl:CTRL} \\
 \hline
 \multicolumn{5}{|c|}{{\ct CTRL} (Control Function Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct CTRL} (Control Function Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct CONSTANT}           & Real           & Section~\ref{info:CONTROL_MATH}         &    &                        \\ \hline
 {\ct CONTROL\_FORCE(3)}  & Logical Array  & Section~\ref{info:CONTROL_PID}          &    & {\ct F}                \\ \hline
@@ -11543,7 +11549,7 @@ properties be specified as well. Simply prescribing as many properties as possib
 
 \vspace{\baselineskip}
 
-\needspace{3in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt DEVC}}{DEVC} (Device Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -11551,12 +11557,14 @@ properties be specified as well. Simply prescribing as many properties as possib
 \label{tbl:DEVC} \\
 \hline
 \multicolumn{5}{|c|}{{\ct DEVC} (Device Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct DEVC} (Device Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct ABSOLUTE\_VALUE}       & Logical         & Section~\ref{info:out:DEVC}                                     &       & {\ct F}       \\ \hline
 {\ct BYPASS\_FLOWRATE}      & Real            & Section~\ref{info:aspiration_detector}                          & kg/s  & 0             \\ \hline
@@ -11631,7 +11639,7 @@ properties be specified as well. Simply prescribing as many properties as possib
 \vspace{\baselineskip}
 
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt DUMP}}{DUMP} (Output Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -11639,12 +11647,14 @@ properties be specified as well. Simply prescribing as many properties as possib
 \label{tbl:DUMP} \\
 \hline
 \multicolumn{5}{|c|}{{\ct DUMP} (Output Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct DUMP} (Output Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct CFL\_FILE}                     & Logical      & Section~\ref{info:TIME_Control}        &           & {\ct F}                        \\ \hline
 {\ct CLIP\_RESTART\_FILES}          & Logical      & Section~\ref{info:restart}             &           & {\ct T}                        \\ \hline
@@ -11720,7 +11730,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \ifcompgeom
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt GEOM}}{GEOM} (Unstructured Geometry Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -11728,12 +11738,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:GEOM} \\
 \hline
 \multicolumn{5}{|c|}{{\ct GEOM} (Unstructured Geometry Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\tt GEOM} (Unstructured Geometry Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct BINARY\_FILE}     & Character              & Section~\ref{subsec:readbin}            &           &  {\ct 'null'}            \\ \hline
 {\ct BNDF\_GEOM}       & Logical                & Section~\ref{info:BNDF}            &           &  {\ct T}                 \\ \hline
@@ -11802,7 +11814,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \fi
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt HEAD}}{HEAD} (Header Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -11810,12 +11822,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:HEAD} \\
 \hline
 \multicolumn{5}{|c|}{{\ct HEAD} (Header Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct HEAD} (Header Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct CHID}      & Character   & Section~\ref{info:HEAD}     &           & {\ct 'output'}    \\ \hline
 {\ct TITLE}     & Character   & Section~\ref{info:PL3D}     &           &                   \\ \hline
@@ -11823,7 +11837,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt HOLE}}{HOLE} (Obstruction Cutout Parameters)}
 
 
@@ -11832,12 +11846,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:HOLE} \\
 \hline
 \multicolumn{5}{|c|}{{\ct HOLE} (Obstruction Cutout Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct HOLE} (Obstruction Cutout Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct COLOR    }    & Character         & Section~\ref{info:colors}                              &       &                 \\ \hline
 {\ct CTRL\_ID}     & Character         & Section~\ref{info:HOLE}                                &       &                 \\ \hline
@@ -11851,7 +11867,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt HVAC}}{HVAC} (HVAC System Definition)}
 
 
@@ -11860,12 +11876,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:HVAC} \\
 \hline
 \multicolumn{5}{|c|}{{\ct HVAC} (HVAC System Definition)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct HVAC} (HVAC System Definition)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct AIRCOIL\_ID}             & Character     & Section~\ref{info:HVACduct}                                              &               &                \\ \hline
 {\ct AMBIENT}                 & Logical       & Section~\ref{info:HVACnode}                                              &               & {\ct F}  \\ \hline
@@ -11924,7 +11942,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \vspace{\baselineskip}
 
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt INIT}}{INIT} (Initial Conditions)}
 
 
@@ -11933,12 +11951,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:INIT} \\
 \hline
 \multicolumn{5}{|c|}{{\ct INIT} (Initial Conditions)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct INIT} (Initial Conditions)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct BULK\_DENSITY\_FACTOR}       & Real              & Section~\ref{bulk_density_file}               &                & 1.            \\ \hline
 {\ct BULK\_DENSITY\_FILE}         & Character         & Section~\ref{bulk_density_file}               &                &               \\ \hline
@@ -11989,7 +12009,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \vspace{\baselineskip}
 
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt ISOF}}{ISOF} (Isosurface Parameters)}
 
 
@@ -11998,12 +12018,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:ISOF} \\
 \hline
 \multicolumn{5}{|c|}{{\ct ISOF} (Isosurface Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct ISOF} (Isosurface Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct DELTA}                 & Real          & Section~\ref{info:ISOF}                   &       &         \\ \hline
 {\ct QUANTITY}              & Character     & Section~\ref{info:ISOF}                   &       &         \\ \hline
@@ -12019,7 +12041,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt MATL}}{MATL} (Material Properties)}
 
 
@@ -12028,12 +12050,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:MATL} \\
 \hline
 \multicolumn{5}{|c|}{{\ct MATL} (Material Properties)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct MATL} (Material Properties)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct A(:)}                          & Real Array      & Section~\ref{info:solid_pyrolysis}    &    1/s            &               \\ \hline
 {\ct ABSORPTION\_COEFFICIENT}       & Real            & Section~\ref{info:thermal_properties} &    1/m            & 50000.        \\ \hline
@@ -12077,7 +12101,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \vspace{\baselineskip}
 
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt MESH}}{MESH} (Mesh Parameters)}
 
 
@@ -12086,12 +12110,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:MESH} \\
 \hline
 \multicolumn{5}{|c|}{{\ct MESH} (Mesh Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct MESH} (Mesh Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct CHECK\_MESH\_ALIGNMENT}         & Logical                       & Section~\ref{info:mesh_alignment}         &    & {\ct F}          \\ \hline
 {\ct COLOR}                          & Character                     & Section~\ref{info:multimesh}              &    & {\ct 'BLACK'}    \\ \hline
@@ -12110,7 +12136,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \vspace{\baselineskip}
 
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt MISC}}{MISC} (Miscellaneous Parameters)}
 
 
@@ -12119,12 +12145,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:MISC} \\
 \hline
 \multicolumn{5}{|c|}{{\ct MISC} (Miscellaneous Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct MISC} (Miscellaneous Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct AEROSOL\_AL2O3}                                & Logical      & Section~\ref{info:RADI_Gas_and_Soot}    &            & {\ct F}           \\ \hline
 {\ct AEROSOL\_SCRUBBING}                            & Logical      & Section~\ref{info:scrubbing}            &            & {\ct F}           \\ \hline
@@ -12218,7 +12246,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt MOVE}}{MOVE} (Coordinate Transformation Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -12226,12 +12254,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:MOVE} \\
 \hline
 \multicolumn{5}{|c|}{{\ct MOVE} (Coordinate Transformation Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct MOVE} (Coordinate Transformation Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct AXIS(3)}         & Real Array       & Axis of rotation                                &        & (0.,0.,1.)                 \\ \hline
 {\ct SCALE}           & Real             & Scaling in all directions                       &        & 1.                         \\ \hline
@@ -12251,7 +12281,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt MULT}}{MULT} (Multiplier Function Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -12259,12 +12289,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:MULT} \\
 \hline
 \multicolumn{5}{|c|}{{\ct MULT} (Multiplier Function Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct MULT} (Multiplier Function Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline \hline
 \endhead
 {\ct DX}             & Real        & Spacing in the $x$ direction                & m  & 0.     \\ \hline
 {\ct DXB(6)}         & Real Array  & Spacing for all 6 coordinates               & m  & 0.     \\ \hline
@@ -12295,7 +12327,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \vspace{\baselineskip}
 
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt OBST}}{OBST} (Obstruction Parameters)}
 
 
@@ -12304,12 +12336,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:OBST} \\
 \hline
 \multicolumn{5}{|c|}{{\ct OBST} (Obstruction Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct OBST} (Obstruction Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct ALLOW\_VENT}             & Logical         & Section~\ref{info:OBST_Basics}          &           & {\ct T}       \\ \hline
 {\ct BNDF\_FACE(-3:3)}        & Logical Array   & Section~\ref{info:BNDF}                 &           & {\ct T}       \\ \hline
@@ -12354,7 +12388,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt PART}}{PART} (Lagrangian Particles/Droplets)}
 
 
@@ -12363,12 +12397,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:PART} \\
 \hline
 \multicolumn{5}{|c|}{{\ct PART} (Lagrangian Particles/Droplets)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct PART} (Lagrangian Particles/Droplets)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct ADHERE\_TO\_SOLID}                  & Integer     & Section~\ref{info:surface_solid_particles}                            &                   & 0                     \\ \hline
 {\ct AGE}                                & Real        & Section~\ref{info:controlling_droplets}                               & s                 & $1\times 10^5$        \\ \hline
@@ -12438,7 +12474,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt PRES}}{PRES} (Pressure Solver Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -12446,12 +12482,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:PRES} \\
 \hline
 \multicolumn{5}{|c|}{{\ct PRES} (Pressure Solver Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct PRES} (Pressure Solver Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct BAROCLINIC}                    & Logical       & Section~\ref{baroclinic_torque}             &               & {\ct T}              \\ \hline
 {\ct CHECK\_POISSON}                & Logical       & Section~\ref{pressure_solver}               &               & {\ct F}             \\ \hline
@@ -12471,7 +12509,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt PROF}}{PROF} (Wall Profile Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -12479,12 +12517,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:PROF} \\
 \hline
 \multicolumn{5}{|c|}{{\ct PROF} (Wall Profile Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct PROF} (Wall Profile Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct CELL\_CENTERED}        & Logical           & Section~\ref{info:PROF}      &            & {\ct F}  \\ \hline
 {\ct FORMAT\_INDEX}         & Integer           & Section~\ref{info:PROF}      &            & 1     \\ \hline
@@ -12498,7 +12538,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt PROP}}{PROP} (Device Properties)}
 
 
@@ -12507,12 +12547,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:PROP} \\
 \hline
 \multicolumn{5}{|c|}{{\ct PROP} (Device Properties)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct PROP} (Device Properties)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct ACTIVATION\_OBSCURATION}           & Real          & Section~\ref{info:smoke_detector}         & \%/m                  & 3.24                 \\ \hline
 {\ct ACTIVATION\_TEMPERATURE}           & Real          & Section~\ref{info:sprinklers}             & $^\circ$C             & 74.                  \\ \hline
@@ -12578,7 +12620,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt RADF}}{RADF} (Radiation Output File Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -12586,12 +12628,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:RADF} \\
 \hline
 \multicolumn{5}{|c|}{{\ct RADF} (Radiation Output File Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct RADF} (Radiation Output File Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct I\_STEP}                       & Integer              & Section~\ref{info:RADF}            &                   &  1     \\ \hline
 {\ct J\_STEP}                       & Integer              & Section~\ref{info:RADF}            &                   &  1     \\ \hline
@@ -12602,7 +12646,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt RADI}}{RADI} (Radiation Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -12610,12 +12654,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:RADI} \\
 \hline
 \multicolumn{5}{|c|}{{\ct RADI} (Radiation Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct RADI} (Radiation Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct ANGLE\_INCREMENT}               & Integer      & Section~\ref{info:RADI_Gas_and_Soot} &            & 5              \\ \hline
 {\ct BAND\_LIMITS}                   & Real Array   & Section~\ref{info:RADI_Wide_Band}    & $\mu$m     &                \\ \hline
@@ -12641,7 +12687,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt RAMP}}{RAMP} (Ramp Function Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -12649,12 +12695,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:RAMP} \\
 \hline
 \multicolumn{5}{|c|}{{\ct RAMP} (Ramp Function Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct RAMP} (Ramp Function Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct CTRL\_ID}                      & Character     & Section~\ref{info:RAMPDEVC}                 &                       &             \\ \hline
 {\ct CTRL\_ID\_DEP}                 & Character     & Section~\ref{info:RAMP_DEP_ID}              &                       &             \\ \hline
@@ -12672,19 +12720,21 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt REAC}}{REAC} (Reaction Parameters)}
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
 \caption[Reaction parameters ({\ct REAC} namelist group)]{For more information see Chapter~\ref{chap:combustion}.}
 \label{tbl:REAC} \\
 \hline
 \multicolumn{5}{|c|}{{\ct REAC} (Reaction Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct REAC} (Reaction Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct A}                                   & Real           & Section~\ref{info:finite}                    &                   &                   \\ \hline
 {\ct AIT\_EXCLUSION\_ZONE(6,:)}           & Real Array     & Section~\ref{info:ignition}                  & m                 &                   \\ \hline
@@ -12728,7 +12778,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt SLCF}}{SLCF} (Slice File Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -12736,12 +12786,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:SLCF} \\
 \hline
 \multicolumn{5}{|c|}{{\ct SLCF} (Slice File Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct SLCF} (Slice File Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct AGL\_SLICE}        & Real              & Section~\ref{info:complex_terrain}        & m         &                   \\ \hline
 {\ct CELL\_CENTERED}    & Logical           & Section~\ref{info:SLCF}                   &           & {\ct F}     \\ \hline
@@ -12765,7 +12817,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt SM3D}}{SM3D} (Smoke3D Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -12773,12 +12825,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:SM3D} \\
 \hline
 \multicolumn{5}{|c|}{{\ct SM3D} (Smoke3D Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct SM3D} (Smoke3D Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct QUANTITY}    & Character   & Section~\ref{info:SMOKE3D}      &             &     \\ \hline
 {\ct SPEC\_ID}    & Character   & Section~\ref{info:SMOKE3D}      &             &     \\ \hline
@@ -12786,7 +12840,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt SPEC}}{SPEC} (Species Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -12794,12 +12848,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:SPEC} \\
 \hline
 \multicolumn{5}{|c|}{{\ct SPEC} (Species Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct SPEC} (Species Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct AEROSOL}                       & Logical           & Section~\ref{info:deposition}           &                   & {\ct F} \\ \hline
 {\ct BACKGROUND}                    & Logical           & Section~\ref{info:SPEC}                 &                   & {\ct F} \\ \hline
@@ -12859,7 +12915,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt SURF}}{SURF} (Surface Properties)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -12867,12 +12923,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:SURF} \\
 \hline
 \multicolumn{5}{|c|}{{\ct SURF} (Surface Properties)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct SURF} (Surface Properties)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct ADIABATIC}                                           & Logical         & Section~\ref{info:adiabatic}              &                     & {\ct F}                 \\ \hline
 {\ct AREA\_MULTIPLIER}                                    & Real            & Section~\ref{info:area_mult}              &                     & 1.0                     \\ \hline
@@ -13035,7 +13093,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt TABL}}{TABL} (Table Parameters)}
 
 
@@ -13044,12 +13102,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:TABL} \\
 \hline
 \multicolumn{5}{|c|}{{\ct TABL} (Table Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct TABL} (Table Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct ID}                & Character   & Section~\ref{info:spraypattern}      &             &     \\ \hline
 {\ct TABLE\_DATA(9)}    & Real Array  & Section~\ref{info:spraypattern}      &             &     \\ \hline
@@ -13058,7 +13118,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt TIME}}{TIME} (Time Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -13066,12 +13126,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:TIME} \\
 \hline
 \multicolumn{5}{|c|}{{\ct TIME} (Time Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct TIME} (Time Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct DT}                        & Real       & Section~\ref{info:TIME_Control}           & s           &                 \\ \hline
 {\ct DT\_END\_FILL}             & Real       & Section~\ref{info:TIME_Control}           & s           & $1.0 \times 10^{-6}$  \\ \hline
@@ -13088,7 +13150,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt TRNX, TRNY, TRNZ}}{TRNX, TRNY, TRNZ} (MESH Transformations)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -13096,12 +13158,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:TRNX} \\
 \hline
 \multicolumn{5}{|c|}{{\ct TRNX, TRNY, TRNZ} (MESH Transformations)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct TRNX, TRNY, TRNZ} (MESH Transformations)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct CC    }            & Real          & Section~\ref{info:TRNX}   & m            &     \\ \hline
 {\ct ID}                & Character     & Section~\ref{info:TRNX}   &              &     \\ \hline
@@ -13110,10 +13174,10 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 {\ct PC    }            & Real          & Section~\ref{info:TRNX}   &              &     \\ \hline
 \end{longtable}
 
-\vspace{\baselineskip}
+\clearpage % needed to remove spurious \hline above VENT table
+% \vspace{\baselineskip}
 
-
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt VENT}}{VENT} (Vent Parameters)}
 
 
@@ -13122,12 +13186,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:VENT} \\
 \hline
 \multicolumn{5}{|c|}{{\ct VENT} (Vent Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct VENT} (Vent Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct COLOR    }             & Character         & Section~\ref{info:colors}                                 &               &                     \\ \hline
 {\ct CTRL\_ID }             & Character         & Section~\ref{info:activate_deactivate}                    &               &                     \\ \hline
@@ -13165,7 +13231,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \vspace{\baselineskip}
 
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt WIND}}{WIND} (Wind and Atmospheric Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -13173,12 +13239,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:WIND} \\
 \hline
 \multicolumn{5}{|c|}{{\ct WIND} (Wind and atmospheric parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct WIND} (Wind and atmospheric parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct CORIOLIS\_VECTOR(3)}                       & Real          & Section~\ref{info:coriolis_force}             &               & 0.                \\ \hline
 {\ct DIRECTION}                                 & Real          & Section~\ref{info:WIND}                       & degrees       & 270               \\ \hline
@@ -13214,7 +13282,7 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 
 \vspace{\baselineskip}
 
-\needspace{2in}
+\needspace{2.5in}
 \section{\texorpdfstring{{\tt ZONE}}{ZONE} (Pressure Zone Parameters)}
 
 \begin{longtable}{@{\extracolsep{\fill}}|l|l|l|l|l|}
@@ -13222,12 +13290,14 @@ $\Delta t$={\ct T\_END-T\_BEGIN}
 \label{tbl:ZONE} \\
 \hline
 \multicolumn{5}{|c|}{{\ct ZONE} (Pressure Zone Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endfirsthead
 \caption[]{Continued} \\
 \hline
 \multicolumn{5}{|c|}{{\ct ZONE} (Pressure Zone Parameters)} \\
-\hline \hline
+\hline
+Keyword             & Type     & Description                      & Units          & Default   \\ \hline  \hline
 \endhead
 {\ct DISCHARGE\_COEFFICIENT(N)}    & Real                  & Section~\ref{info:Leaks}           &        & 1.            \\ \hline
 {\ct ID}                           & Character             & Section~\ref{info:ZONE_Basics}     &        &               \\ \hline
@@ -13778,6 +13848,7 @@ Table~\ref{tab:sourcefiles} lists the files that make up the FDS source code. Fi
 \begin{itemize}
 \item The source code consists entirely of Fortran statements organized into 32 files. Some compilers have a standard optimization level, plus various degrees of ``aggressive'' optimization. Be cautious in using the highest levels of optimization.
 \item To compile FDS, you need a Fortran compiler (2018 or greater) and MPI libraries.
+\item To compile routines for the ULMAT and UGLMAT pressure solvers, Intel Math Kernel Libraries (MKL) are required.
 \end{itemize}
 
 \begin{table}[ht]
