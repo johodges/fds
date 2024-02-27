@@ -101,6 +101,7 @@ function usage {
   echo " -j prefix - specify a job prefix"
   echo " -L use Open MPI version of fds"
   echo " -m m - reserve m processes per node [default: 1]"
+  echo " -M M - reserve M memory per node"
   echo " -n n - number of MPI processes per node [default: 1]"
   echo " -O n - run cases casea.fds, caseb.fds, ... using 1, ..., N OpenMP threads"
   echo "        where case is specified on the command line. N can be at most 9."
@@ -243,7 +244,7 @@ commandline=`echo $* | sed 's/-V//' | sed 's/-v//'`
 
 #*** read in parameters from command line
 
-while getopts 'Ab:Bd:e:EghHiIj:Lm:n:o:O:p:Pq:sS:tT:U:vVw:y:YzZ:' OPTION
+while getopts 'Ab:Bd:e:EghHiIj:Lm:M:n:o:O:p:Pq:sS:tT:U:vVw:y:YzZ:' OPTION
 do
 case $OPTION  in
   A) # used by timing scripts to identify benchmark cases
@@ -292,6 +293,9 @@ case $OPTION  in
    ;;
   m)
    max_processes_per_node="$OPTARG"
+   ;;
+  M)
+   SLURM_MEM=":bigmem,mem=${OPTARG}gb"
    ;;
   n)
    n_mpi_processes_per_node="$OPTARG"
@@ -843,7 +847,7 @@ elif [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
 #PBS -N $JOBPREFIX$infile
 #PBS -e $outerr
 #PBS -o $outlog
-#PBS -l nodes=$nodes:ppn=$ppn,walltime=$walltimestring_pbs
+#PBS -l nodes=$nodes:ppn=$ppn$SLURM_MEM,walltime=$walltimestring_pbs
 EOF
   if [ "$EMAIL" != "" ]; then
     cat << EOF >> $scriptfile
