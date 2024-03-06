@@ -2650,7 +2650,7 @@ DO N=1,N_TRACKED_SPECIES
    IF (SM%SC_T_USER>0._EB) &
       WRITE(LU_OUTPUT,'(A,F8.3)') '   User Turbulent Schmidt Number    ',SM%SC_T_USER
    WRITE(LU_OUTPUT,'(A,F8.3)')    '   Initial Mass Fraction            ',SM%ZZ0
-   WRITE(LU_OUTPUT,'(A,ES10.3)')   '   Enthalpy of Formation (J/kg)     ',SM%H_F
+   WRITE(LU_OUTPUT,'(A,ES10.3)')  '   Enthalpy of Formation (J/kg)     ',SM%H_F
    WRITE(LU_OUTPUT,'(/3X,A)') 'Sub Species                    Mass Fraction     Mole Fraction'
    DO NN = 1,N_SPECIES
       IF (SM%SPEC_ID(NN)/='null') WRITE(LU_OUTPUT,'( 3X,A29,A,ES13.6,5X,ES13.6)') &
@@ -3198,7 +3198,7 @@ ENDIF WRITE_RADIATION
 IF (N_ZONE>0) THEN
    WRITE(LU_OUTPUT,'(//A/)')   ' Pressure Zone Information'
    DO N=1,N_ZONE
-      WRITE(LU_OUTPUT,'(3X,I0,A,ES11.4,A,I0,A,I0,A,I0,A,I0,A,I0,A)') N,' Volume:',P_ZONE(N)%VOLUME,' m³, Cells: ',&
+      WRITE(LU_OUTPUT,'(3X,I0,A,ES11.4,A,I0,A,I0,A,I0,A,I0,A,I0,A)') N,' Volume:',P_ZONE(N)%VOLUME,' m3, Cells: ',&
          P_ZONE(N)%N_CELLS,', Mesh: ',P_ZONE(N)%MESH_INDEX,&
          ', Indices: (',P_ZONE(N)%CELL_INDICES(1),',',P_ZONE(N)%CELL_INDICES(2),',',P_ZONE(N)%CELL_INDICES(3),')'
    ENDDO
