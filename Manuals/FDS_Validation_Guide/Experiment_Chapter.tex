@@ -3614,6 +3614,69 @@ Note that the Slow and Fast fire growth profiles were the same as those reported
 
 
 
+\section{VT Hybrid Heat Flux Experiments}
+\label{VT_Hybrid_Heat_Flux_Description}
+
+Students at Virginia Tech performed a series of impinging jet experiments using a custom design high temperature hybrid heat flux gauge. These gauges operate as both a thermopile and a slug calorimeter and merge the output from both principles to measure the total heat flux into the gauge.
+The sensor is constructed of three materials consisting of Chromel, Alumel, and a ceramic (ZTA)~\cite{Diller2015}. The thermal resistance for the thermopile is formed by the use of thermocouple materials within the sensor design and electrical insulation provided by the ceramic. An example high-temperature heat flux sensor (HTHFS) designed by Virginia Tech is shown in Fig.~\ref{fig:hthfg}~\cite{Gifford2010}. A key advantage of these sensors is the ability to measure either cooled gauge heat flux or the total heat flux on surfaces up to 1000$^{\circ}C$ without cooling.
+
+Wasson studied the split between convection and radiation heat transfer from a diffusion flame impinging on a ceiling~\cite{Wasson2014:Thesis}. The author used a 0.3~m square 0.15~m tall propane burner with 50~kW and 90~kW HRRs. The ceiling placement was varied to investigate the impact of different flame length to height ratios on the measured heat transfer rates. The experiments conducted by Wasson are shown in Table~\ref{Wasson_Exp}. Ceiling height, H, is the height between the top of the burner and the bottom of the ceiling.
+
+\begin{table}[h!]
+\caption[Wasson Impinging Ceiling Experiments]{Geometric configuration for impinging ceiling experiments.}
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline
+Test    & HRR     & H     & $L_{f}$/H   \\
+        & (kW)    & (m)   &    \\  \hline \hline
+1       & 50      & 0.49  &  2.0   \\ \hline
+2       & 50      & 0.64  &  1.5   \\ \hline
+3       & 50      & 0.97  &  1.0   \\ \hline
+4       & 50      & 1.22  &  0.8   \\ \hline
+5       & 50      & 1.51  &  0.6   \\ \hline
+6       & 90      & 0.64  &  2.0   \\ \hline
+7       & 90      & 0.85  &  1.5   \\ \hline
+8       & 90      & 1.28  &  1.0   \\ \hline
+9       & 90      & 1.51  &  0.9   \\ \hline
+\end{tabular}
+\end{center}
+\label{Wasson_Exp}
+\end{table}
+
+Two students used a propane torch with a diameter of 76~mm to study the heat transfer from a high velocity jet burner impinging on wall. The propane torch had openings for air on the back side which produces a pseudo-premixed high velocity flame to generate stagnation point gauge heat fluxes on the order of 100~kW/m$m^{2}$. Virk studied the split between convection and radiation heat transfer to a vertical wall~\cite{Virk2015:Thesis}.
+The author uses a HRR of 20~kW and separation distances of 0.254~m and 0.381~m. Rippe conducted similar experiments in a vertical and horizontal configuration; however, used inverse heat transfer (IHT) to measure the heat fluxes rather than the hybrid heat flux gauge used by Virk~\cite{Rippe2015:Thesis}. The author used a HRR of 20~kW and 30~kW with burner separation distances ranging from 0.15~m to 0.30~m. Table~\ref{JetBurner_Exp} summarizes the jet burner experiments conducted by Virk and Rippe.
+
+\begin{table}[h!]
+\caption[Jet Burner Experiments]{Geometric configuration for impinging jet experiments.}
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+Test    & Configuration & HRR     & Distance   & Plate           & Measurement \\
+        &               & (kW)    & (m)        &                 &             \\  \hline \hline
+Virk 1  & Vertical      & 20      &  0.25      & AA 6061-0.8~mm  & HTHFS       \\ \hline
+Virk 2  & Vertical      & 20      &  0.38      & AA 6061-0.8~mm  & HTHFS       \\ \hline
+Rippe 1 & Vertical      & 20      &  0.30      & AA 6061-0.8~mm  & IHT         \\ \hline
+Rippe 2 & Vertical      & 20      &  0.25      & AA 6061-0.8~mm  & IHT         \\ \hline
+Rippe 3 & Vertical      & 20      &  0.20      & AA 6061-0.8~mm  & IHT         \\ \hline
+Rippe 4 & Vertical      & 20      &  0.25      & AA 6061-1.6~mm  & IHT         \\ \hline
+Rippe 5 & Vertical      & 20      &  0.20      & AA 6061-1.6~mm  & IHT         \\ \hline
+Rippe 6 & Vertical      & 20      &  0.25      & AA 6061-3.2~mm  & IHT         \\ \hline
+Rippe 7 & Vertical      & 20      &  0.20      & AA 6061-3.2~mm  & IHT         \\ \hline
+Rippe 8 & Vertical      & 20      &  0.15      & AA 6061-3.2~mm  & IHT         \\ \hline
+Rippe 9 & Vertical      & 30      &  0.15      & AA 6061-3.2~mm  & IHT         \\ \hline
+
+\end{tabular}
+\end{center}
+\label{JetBurner_Exp}
+\end{table}
+
+
+\subsubsection{Modeling Notes}
+
+The velocity of the jet burner was not reported by the authors; however, the vertical position of the impingement point above the jet centerline was reported by Virk. The velocity of ambient air entering the torch was selected such that the impingement point aligned with the position reported by the author. This velocity is close to the value based on the reported Reynolds numbers; however, it is unclear the specific temperature used in calculation of the kinematic viscosity in the thesis.
+
+
+
 
 
 \section{VTT Large Hall Tests}
