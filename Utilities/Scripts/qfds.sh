@@ -101,16 +101,20 @@ function usage {
   echo " -j prefix - specify a job prefix"
   echo " -L use Open MPI version of fds"
   echo " -m m - reserve m processes per node [default: 1]"
+  echo " -M M - reserve M memory per node"
   echo " -n n - number of MPI processes per node [default: 1]"
   echo " -O n - run cases casea.fds, caseb.fds, ... using 1, ..., N OpenMP threads"
   echo "        where case is specified on the command line. N can be at most 9."
+  echo " -S use to specify the resource manager to use for qfds. Options are SLURM and TORQUE."
+  echo "    default attempts to identify the resource manager by checking response from srun (SLURM)"
+  echo "    and qmgr (TORQUE)."
   echo " -s   - stop job"
   echo " -t   - used for timing studies, run a job alone on a node (reserving $NCORES_COMPUTENODE cores)"
   echo " -T type - run dv (development) or db (debug) version of fds"
   echo "           if -T is not specified then the release version of fds is used"
   echo " -U n - only allow n jobs owned by `whoami` to run at a time"
   echo " -V   - show command line used to invoke qfds.sh"
-  echo " -w time - maximum run time, where time is dd-hh:mm:ss [default: $walltime]"
+  echo " -w time - walltime, where time is hh:mm for TORQUE and dd-hh:mm:ss for SLURM. [default: $walltime]"
   echo " -y dir - run case in directory dir"
   echo " -Y   - run case in directory casename where casename.fds is the case being run"
   echo " -z   - use --hint=nomultithread on srun line"
@@ -199,13 +203,17 @@ srun -V >& $STATUS_FILE
 missing_slurm=`cat $STATUS_FILE | tail -1 | grep "not found" | wc -l`
 rm -f $STATUS_FILE
 
+echo | qmgr -n >& $STATUS_FILE
+missing_torque=`cat $STATUS_FILE | tail -1 | grep "not found" | wc -l`
+rm -f $STATUS_FILE
+
 RESOURCE_MANAGER="NONE"
 if [ $missing_slurm -eq 0 ]; then
   RESOURCE_MANAGER="SLURM"
-else
-  echo "***error: The slurm resource manager was not found and is required."
-  exit
+elif [ $missing_torque -eq 0 ]; then
+  RESOURCE_MANAGER="TORQUE"
 fi
+
 if [ "$SLURM_MEM" != "" ]; then
  SLURM_MEM="#SBATCH --mem=$SLURM_MEM"
 fi
@@ -222,7 +230,11 @@ benchmark=no
 showinput=0
 exe=
 SMVZIP=
-walltime=99-99:99:99
+if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
+  walltime=99-99:99:99
+elif [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
+  walltime=999:0:0
+fi
 
 if [ $# -lt 1 ]; then
   usage
@@ -232,7 +244,7 @@ commandline=`echo $* | sed 's/-V//' | sed 's/-v//'`
 
 #*** read in parameters from command line
 
-while getopts 'Ab:Bd:e:EghHiIj:Lm:n:o:O:p:Pq:stT:U:vVw:y:YzZ:' OPTION
+while getopts 'Ab:Bd:e:EghHiIj:Lm:M:n:o:O:p:Pq:sS:tT:U:vVw:y:YzZ:' OPTION
 do
 case $OPTION  in
   A) # used by timing scripts to identify benchmark cases
@@ -282,6 +294,9 @@ case $OPTION  in
   m)
    max_processes_per_node="$OPTARG"
    ;;
+  M)
+   SLURM_MEM=":bigmem,mem=${OPTARG}gb"
+   ;;
   n)
    n_mpi_processes_per_node="$OPTARG"
    MAX_MPI_PROCESSES_PER_NODE=
@@ -296,6 +311,11 @@ case $OPTION  in
    fi
    n_mpi_process=1
    benchmark="yes"
+   if [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
+     if [ "$NCORES_COMPUTENODE" != "" ]; then
+       n_mpi_processes_per_node="$NCORES_COMPUTENODE"
+     fi
+   fi
    ;;
   p)
    n_mpi_processes="$OPTARG"
@@ -308,6 +328,9 @@ case $OPTION  in
    ;;
   q)
    queue="$OPTARG"
+   ;;
+  S)
+   RESOURCE_MANAGER="$OPTARG"
    ;;
   s)
    stopjob=1
@@ -353,6 +376,39 @@ case $OPTION  in
 esac
 done
 shift $(($OPTIND-1))
+
+if [ "$RESOURCE_MANAGER" == "NONE" ]; then
+  echo "***error: No resource manager was found or specified."
+  exit
+elif [ "$RESOURCE_MANAGER" == "SLURM" ]; then
+  if [ $missing_slurm != 0 ]; then
+    echo "***error: SLURM resource manager was specified but was not found."
+    exit
+  fi
+elif [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
+  if [ $missing_torque != 0 ]; then
+    echo "***error: TORQUE resource manager was specified but was not found."
+    exit
+  fi
+else
+  echo "***error: Unknown resource manager $RESOURCE_MANAGER specified by user. Available options are [SLURM, TORQUE]."
+fi
+
+if [ benchmark == "yes" ]; then
+   if [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
+     if [ "$NCORES_COMPUTENODE" != "" ]; then
+       n_mpi_processes_per_node="$NCORES_COMPUTENODE"
+     fi
+   fi
+fi
+
+if [ walltime == "" ]; then
+   if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
+     walltime=99-99:99:99
+   elif [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
+     walltime=999:0:0
+   fi
+fi
 
 if [ "$showcommandline" == "1" ]; then
   echo $0 $commandline
@@ -481,6 +537,13 @@ let "nodes=($n_mpi_processes-1)/$n_mpi_processes_per_node+1"
 if test $nodes -lt 1 ; then
   nodes=1
 fi
+OVERSUBSCRIBE=""
+if [ "$QFDS_MAX_NODES_PER_JOB" != "" ] ; then
+  if [ $QFDS_MAX_NODES_PER_JOB -lt $nodes ]; then
+    OVERSUBSCRIBE="--bind-to none"
+    nodes=$QFDS_MAX_NODES_PER_JOB
+  fi
+fi
 
 # don't let other jobs run on nodes used by this job if you are using psm and more than 1 node
 if [ "$USE_PSM" != "" ]; then
@@ -596,7 +659,7 @@ else                                 # using OpenMPI
 fi
 
 TITLE="$infile"
-MPIRUN="$MPIRUNEXE $REPORT_BINDINGS $SOCKET_OPTION -np $n_mpi_processes"
+
 
 cd $dir
 fulldir=`pwd`
@@ -695,20 +758,31 @@ fi
 
 stop_fds_if_requested
 
-#*** setup for SLURM
-
-QSUB="sbatch -p $queue"
-if [ "$use_intel_mpi" == "1" ]; then
-   MPIRUN="srun -N $nodes -n $n_mpi_processes --ntasks-per-node $n_mpi_processes_per_node --mpi=pmi2"
-else
-   MPIRUN="srun -N $nodes -n $n_mpi_processes --ntasks-per-node $n_mpi_processes_per_node"
+if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
+   #*** setup for SLURM
+   QSUB="sbatch -p $queue"
+   if [ "$use_intel_mpi" == "1" ]; then
+      MPIRUN="srun -N $nodes -n $n_mpi_processes --ntasks-per-node $n_mpi_processes_per_node --mpi=pmi2"
+   else
+      MPIRUN="srun -N $nodes -n $n_mpi_processes --ntasks-per-node $n_mpi_processes_per_node"
+   fi
+elif [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
+   #*** setup for SLURM
+   QSUB="qsub -q $queue"
+   if [ "$use_intel_mpi" == "1" ]; then
+      MPIRUN="$MPIRUNEXE $REPORT_BINDINGS $SOCKET_OPTION $OVERSUBSCRIBE -np $n_mpi_processes"
+   else
+      MPIRUN="$MPIRUNEXE $REPORT_BINDINGS $SOCKET_OPTION $OVERSUBSCRIBE -np $n_mpi_processes"
+   fi
 fi
 
 #*** Set walltime parameter only if walltime is specified as input argument
 
 walltimestring_slurm=
+walltimestring_pbs=
 if [ "$walltime" != "" ]; then
   walltimestring_slurm="--time=$walltime"
+  walltimestring_pbs="$walltime"
 fi
 
 #*** create a random script filename for submitting jobs
@@ -720,7 +794,8 @@ cat << EOF > $scriptfile
 # $0 $commandline
 EOF
 
-cat << EOF >> $scriptfile
+if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
+  cat << EOF >> $scriptfile
 #SBATCH -J $JOBPREFIX$infile
 #SBATCH -e $outerr
 #SBATCH -o $outlog
@@ -730,41 +805,69 @@ cat << EOF >> $scriptfile
 #SBATCH --cpus-per-task=$n_openmp_threads
 #SBATCH --ntasks-per-node=$n_mpi_processes_per_node
 EOF
-if [ "$EMAIL" != "" ]; then
+  if [ "$EMAIL" != "" ]; then
     cat << EOF >> $scriptfile
 #SBATCH --mail-user=$EMAIL
 #SBATCH --mail-type=ALL
 EOF
-fi
-if [ "$MULTITHREAD" != "" ]; then
+  fi
+  if [ "$MULTITHREAD" != "" ]; then
     cat << EOF >> $scriptfile
 #SBATCH $MULTITHREAD
 EOF
-fi
+  fi
 
-if [ "$benchmark" == "yes" ]; then
-cat << EOF >> $scriptfile
+  if [ "$benchmark" == "yes" ]; then
+    cat << EOF >> $scriptfile
 #SBATCH --exclusive
 #SBATCH --cpu-freq=Performance
 EOF
-fi
+  fi
 
-if [ "$SLURM_MEM" != "" ]; then
-cat << EOF >> $scriptfile
+  if [ "$SLURM_MEM" != "" ]; then
+    cat << EOF >> $scriptfile
 $SLURM_MEM
 EOF
-fi
+  fi
 
-if [ "$SLURM_PSM" != "" ]; then
-cat << EOF >> $scriptfile
+  if [ "$SLURM_PSM" != "" ]; then
+    cat << EOF >> $scriptfile
 $SLURM_PSM
 EOF
-fi
+  fi
 
-if [ "$walltimestring_slurm" != "" ]; then
-      cat << EOF >> $scriptfile
+  if [ "$walltimestring_slurm" != "" ]; then
+    cat << EOF >> $scriptfile
 #SBATCH $walltimestring_slurm
 
+EOF
+  fi
+elif [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
+  cat << EOF >> $scriptfile
+#PBS -N $JOBPREFIX$infile
+#PBS -e $outerr
+#PBS -o $outlog
+#PBS -l nodes=$nodes:ppn=$ppn$SLURM_MEM,walltime=$walltimestring_pbs
+EOF
+  if [ "$EMAIL" != "" ]; then
+    cat << EOF >> $scriptfile
+#PBS -m abe
+#PBS -M $EMAIL
+EOF
+  fi
+
+  if [[ $n_openmp_threads -gt 1 ]] && [[ "$use_intel_mpi" == "1" ]]; then
+    cat << EOF >> $scriptfile
+#PBS -l naccesspolicy=SINGLEJOB
+EOF
+  fi
+fi
+
+if [[ "$MODULES" != "" ]]; then
+  cat << EOF >> $scriptfile
+export MODULEPATH=$MODULEPATH
+module purge
+module load $MODULES
 EOF
 fi
 
@@ -870,12 +973,21 @@ fi
 
 # wait until number of jobs running alread by user is less than USERMAX
 if [ "$USERMAX" != "" ]; then
-  nuser=`squeue | grep -v JOBID | awk '{print $4}' | grep $USER | wc -l`
-  while [ $nuser -gt $USERMAX ]
-  do
+  if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
     nuser=`squeue | grep -v JOBID | awk '{print $4}' | grep $USER | wc -l`
-    sleep 10
-  done
+    while [ $nuser -gt $USERMAX ]
+    do
+      nuser=`squeue | grep -v JOBID | awk '{print $4}' | grep $USER | wc -l`
+      sleep 1
+    done
+  elif [ "$RESOURCE_MANAGER" == "TORQUE" ]; then
+    nuser=`qstat -u $USER | awk '{print $10}' | grep -E "Q|R" | wc -l`
+    while [ $nuser -gt $USERMAX ]
+    do
+      nuser=`qstat -u $USER | awk '{print $10}' | grep -E "Q|R" | wc -l`
+      sleep 1
+    done
+  fi
 fi
 
 #*** output info to screen

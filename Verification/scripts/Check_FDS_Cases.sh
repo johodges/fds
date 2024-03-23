@@ -3,7 +3,7 @@
 DIR=.
 
 # parse options
-while getopts 'ACd:e:Ef:hHiILm:MNn:o:O:p:Pq:rsStT:vVw:' OPTION
+while getopts 'ACd:e:Ef:hHiILm:M:Nn:o:O:p:Pq:rsStT:vVw:' OPTION
 do
 case $OPTION  in
   d)
