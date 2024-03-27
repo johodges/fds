@@ -3693,7 +3693,11 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                   IF (CCVAR(I,J,K,CC_CGSC)==CC_SOLID) CYCLE
                ENDIF
                ZZ_GET(1:N_TRACKED_SPECIES) = ZZ(I,J,K,1:N_TRACKED_SPECIES)
-               KAPPA_GAS(I,J,K) = GET_KAPPA(ZZ_GET,TMP(I,J,K),IBND)
+               IF (CHI_R(I,J,K)*Q(I,J,K)>QR_CLIP) THEN
+                  KAPPA_GAS(I,J,K) = GET_KAPPA(ZZ_GET,1473.15_EB,IBND)
+               ELSE
+                  KAPPA_GAS(I,J,K) = GET_KAPPA(ZZ_GET,TMP(I,J,K),IBND)
+               ENDIF
             ENDDO
          ENDDO
       ENDDO
