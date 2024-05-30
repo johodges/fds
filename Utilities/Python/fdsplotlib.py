@@ -35,6 +35,7 @@ def plot_to_fig(x_data,y_data,**kwargs):
     default_title_fontsize = 18
     default_subtitle_fontsize = 16
     default_stamp_fontsize = 12
+    default_contour_fontsize = 12
     ###############################
 
     if kwargs.get('figure_size'):
@@ -107,7 +108,23 @@ def plot_to_fig(x_data,y_data,**kwargs):
             linestyle=kwargs.get('line_style'),
             linewidth=kwargs.get('line_width'),
             color=kwargs.get('line_color'))
-
+    
+    if plot_type == 'line_contour':
+        contour_data = kwargs.get('contour_data')
+        levels = kwargs.get('levels')
+        cax = ax.contour(x_data, y_data, contour_data, 
+                         levels=levels, colors=[kwargs.get('line_color') for x in levels])
+        ax.clabel(cax, cax.levels, inline=True, fontsize=default_contour_fontsize)
+        ax.plot([0, 0], [0, 0], label=kwargs.get('data_label'),
+                    markerfacecolor=kwargs.get('marker_fill_color'),
+                    markeredgecolor=kwargs.get('marker_edge_color'),
+                    markeredgewidth=kwargs.get('line_width'),
+                    marker=kwargs.get('marker_style'),
+                    markersize=kwargs.get('marker_size'),
+                    linestyle=kwargs.get('line_style'),
+                    linewidth=kwargs.get('line_width'),
+                    color=kwargs.get('line_color'))
+        
     # if error range is passed, add it to the plot
     if kwargs.get('y_error_absolute') and not kwargs.get('y_error_relative'):
         if kwargs.get('y_error_absolute')>0.:
@@ -172,15 +189,15 @@ def plot_to_fig(x_data,y_data,**kwargs):
 
     # set axes and tick properties
     if kwargs.get('x_min')==None or kwargs.get('x_max')==None or math.isnan(kwargs.get('x_min')) or math.isnan(kwargs.get('x_max')):
-        xmin=min(x_data) - 0.05*(max(x_data)-min(x_data))
-        xmax=max(x_data) + 0.05*(max(x_data)-min(x_data))
+        xmin=min(x_data.flatten()) - 0.05*(max(x_data.flatten())-min(x_data.flatten()))
+        xmax=max(x_data.flatten()) + 0.05*(max(x_data.flatten())-min(x_data.flatten()))
     else:
         xmin=kwargs.get('x_min')
         xmax=kwargs.get('x_max')
 
     if kwargs.get('y_min')==None or kwargs.get('y_max')==None or math.isnan(kwargs.get('y_min')) or math.isnan(kwargs.get('y_max')):
-        ymin=min(y_data) - 0.05*(max(y_data)-min(y_data))
-        ymax=max(y_data) + 0.05*(max(y_data)-min(y_data))
+        ymin=min(y_data.flatten()) - 0.05*(max(y_data.flatten())-min(y_data.flatten()))
+        ymax=max(y_data.flatten()) + 0.05*(max(y_data.flatten())-min(y_data.flatten()))
     else:
         ymin=kwargs.get('y_min')
         ymax=kwargs.get('y_max')
@@ -207,6 +224,25 @@ def plot_to_fig(x_data,y_data,**kwargs):
         if kwargs.get('figure_y_axis_exponent_max'):
             y_axis_exponent_max=kwargs.get('figure_y_axis_exponent_max')
         ax.ticklabel_format(axis='y',scilimits=(y_axis_exponent_min,y_axis_exponent_max))
+
+    if plot_type=='line_contour':
+        x_axis_exponent_min = -3
+        x_axis_exponent_max = 3
+        if kwargs.get('figure_x_axis_exponent_min'):
+            x_axis_exponent_min=kwargs.get('figure_x_axis_exponent_min')
+        if kwargs.get('figure_x_axis_exponent_max'):
+            x_axis_exponent_max=kwargs.get('figure_x_axis_exponent_max')
+        ax.ticklabel_format(axis='x',scilimits=(x_axis_exponent_min,x_axis_exponent_max))
+
+    if plot_type=='line_contour':
+        y_axis_exponent_min = -3
+        y_axis_exponent_max = 3
+        if kwargs.get('figure_y_axis_exponent_min'):
+            y_axis_exponent_min=kwargs.get('figure_y_axis_exponent_min')
+        if kwargs.get('figure_y_axis_exponent_max'):
+            y_axis_exponent_max=kwargs.get('figure_y_axis_exponent_max')
+        ax.ticklabel_format(axis='y',scilimits=(y_axis_exponent_min,y_axis_exponent_max))
+
 
     if kwargs.get('x_nticks'):
         ax.set_xticks(np.linspace(start = kwargs.get('x_min'), stop = kwargs.get('x_max'), num = kwargs.get('x_nticks'), endpoint=True))
