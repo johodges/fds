@@ -66,7 +66,7 @@ def getExperimentalData(Q, quantity):
         levels = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
     elif quantity == 'Velocity':
         alpha = 0.16
-        z = np.linspace(0.0,1.5,101)
+        z = np.linspace(0.0,1.5,1001)
         v0 = calculateV(Q, z, g=9.81)
         
         z_over_Q2p5 = z/(Q**0.4)
@@ -127,7 +127,7 @@ def getModelData(Q, resolution, quantity, x, z):
     return model_data, version_string
 
 if __name__ == "__main__":
-    resolutions = [0.050, 0.025, 0.012] #, 0.006]
+    resolutions = [0.050, 0.025, 0.012]
     
     pltdir = '../../../Manuals/FDS_Validation_Guide/SCRIPT_FIGURES/McCaffrey_Plume/'
     isDir = os.path.isdir(pltdir)
@@ -143,7 +143,7 @@ if __name__ == "__main__":
                 f = plot_to_fig(x, z, contour_data=data, data_label='Exp',
                                 plot_type='line_contour', levels=levels, line_color='k',
                                 x_label='Burner Radius (m)', y_label='Height (m)', 
-                                x_min=0.0, x_max=0.2, x_nticks=11, figure_handle=f)
+                                x_min=0.0, x_max=0.2, x_nticks=5, figure_handle=f)
                 f = plot_to_fig(x, z, contour_data=model_data, data_label='FDS', 
                                 show_legend=True, legend_location=4,
                                 plot_type='line_contour', levels=levels, line_color='r',
