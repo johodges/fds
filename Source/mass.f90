@@ -271,7 +271,8 @@ CASE(.TRUE.) PREDICTOR_STEP
                    + (FX(I,J,K,N)*UU(I,J,K)*R(I) - FX(I-1,J,K,N)*UU(I-1,J,K)*R(I-1))*RDX(I)*RRN(I) &
                    + (FY(I,J,K,N)*VV(I,J,K)      - FY(I,J-1,K,N)*VV(I,J-1,K)       )*RDY(J)        &
                    + (FZ(I,J,K,N)*WW(I,J,K)      - FZ(I,J,K-1,N)*WW(I,J,K-1)       )*RDZ(K)
-               ZZS(I,J,K,N) = RHO(I,J,K)*ZZ(I,J,K,N) - DT*RHS
+               IF (N <= N_TRACKED_SPECIES) ZZS(I,J,K,N) = RHO(I,J,K)*ZZ(I,J,K,N) - DT*RHS
+               IF (N > N_TRACKED_SPECIES) ZZS(I,J,K,N) = ZZ(I,J,K,N) - DT*RHS/RHO(I,J,K)
             ENDDO
          ENDDO
       ENDDO
@@ -373,7 +374,7 @@ CASE(.TRUE.) PREDICTOR_STEP
          DO I=1,IBAR
             IF (CELL(CELL_INDEX(I,J,K))%SOLID) CYCLE
             ZZ_GET(1:N_TRACKED_SPECIES) = ZZS(I,J,K,1:N_TRACKED_SPECIES)
-            CALL GET_SPECIFIC_GAS_CONSTANT(ZZ_GET,RSUM(I,J,K))
+            CALL GET_SPECIFIC_GAS_CONSTANT(ZZ_GET(1:N_TRACKED_SPECIES),RSUM(I,J,K))
          ENDDO
       ENDDO
    ENDDO
@@ -439,7 +440,8 @@ CASE(.FALSE.) PREDICTOR_STEP  ! CORRECTOR step
                    + (FX(I,J,K,N)*UU(I,J,K)*R(I) - FX(I-1,J,K,N)*UU(I-1,J,K)*R(I-1))*RDX(I)*RRN(I) &
                    + (FY(I,J,K,N)*VV(I,J,K)      - FY(I,J-1,K,N)*VV(I,J-1,K)       )*RDY(J)        &
                    + (FZ(I,J,K,N)*WW(I,J,K)      - FZ(I,J,K-1,N)*WW(I,J,K-1)       )*RDZ(K)
-               ZZ(I,J,K,N) = .5_EB*( RHO(I,J,K)*ZZ(I,J,K,N) + RHOS(I,J,K)*ZZS(I,J,K,N) - DT*RHS )
+               IF (N <= N_TRACKED_SPECIES) ZZ(I,J,K,N) = .5_EB*( RHO(I,J,K)*ZZ(I,J,K,N) + RHOS(I,J,K)*ZZS(I,J,K,N) - DT*RHS )
+               IF (N > N_TRACKED_SPECIES) ZZ(I,J,K,N) = .5_EB*( ZZ(I,J,K,N) + ZZS(I,J,K,N) - DT*RHS/RHOS(I,J,K) )
             ENDDO
          ENDDO
       ENDDO
@@ -517,7 +519,8 @@ CASE(.FALSE.) PREDICTOR_STEP  ! CORRECTOR step
       DO J=1,JBAR
          DO I=1,IBAR
             IF (CELL(CELL_INDEX(I,J,K))%SOLID) CYCLE
-            ZZ(I,J,K,1:N_TOTAL_SCALARS) = ZZ(I,J,K,1:N_TOTAL_SCALARS)/RHO(I,J,K)
+            ZZ(I,J,K,1:N_TRACKED_SPECIES) = ZZ(I,J,K,1:N_TRACKED_SPECIES)/RHO(I,J,K)
+            ZZ(I,J,K,N_TRACKED_SPECIES+1:N_TOTAL_SCALARS) = ZZ(I,J,K,N_TRACKED_SPECIES+1:N_TOTAL_SCALARS)
          ENDDO
       ENDDO
    ENDDO

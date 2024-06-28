@@ -89,7 +89,7 @@ REAL(EB), INTENT(IN) :: T,DT
 INTEGER, INTENT(IN) :: NM
 REAL(EB) :: ZZ_GET(1:N_TRACKED_SPECIES),DZZ(1:N_TRACKED_SPECIES),CP,H_S_N,&
             REAC_SOURCE_TERM_TMP(N_TRACKED_SPECIES),Q_REAC_TMP(N_REACTIONS),RSUM_LOC,VCELL,PRES,&
-            MIX_TIME_OUT,ZETA_IN,DT_SUB,DT_SUB_NEW
+            ZETA_IN,DT_SUB,DT_SUB_NEW
 LOGICAL :: Q_EXISTS
 TYPE (REACTION_TYPE), POINTER :: RN
 TYPE (SPECIES_MIXTURE_TYPE), POINTER :: SM
@@ -113,7 +113,7 @@ DO K=1,KBAR
    DO J=1,JBAR
       ILOOP: DO I=1,IBAR
          ! Calculate mixing time if passive scalar
-         CALL GET_MIXING_TIME(TMP(I,J,K), MU(I,J,K), RHO(I,J,K), LES_FILTER_WIDTH(I,J,K), MIX_TIME_OUT)
+         CALL GET_MIXING_TIME(TMP(I,J,K), MU(I,J,K), RHO(I,J,K), LES_FILTER_WIDTH(I,J,K), MIX_TIME(I,J,K))
          IF (N_FIXED_CHEMISTRY_SUBSTEPS>0) THEN
             DT_SUB = DT/REAL(N_FIXED_CHEMISTRY_SUBSTEPS,EB)
             DT_SUB_NEW = DT_SUB
@@ -125,11 +125,12 @@ DO K=1,KBAR
          ENDIF
          IF (MIXING_AS_PASSIVE_SCALAR_TRANSPORT) THEN
             ! Update passive scalar unmixed fraction
-            ZZ(I,J,K,ZETA_INDEX) = ZZ(I,J,K,ZETA_INDEX) - ZZ(I,J,K,ZETA_INDEX)/MIX_TIME_OUT * DT
+            ZZ(I,J,K,ZETA_INDEX) = ZZ(I,J,K,ZETA_INDEX) - ZZ(I,J,K,ZETA_INDEX)/MIX_TIME(I,J,K) * DT
             ZZ(I,J,K,ZETA_INDEX) = MIN(MAX(ZZ(I,J,K,ZETA_INDEX),0._EB),1._EB)
             ZETA_IN = ZZ(I,J,K,ZETA_INDEX)
+            !ZETA_IN = MAX(0._EB,ZZ(I,J,K,ZETA_INDEX)*EXP(-DT_SUB/MIX_TIME_OUT))
          ELSE
-            ZETA_IN = MAX(0._EB,INITIAL_UNMIXED_FRACTION*EXP(-DT_SUB/MIX_TIME_OUT)) ! FDS Tech Guide (5.18)
+            ZETA_IN = MAX(0._EB,INITIAL_UNMIXED_FRACTION*EXP(-DT_SUB/MIX_TIME(I,J,K))) ! FDS Tech Guide (5.18)
          ENDIF
          ! Check to see if a reaction is possible
          IF (CELL(CELL_INDEX(I,J,K))%SOLID) CYCLE ILOOP
@@ -159,13 +160,11 @@ DO K=1,KBAR
          !***************************************************************************************
          ! Call combustion integration routine for Cartesian cell (I,J,K)
          PRES = PBAR(K,PRESSURE_ZONE(I,J,K)) + RHO(I,J,K)*(H(I,J,K)-KRES(I,J,K))
-         !WRITE(*,*) "START",I,J,K,ZZ(I,J,K,ZETA_INDEX)
          CALL COMBUSTION_MODEL( T,DT,ZZ_GET,Q(I,J,K),MIX_TIME(I,J,K),CHI_R(I,J,K),&
                                 CHEM_SUBIT_TMP,REAC_SOURCE_TERM_TMP,Q_REAC_TMP,&
                                 TMP(I,J,K),RHO(I,J,K),PRES, MU(I,J,K),&
                                 LES_FILTER_WIDTH(I,J,K),DX(I)*DY(J)*DZ(K),&
                                 UNMIXED_FRACTION=ZETA_IN,IIC=I,JJC=J,KKC=K)
-         !WRITE(*,*) "END  ",I,J,K,ZZ(I,J,K,ZETA_INDEX)
          !***************************************************************************************
          IF (STOP_STATUS/=NO_STOP) RETURN
          IF (OUTPUT_CHEM_IT) CHEM_SUBIT(I,J,K) = CHEM_SUBIT_TMP
@@ -432,7 +431,6 @@ INTEGRATION_LOOP: DO TIME_ITER = 1,MAX_CHEMISTRY_SUBSTEPS
 
          CALL FIRE_FORWARD_EULER(ZZ_MIXED_NEW,ZZ_MIXED,ZZ_0,ZETA,ZETA_0,DT_SUB,TMP_IN,RHO_HAT,&
                                  CELL_MASS,Q_REAC_SUB,TOTAL_MIXED_MASS,NO_REACTIONS)
-         !WRITE(*,*) "DT_SUB", DT_SUB, "ZETA_0", ZETA_0, "ZETA",ZETA
          ZETA_0 = ZETA
          ZZ_MIXED = ZZ_MIXED_NEW
          
@@ -553,7 +551,6 @@ CHI_R_OUT = MAX(CHI_R_MIN,MIN(CHI_R_MAX,CHI_R_OUT))
 Q_OUT = -RHO_IN*SUM(SPECIES_MIXTURE(1:N_TRACKED_SPECIES)%H_F*(ZZ_GET-ZZ_0))/DT ! FDS Tech Guide (5.47)
 
 ! Extinction model
-!WRITE(*,*) "RTE_SOURCE_CORRECTION_FACTOR=", RTE_SOURCE_CORRECTION_FACTOR
 IF (SUPPRESSION .AND. .NOT.EXTINCT) THEN
    SELECT CASE(EXTINCT_MOD)
       CASE(EXTINCTION_1);
@@ -857,15 +854,10 @@ ENDDO
 ZZ_HAT_0 = ZZ_HAT_0/SUM(ZZ_HAT_0)
 ZZ_HAT   = ZZ_HAT/SUM(ZZ_HAT)
 
-!WRITE(*,*) "CFT", CFT, "PHI_TILDE", PHI_TILDE, "ZZ_HAT_0", ZZ_HAT_0, "ZZ_HAT", ZZ_HAT
-
 ! Determine if enough energy is released to raise the fuel and required "air" temperatures above the critical flame temp.
 
 CALL GET_ENTHALPY(ZZ_HAT_0,H_0,TMP_IN2) ! H of reactants participating in reaction (includes chemical enthalpy)
 CALL GET_ENTHALPY(ZZ_HAT,H_CRIT,CFT)   ! H of products at the critical flame temperature
-
-      !WRITE(*,*) "TMP_IN", TMP_IN2, "CFT", CFT, "T_OFFSET", MAX(CFT-EXT_MIN_TEMP_OFFSET,0._EB)
-      !WRITE(*,*) "H_FACTOR", H_FACTOR, "H_MIN", H_MIN, "H_0", H_0, "H_CRIT", H_CRIT
 
 IF (H_0 < H_CRIT) EXTINCT = .TRUE. ! FDS Tech Guide (5.55)
 IF (EXTINCT) THEN
@@ -877,7 +869,6 @@ IF (EXTINCT) THEN
          SLOPE = 1/(H_CRIT-H_MIN)
          INTERCEPT = -SLOPE*H_MIN
          H_FACTOR = H_0*SLOPE + INTERCEPT
-         
    !   ENDIF
    !ENDIF
    !IF (H_FACTOR < 1._EB-TWO_EPSILON_EB) THEN
