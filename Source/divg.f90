@@ -259,13 +259,13 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
 
    IF (STORE_SPECIES_FLUX) THEN
       IF (PREDICTOR) THEN
-         DO N=1,N_TOTAL_SCALARS
+         DO N=1,N_TRACKED_SPECIES
             DIF_FX(:,:,:,N) = 0.5_EB*( DIF_FXS(:,:,:,N) - RHO_D_DZDX(:,:,:,N) )
             DIF_FY(:,:,:,N) = 0.5_EB*( DIF_FYS(:,:,:,N) - RHO_D_DZDY(:,:,:,N) )
             DIF_FZ(:,:,:,N) = 0.5_EB*( DIF_FZS(:,:,:,N) - RHO_D_DZDZ(:,:,:,N) )
          ENDDO
       ELSE
-         DO N=1,N_TOTAL_SCALARS
+         DO N=1,N_TRACKED_SPECIES
             DIF_FXS(:,:,:,N) = -RHO_D_DZDX(:,:,:,N)
             DIF_FYS(:,:,:,N) = -RHO_D_DZDY(:,:,:,N)
             DIF_FZS(:,:,:,N) = -RHO_D_DZDZ(:,:,:,N)
@@ -275,8 +275,7 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
 
    ! Diffusive heat flux
 
-   SPECIES_LOOP: DO N=1,N_TOTAL_SCALARS
-
+   SPECIES_LOOP: DO N=1,N_TRACKED_SPECIES
       ! Compute div h_n*rho*D del Z_n (part of div qdot")
 
       H_RHO_D_DZDX => WORK5
@@ -317,7 +316,7 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
          N_ZZ_MAX = MAXLOC(B1%ZZ_F(1:N_TRACKED_SPECIES),1)
          RHO_D_DZDN = 2._EB*B1%RHO_D_F(N)*(ZZP(BC%IIG,BC%JJG,BC%KKG,N)-B1%ZZ_F(N))*B1%RDN
          IF (N==N_ZZ_MAX) THEN
-            RHO_D_DZDN_GET = 2._EB*B1%RHO_D_F(:)*(ZZP(BC%IIG,BC%JJG,BC%KKG,:)-B1%ZZ_F(:))*B1%RDN
+            RHO_D_DZDN_GET = 2._EB*B1%RHO_D_F(1:N_TRACKED_SPECIES)*(ZZP(BC%IIG,BC%JJG,BC%KKG,1:N_TRACKED_SPECIES)-B1%ZZ_F(1:N_TRACKED_SPECIES))*B1%RDN
             RHO_D_DZDN = -(SUM(RHO_D_DZDN_GET(:))-RHO_D_DZDN)
          ENDIF
          B1%RHO_D_DZDN_F(N) = RHO_D_DZDN
@@ -841,7 +840,7 @@ WALL_LOOP: DO IW=1,N_EXTERNAL_WALL_CELLS+N_INTERNAL_WALL_CELLS
       TMP_F_GAS = B1%TMP_F
    ENDIF
 
-   ZZ_GET(1:N_TRACKED_SPECIES) = B1%ZZ_F(1:N_TRACKED_SPECIES)
+   ZZ_GET = B1%ZZ_F(1:N_TRACKED_SPECIES)
    CALL GET_SENSIBLE_ENTHALPY(ZZ_GET,H_S,TMP_F_GAS)
 
    ! overwrite first off-wall advective flux if flow is away from the wall and if the face is not also a wall cell
