@@ -431,7 +431,7 @@ INTEGER :: N_FIXED_CHEMISTRY_SUBSTEPS=-1                            !< Number of
 LOGICAL :: OUTPUT_CHEM_IT=.FALSE.
 LOGICAL :: REAC_SOURCE_CHECK=.FALSE.
 LOGICAL :: COMPUTE_ADIABATIC_FLAME_TEMPERATURE=.FALSE.              !< Report adiabatic flame temperature per REAC in LU_OUTPUT
-LOGICAL :: MIXING_AS_PASSIVE_SCALAR_TRANSPORT=.FALSE.               !< Specify if unmixed fraction should be calculated as a passive scalar
+LOGICAL :: MIXING_AS_PASSIVE_SCALAR_TRANSPORT=.FALSE.               !< Specify if unmixed fraction is calculated as a passive scalar
 
 REAL(EB) :: RSUM0                                     !< Initial specific gas constant, \f$ R \sum_i Z_{i,0}/W_i \f$
 
