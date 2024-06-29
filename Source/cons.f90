@@ -406,6 +406,9 @@ REAL(EB) :: VISIBILITY_FACTOR=3._EB                                 !< Parameter
 REAL(EB) :: EC_LL                                                   !< Extinction Coefficient, Lower Limit (1/m)
 REAL(EB) :: ZZ_MIN_GLOBAL=1.E-10_EB                                 !< Minimum lumped species mass fraction
 REAL(EB) :: FIXED_MIX_TIME=-1._EB                                   !< User-specified reaction mixing time (s)
+REAL(EB) :: FIXED_MIX_TIME_D=-1._EB                                 !< User-specified reaction diffusion mixing time (s)
+REAL(EB) :: FIXED_MIX_TIME_G=-1._EB                                 !< User-specified reaction gravity mixing time (s)
+REAL(EB) :: FIXED_MIX_TIME_U=-1._EB                                 !< User-specified reaction turbulence mixing time (s)
 REAL(EB) :: INITIAL_UNMIXED_FRACTION=1._EB                          !< Initial amount of mixed air-fuel in combustion chamber
 REAL(EB) :: GLOBAL_ODE_REL_ERROR=1.E-4_EB                           !< Error tolerance in Richardson extrapolation
 REAL(EB) :: H_F_REFERENCE_TEMPERATURE=25._EB                        !< Heat of formation reference temperature (C->K)

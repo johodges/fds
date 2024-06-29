@@ -642,13 +642,15 @@ ELSE
       RN => REACTION(NR)
       D_F = MAX(D_F,D_Z(MIN(I_MAX_TEMP-1,NINT(TMP_IN)),RN%FUEL_SMIX_INDEX))
    ENDDO
-   TAU_D = DELTA**2/MAX(D_F,TWO_EPSILON_EB)                            ! FDS Tech Guide (5.14)
+   TAU_D = DELTA**2/MAX(D_F,TWO_EPSILON_EB)/Delta                            ! FDS Tech Guide (5.14)
+   IF (FIXED_MIX_TIME_D > 0) TAU_D = FIXED_MIX_TIME_D
    SELECT CASE(SIM_MODE)
       CASE DEFAULT
          C_U = 0.4_EB*C_DEARDORFF*SQRT(1.5_EB)
-         TAU_U = C_U*RHO_IN*DELTA**2/MAX(MU_IN,TWO_EPSILON_EB)         ! FDS Tech Guide (5.15)
+         TAU_U = C_U*RHO_IN*DELTA**2/MAX(MU_IN,TWO_EPSILON_EB)/DELTA         ! FDS Tech Guide (5.15)
+         IF (FIXED_MIX_TIME_U > 0) TAU_U = FIXED_MIX_TIME_U
          TAU_G = SQRT(2._EB*DELTA/(GRAV+1.E-10_EB))                    ! FDS Tech Guide (5.16)
-         TAU_G = 1.E6_EB
+         IF (FIXED_MIX_TIME_G > 0) TAU_G = FIXED_MIX_TIME_G
          MIX_TIME_OUT= MAX(TAU_CHEM,MIN(TAU_D,TAU_U,TAU_G,TAU_FLAME))  ! FDS Tech Guide (5.13)
          !WRITE(*,*) "CHEM", TAU_CHEM, "D", TAU_D, "U", TAU_U, "G", TAU_G, "F", TAU_FLAME
       CASE (DNS_MODE)
