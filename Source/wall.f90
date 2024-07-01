@@ -2586,6 +2586,9 @@ SUB_TIMESTEP_LOOP: DO
    ! Calculate thermal properties
 
    ONE_D%K_S = 0._EB
+   ONE_D%K_S_X = 0._EB
+   ONE_D%K_S_Y = 0._EB
+   ONE_D%K_S_Z = 0._EB
    RHO_S   = 0._EB
    ONE_D%RHO_C_S = 0._EB
    B1%EMISSIVITY = 0._EB
@@ -2599,6 +2602,14 @@ SUB_TIMESTEP_LOOP: DO
          ML  => MATERIAL(ONE_D%MATL_INDEX(N))
          VOLSUM = VOLSUM + ONE_D%MATL_COMP(N)%RHO(I)/RHO_ADJUSTED(LAYER_INDEX(I),N)
          ONE_D%K_S(I) = ONE_D%K_S(I) + ONE_D%MATL_COMP(N)%RHO(I)*ML%K_S(ITMP)/RHO_ADJUSTED(LAYER_INDEX(I),N)
+         SELECT CASE(BC%IOR)
+            CASE(1,-1)
+               ONE_D%K_S_X(I) = ONE_D%K_S_X(I) + ONE_D%MATL_COMP(N)%RHO(I)*ML%K_S_X(ITMP)/RHO_ADJUSTED(LAYER_INDEX(I),N)
+            CASE(2,-2)
+               ONE_D%K_S_Y(I) = ONE_D%K_S_Y(I) + ONE_D%MATL_COMP(N)%RHO(I)*ML%K_S_Y(ITMP)/RHO_ADJUSTED(LAYER_INDEX(I),N)
+            CASE(3,-3)
+               ONE_D%K_S_Z(I) = ONE_D%K_S_Z(I) + ONE_D%MATL_COMP(N)%RHO(I)*ML%K_S_Z(ITMP)/RHO_ADJUSTED(LAYER_INDEX(I),N)
+         ENDSELECT
          ONE_D%RHO_C_S(I) = ONE_D%RHO_C_S(I) + ONE_D%MATL_COMP(N)%RHO(I)*ML%C_S(ITMP)
 
          IF (.NOT.E_FOUND) B1%EMISSIVITY = B1%EMISSIVITY + ONE_D%MATL_COMP(N)%RHO(I)*ML%EMISSIVITY/RHO_ADJUSTED(LAYER_INDEX(I),N)
@@ -2608,10 +2619,21 @@ SUB_TIMESTEP_LOOP: DO
 
       IF (VOLSUM > 0._EB) THEN
          ONE_D%K_S(I) = ONE_D%K_S(I)/VOLSUM
+         SELECT CASE(BC%IOR)
+            CASE(1,-1)
+               ONE_D%K_S_X(I) = ONE_D%K_S_X(I)/VOLSUM
+            CASE(2,-2)
+               ONE_D%K_S_Y(I) = ONE_D%K_S_Y(I)/VOLSUM
+            CASE(3,-3)
+               ONE_D%K_S_Z(I) = ONE_D%K_S_Z(I)/VOLSUM
+         ENDSELECT
          IF (.NOT.E_FOUND) B1%EMISSIVITY = B1%EMISSIVITY/VOLSUM
       ENDIF
       IF (B1%EMISSIVITY>=0._EB) E_FOUND = .TRUE.
       IF (ONE_D%K_S(I)<=TWO_EPSILON_EB)      ONE_D%K_S(I)      = 10000._EB
+      IF (ONE_D%K_S_X(I)<=TWO_EPSILON_EB)    ONE_D%K_S(I)      = 10000._EB
+      IF (ONE_D%K_S_Y(I)<=TWO_EPSILON_EB)    ONE_D%K_S(I)      = 10000._EB
+      IF (ONE_D%K_S_Z(I)<=TWO_EPSILON_EB)    ONE_D%K_S(I)      = 10000._EB
       IF (ONE_D%RHO_C_S(I)<=TWO_EPSILON_EB)  ONE_D%RHO_C_S(I)  = 0.001_EB
 
    ENDDO POINT_LOOP3
@@ -2625,16 +2647,58 @@ SUB_TIMESTEP_LOOP: DO
    DO I=1,NWP-1
       ONE_D%K_S(I)  = 1._EB / ( DX_WGT_S(I)/ONE_D%K_S(I) + (1._EB-DX_WGT_S(I))/ONE_D%K_S(I+1) )
    ENDDO
+   SELECT CASE(BC%IOR)
+      CASE(1,-1)
+         ONE_D%K_S_X(0)     = ONE_D%K_S_X(1)
+         ONE_D%K_S_X(NWP+1) = ONE_D%K_S_X(NWP)
+         DO I=1,NWP-1
+            ONE_D%K_S_X(I)  = 1._EB / ( DX_WGT_S(I)/ONE_D%K_S_X(I) + (1._EB-DX_WGT_S(I))/ONE_D%K_S_X(I+1) )
+         ENDDO
+      CASE(2,-2)
+         ONE_D%K_S_Y(0)     = ONE_D%K_S_Y(1)
+         ONE_D%K_S_Y(NWP+1) = ONE_D%K_S_Y(NWP)
+         DO I=1,NWP-1
+            ONE_D%K_S_Y(I)  = 1._EB / ( DX_WGT_S(I)/ONE_D%K_S_Y(I) + (1._EB-DX_WGT_S(I))/ONE_D%K_S_Y(I+1) )
+         ENDDO
+      CASE(3,-3)
+         ONE_D%K_S_Z(0)     = ONE_D%K_S_Z(1)
+         ONE_D%K_S_Z(NWP+1) = ONE_D%K_S_Z(NWP)
+         DO I=1,NWP-1
+            ONE_D%K_S_Z(I)  = 1._EB / ( DX_WGT_S(I)/ONE_D%K_S_Z(I) + (1._EB-DX_WGT_S(I))/ONE_D%K_S_Z(I+1) )
+         ENDDO
+   ENDSELECT
 
    ! Update the 1-D heat transfer equation
+   !KODXF = ONE_D%K_S(0)/DXF
+   !KODXB = ONE_D%K_S(NWP)/DXB
+   !DO I=1,NWP
+   !   BBS(I) = -0.5_EB*DT_BC_SUB*ONE_D%K_S(I-1)*RDXN_S(I-1)*RDX_S(I)/ONE_D%RHO_C_S(I)
+   !   AAS(I) = -0.5_EB*DT_BC_SUB*ONE_D%K_S(I)  *RDXN_S(I)  *RDX_S(I)/ONE_D%RHO_C_S(I)
+   !ENDDO
+   SELECT CASE(BC%IOR)
+      CASE(1,-1)
+         KODXF = ONE_D%K_S_X(0)/DXF
+         KODXB = ONE_D%K_S_X(NWP)/DXB
+         DO I=1,NWP
+            BBS(I) = -0.5_EB*DT_BC_SUB*ONE_D%K_S_X(I-1)*RDXN_S(I-1)*RDX_S(I)/ONE_D%RHO_C_S(I)
+            AAS(I) = -0.5_EB*DT_BC_SUB*ONE_D%K_S_X(I)  *RDXN_S(I)  *RDX_S(I)/ONE_D%RHO_C_S(I)
+         ENDDO
+      CASE(2,-2)
+         KODXF = ONE_D%K_S_Y(0)/DXF
+         KODXB = ONE_D%K_S_Y(NWP)/DXB
+         DO I=1,NWP
+            BBS(I) = -0.5_EB*DT_BC_SUB*ONE_D%K_S_Y(I-1)*RDXN_S(I-1)*RDX_S(I)/ONE_D%RHO_C_S(I)
+            AAS(I) = -0.5_EB*DT_BC_SUB*ONE_D%K_S_Y(I)  *RDXN_S(I)  *RDX_S(I)/ONE_D%RHO_C_S(I)
+         ENDDO
+      CASE(3,-3)
+         KODXF = ONE_D%K_S_Z(0)/DXF
+         KODXB = ONE_D%K_S_Z(NWP)/DXB
+         DO I=1,NWP
+            BBS(I) = -0.5_EB*DT_BC_SUB*ONE_D%K_S_Z(I-1)*RDXN_S(I-1)*RDX_S(I)/ONE_D%RHO_C_S(I)
+            AAS(I) = -0.5_EB*DT_BC_SUB*ONE_D%K_S_Z(I)  *RDXN_S(I)  *RDX_S(I)/ONE_D%RHO_C_S(I)
+         ENDDO
+   ENDSELECT
 
-   KODXF = ONE_D%K_S(0)/DXF
-   KODXB = ONE_D%K_S(NWP)/DXB
-
-   DO I=1,NWP
-      BBS(I) = -0.5_EB*DT_BC_SUB*ONE_D%K_S(I-1)*RDXN_S(I-1)*RDX_S(I)/ONE_D%RHO_C_S(I)
-      AAS(I) = -0.5_EB*DT_BC_SUB*ONE_D%K_S(I)  *RDXN_S(I)  *RDX_S(I)/ONE_D%RHO_C_S(I)
-   ENDDO
    DDS(1:NWP) = 1._EB - AAS(1:NWP) - BBS(1:NWP)
    DO I=1,NWP
       CCS(I) = ONE_D%TMP(I) - AAS(I)*(ONE_D%TMP(I+1)-ONE_D%TMP(I)) + BBS(I)*(ONE_D%TMP(I)-ONE_D%TMP(I-1)) &

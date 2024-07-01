@@ -214,6 +214,9 @@ TYPE BOUNDARY_ONE_D_TYPE
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: MIN_DIFFUSIVITY     !< (1:ONE_D\%N_LAYERS) Min diffusivity of all matls in layer (m2/s)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: RHO_C_S             !< Solid density times specific heat (J/m3/K)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: K_S                 !< Solid conductivity (W/m/K)
+   REAL(EB), ALLOCATABLE, DIMENSION(:) :: K_S_X               !< X-axis Solid conductivity (W/m/K)
+   REAL(EB), ALLOCATABLE, DIMENSION(:) :: K_S_Y               !< Y-axis Solid conductivity (W/m/K)
+   REAL(EB), ALLOCATABLE, DIMENSION(:) :: K_S_Z               !< Z-axis Solid conductivity (W/m/K)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: DDSUM               !< Scaling factor to get minimum cell size
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: SMALLEST_CELL_SIZE  !< Minimum cell size (m)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: PART_MASS           !< Accumulated mass of particles waiting to be injected (kg/m2)
@@ -762,10 +765,16 @@ TYPE MATERIAL_TYPE
    INTEGER :: PYROLYSIS_MODEL                           !< Type of pyrolysis model (SOLID, LIQUID, VEGETATION)
    CHARACTER(LABEL_LENGTH) :: ID                        !< Identifier
    CHARACTER(LABEL_LENGTH) :: RAMP_K_S                  !< Name of RAMP for thermal conductivity of solid
+   CHARACTER(LABEL_LENGTH) :: RAMP_K_S_X                !< Name of RAMP for x-axis thermal conductivity of solid
+   CHARACTER(LABEL_LENGTH) :: RAMP_K_S_Y                !< Name of RAMP for y-axis thermal conductivity of solid
+   CHARACTER(LABEL_LENGTH) :: RAMP_K_S_Z                !< Name of RAMP for z-axis thermal conductivity of solid
    CHARACTER(LABEL_LENGTH) :: RAMP_C_S                  !< Name of RAMP for specific heat of solid
    INTEGER :: N_REACTIONS                               !< Number of solid phase reactions
    INTEGER :: PROP_INDEX=-1
    INTEGER :: I_RAMP_K_S=-1                             !< Index of conductivity RAMP
+   INTEGER :: I_RAMP_K_S_X=-1                           !< Index of x-axis conductivity RAMP
+   INTEGER :: I_RAMP_K_S_Y=-1                           !< Index of y-axis conductivity RAMP
+   INTEGER :: I_RAMP_K_S_Z=-1                           !< Index of z-axis conductivity RAMP
    INTEGER :: I_RAMP_C_S=-1                             !< Index of specific heat RAMP
    INTEGER, ALLOCATABLE, DIMENSION(:) :: N_RESIDUE      !< Number of residue materials
    INTEGER, ALLOCATABLE, DIMENSION(:) :: N_LPC         !< Number of particle classes
@@ -792,6 +801,9 @@ TYPE MATERIAL_TYPE
    REAL(EB), ALLOCATABLE, DIMENSION(:,:) :: H_R         !< Heat of Reaction (J/kg)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: H             !< Material enthalpy as function of temperaure (J/kg)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: K_S           !< Material conductivity as function of temperaure (W/m/K)
+   REAL(EB), ALLOCATABLE, DIMENSION(:) :: K_S_X         !< Material x-axis conductivity as function of temperaure (W/m/K)
+   REAL(EB), ALLOCATABLE, DIMENSION(:) :: K_S_Y         !< Material y-axis conductivity as function of temperaure (W/m/K)
+   REAL(EB), ALLOCATABLE, DIMENSION(:) :: K_S_Z         !< Material z-axis conductivity as function of temperaure (W/m/K)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: C_S           !< Material specific heat as function of temperaure (J/kg/K)
    REAL(EB), DIMENSION(MAX_SPECIES,MAX_REACTIONS) :: NU_SPEC             !< Yield of gas species from a particular reaction
    REAL(EB), DIMENSION(MAX_SPECIES,MAX_REACTIONS) :: HEAT_OF_COMBUSTION  !< Heat of combustion of evaporated material
