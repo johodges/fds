@@ -214,9 +214,6 @@ TYPE BOUNDARY_ONE_D_TYPE
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: MIN_DIFFUSIVITY     !< (1:ONE_D\%N_LAYERS) Min diffusivity of all matls in layer (m2/s)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: RHO_C_S             !< Solid density times specific heat (J/m3/K)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: K_S                 !< Solid conductivity (W/m/K)
-   REAL(EB), ALLOCATABLE, DIMENSION(:) :: K_S_X               !< X-axis Solid conductivity (W/m/K)
-   REAL(EB), ALLOCATABLE, DIMENSION(:) :: K_S_Y               !< Y-axis Solid conductivity (W/m/K)
-   REAL(EB), ALLOCATABLE, DIMENSION(:) :: K_S_Z               !< Z-axis Solid conductivity (W/m/K)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: DDSUM               !< Scaling factor to get minimum cell size
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: SMALLEST_CELL_SIZE  !< Minimum cell size (m)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: PART_MASS           !< Accumulated mass of particles waiting to be injected (kg/m2)
