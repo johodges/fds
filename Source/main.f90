@@ -194,6 +194,7 @@ IF (READ_EXTERNAL) THEN
    ALLOCATE(EXTERNAL_CTRL(N_CTRL))
    EXTERNAL_CTRL = CONTROL%INITIAL_STATE
    LU_EXTERNAL  = GET_FILE_NUMBER()
+   IF (DT_EXTERNAL_HEARTBEAT > 0._EB) LU_EXTERNAL_HEARTBEAT = GET_FILE_NUMBER()
 ENDIF
 
 ! Allocate and initialize mesh-specific variables, and check to see if the code should stop
@@ -597,12 +598,13 @@ MAIN_LOOP: DO
    PREDICTOR = .TRUE.
    CORRECTOR = .FALSE.
 
-   ! Process externall controlled variables
+   ! Process externally controlled variables
    IF (READ_EXTERNAL) THEN
       IF (MY_RANK==0 .AND. T > T_EXTERNAL) THEN
          CALL READ_EXTERNAL_FILE(EXTERNAL_FAIL)
          IF (.NOT. EXTERNAL_FAIL) T_EXTERNAL = T + DT_EXTERNAL
       ENDIF
+      IF (HEARTBEAT_FAIL) CALL STOP_CHECK(1)
       CALL EXCHANGE_EXTERNAL
    ENDIF
    ! Begin the finite differencing of the PREDICTOR step
@@ -1049,7 +1051,7 @@ END SUBROUTINE CHECK_MPI
 SUBROUTINE MPI_INITIALIZATION_CHORES(TASK_NUMBER)
 
 INTEGER, INTENT(IN) :: TASK_NUMBER
-TYPE (MPI_REQUEST), ALLOCATABLE, DIMENSION(:) :: REQ0
+TYPE (MPI_REQUEST), ALLOCATABLE, DIMENSION(:) :: REQ0,REQ0DUM
 TYPE (MPI_GROUP) :: GROUP_WORLD,SUBGROUP
 INTEGER :: N_REQ0,SNODE,MEMBERS(0:NMESHES-1),NN,NOM,N_COMMUNICATIONS
 CHARACTER(50) :: DUMMY_STRING
@@ -1232,13 +1234,18 @@ SELECT CASE(TASK_NUMBER)
 
       IF (N_MPI_PROCESSES>1) THEN
 
-         ALLOCATE(REQ0(NMESHES**2)) ; N_REQ0 = 0
+         ALLOCATE(REQ0(NMESHES)) ; N_REQ0 = 0
 
          DO NM=1,NMESHES
             DO NOM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
                IF (PROCESS(NM)/=MY_RANK .AND. MESHES(NOM)%CONNECTED_MESH(NM)) THEN
                   M2 => MESHES(NOM)%OMESH(NM)
                   N_REQ0 = N_REQ0 + 1
+                  IF(N_REQ0>SIZE(REQ0,DIM=1)) THEN
+                     ALLOCATE(REQ0DUM(SIZE(REQ0,DIM=1)+NMESHES))
+                     REQ0DUM(1:N_REQ0-1) = REQ0(1:N_REQ0-1)
+                     CALL MOVE_ALLOC(REQ0DUM,REQ0)
+                  ENDIF
                   CALL MPI_IRECV(M2%INTEGER_RECV_BUFFER(1),7,MPI_INTEGER,PROCESS(NM),NM,MPI_COMM_WORLD,REQ0(N_REQ0),IERR)
                ENDIF
             ENDDO
@@ -1268,6 +1275,11 @@ SELECT CASE(TASK_NUMBER)
                M3%INTEGER_SEND_BUFFER(6) = M3%K_MAX_R
                M3%INTEGER_SEND_BUFFER(7) = M3%NIC_R
                N_REQ0 = N_REQ0 + 1
+               IF(N_REQ0>SIZE(REQ0,DIM=1)) THEN
+                  ALLOCATE(REQ0DUM(SIZE(REQ0,DIM=1)+NMESHES))
+                  REQ0DUM(1:N_REQ0-1) = REQ0(1:N_REQ0-1)
+                  CALL MOVE_ALLOC(REQ0DUM,REQ0)
+               ENDIF
                CALL MPI_ISEND(M3%INTEGER_SEND_BUFFER(1),7,MPI_INTEGER,PROCESS(NOM),NM,MPI_COMM_WORLD,REQ0(N_REQ0),IERR)
             ELSE
                M2 => MESHES(NOM)%OMESH(NM)
@@ -1752,7 +1764,9 @@ IF (MY_RANK==0) THEN
       CASE(REALIZABILITY_STOP)
          WRITE(MESSAGE,'(A)') 'ERROR: Unrealizable mass density - FDS stopped'
       CASE(ODE_STOP)
-         WRITE(MESSAGE,'(A)') 'ERROR: Combustion ODE Solver Failure - FDS stopped'
+         WRITE(MESSAGE,'(A)') 'ERROR: Combustion ODE solver failure - FDS stopped'
+      CASE(HEARTBEAT_STOP)
+         WRITE(MESSAGE,'(A)') 'ERROR: External program failure - FDS stopped'
       CASE DEFAULT
          WRITE(MESSAGE,'(A)') 'null'
    END SELECT
