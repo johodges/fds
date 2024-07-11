@@ -2720,7 +2720,7 @@ DO N=1,N_TRACKED_SPECIES
    WRITE(LU_OUTPUT,'(A,ES10.3)')  '                                 1500 K: ', D_Z(1500,N)
    WRITE(LU_OUTPUT,'(A,ES10.3)')  '                                 2000 K: ', D_Z(2000,N)
    IF (SM%EXPLICIT_G_F) THEN
-      WRITE(LU_OUTPUT,'(A,I4,A,ES10.3)')  ' Gibbs Energy Amb. (kJ/mol), ',ITMP,' K: ', G_F_Z(ITMP,N)
+      WRITE(LU_OUTPUT,'(A,I4,A,ES10.3)')  '     Gibbs Energy Amb. (kJ/mol), ',ITMP,' K: ', G_F_Z(ITMP,N)
       WRITE(LU_OUTPUT,'(A,ES10.3)') '                                  500 K: ', G_F_Z( 500,N)
       WRITE(LU_OUTPUT,'(A,ES10.3)') '                                 1000 K: ', G_F_Z(1000,N)
       WRITE(LU_OUTPUT,'(A,ES10.3)') '                                 1500 K: ', G_F_Z(1500,N)
@@ -7087,9 +7087,9 @@ IND_SELECT: SELECT CASE(IND)
          CASE(3)
             SGN = SIGN(1._EB,W(II,JJ,KK))*SIGN(1,VELO_INDEX)
       END SELECT
-      GAS_PHASE_OUTPUT_RES = SGN*SQRT(0.25_EB*((U(II-1,JJ,KK)+U(II,JJ,KK))**2+&
-                                               (V(II,JJ-1,KK)+V(II,JJ,KK))**2+&
-                                               (W(II,JJ,KK-1)+W(II,JJ,KK))**2))
+      GAS_PHASE_OUTPUT_RES = SGN*SQRT(0.25_EB*((U(MAX(0,II-1),JJ,KK)+U(MIN(IBAR,II),JJ,KK))**2+&
+                                               (V(II,MAX(0,JJ-1),KK)+V(II,MIN(JBAR,JJ),KK))**2+&
+                                               (W(II,JJ,MAX(0,KK-1))+W(II,JJ,MIN(KBAR,KK)))**2))
    CASE(11)  ! HRRPUV
       GAS_PHASE_OUTPUT_RES = Q(II,JJ,KK)*0.001_EB
    CASE(12)  ! H
