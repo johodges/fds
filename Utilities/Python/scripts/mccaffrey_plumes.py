@@ -127,7 +127,7 @@ def getModelData(Q, resolution, quantity, x, z):
     return model_data, version_string
 
 if __name__ == "__main__":
-    resolutions = [0.050, 0.025, 0.012]
+    resolutions = [0.050, 0.025]
     
     pltdir = '../../../Manuals/FDS_Validation_Guide/SCRIPT_FIGURES/McCaffrey_Plume/'
     isDir = os.path.isdir(pltdir)
