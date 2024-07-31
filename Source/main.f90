@@ -416,6 +416,7 @@ ENDIF
 ! Initialize output clocks
 
 CALL INITIALIZE_OUTPUT_CLOCKS(T)
+CALL STOP_CHECK(SETUP_STOP)
 
 ! Initialize output files that are mesh-specific
 
@@ -1750,6 +1751,8 @@ IF (MY_RANK==0) THEN
          WRITE(MESSAGE,'(A)') 'STOP: FDS performed a level set analysis only and finished successfully'
       CASE(REALIZABILITY_STOP)
          WRITE(MESSAGE,'(A)') 'ERROR: Unrealizable mass density - FDS stopped'
+      CASE(ODE_STOP)
+         WRITE(MESSAGE,'(A)') 'ERROR: Combustion ODE Solver Failure - FDS stopped'
       CASE DEFAULT
          WRITE(MESSAGE,'(A)') 'null'
    END SELECT
@@ -1793,6 +1796,7 @@ SUBROUTINE EXCHANGE_DIVERGENCE_INFO
 
 INTEGER :: IPZ,IOPZ,IOPZ2
 REAL(EB) :: TNOW
+LOGICAL :: NEW_CONNECTION
 
 TNOW = CURRENT_TIME()
 
@@ -1836,16 +1840,23 @@ ENDDO
 ! Connect zones to others which are not directly connected
 
 DO NM=1,NMESHES
-   DO IPZ=1,N_ZONE
-      DO IOPZ=1,N_ZONE
-         IF (IOPZ==IPZ) CYCLE
-         IF (CONNECTED_ZONES(IPZ,IOPZ,NM)) THEN
-            DO IOPZ2=0,N_ZONE
-               IF (IOPZ==IOPZ2) CYCLE
-               IF (CONNECTED_ZONES(IOPZ,IOPZ2,NM)) CONNECTED_ZONES(IPZ,IOPZ2,NM) = .TRUE.
-               IF (CONNECTED_ZONES(IOPZ,IOPZ2,NM)) CONNECTED_ZONES(IOPZ2,IPZ,NM) = .TRUE.
-            ENDDO
-         ENDIF
+   NEW_CONNECTION = .TRUE.
+   DO WHILE (NEW_CONNECTION)
+      NEW_CONNECTION = .FALSE.
+      DO IPZ=1,N_ZONE
+         DO IOPZ=1,N_ZONE
+            IF (IOPZ==IPZ) CYCLE
+            IF (CONNECTED_ZONES(IPZ,IOPZ,NM)) THEN
+               DO IOPZ2=0,N_ZONE
+                  IF (IOPZ==IOPZ2) CYCLE
+                  IF (CONNECTED_ZONES(IOPZ,IOPZ2,NM)) THEN
+                     IF (.NOT.CONNECTED_ZONES(IPZ,IOPZ2,NM)) NEW_CONNECTION = .TRUE.
+                     CONNECTED_ZONES(IPZ,IOPZ2,NM) = .TRUE.
+                     CONNECTED_ZONES(IOPZ2,IPZ,NM) = .TRUE.
+                  ENDIF
+               ENDDO
+            ENDIF
+         ENDDO
       ENDDO
    ENDDO
 ENDDO
@@ -2140,10 +2151,6 @@ ENDDO
 DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
    CALL ADJUST_HT3D_WALL_CELLS(NM)
 ENDDO
-
-! Allocate arrays that are used in the 1-D or 3-D heat conduction routine
-
-CALL ALLOCATE_HT1D_UTILITY_ARRAYS
 
 ! Current mesh sends to neighboring meshes the number of WALL and THIN_WALL cells that it expects to be SENT
 
@@ -3533,10 +3540,11 @@ RECV_MESH_LOOP: DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
             LP => M%LAGRANGIAN_PARTICLE(IP)
             CALL PACK_PARTICLE(NM,OS,LP,IPC,RC,IC,LC,UNPACK_IT=.TRUE.,COUNT_ONLY=.FALSE.)
             LP%WALL_INDEX  = 0  ! If the droplet was stuck to a wall, unstick it when it arrives in the new mesh
-            LP%CFACE_INDEX = 0
+            IF(LP%CFACE_INDEX/=EXTERNAL_CFACE) LP%CFACE_INDEX = 0
             BC=>M%BOUNDARY_COORD(LP%BC_INDEX)
             CALL GET_IJK(BC%X,BC%Y,BC%Z,NM,XI,YJ,ZK,BC%IIG,BC%JJG,BC%KKG)
             BC%II=BC%IIG ; BC%JJ=BC%JJG ; BC%KK=BC%KKG
+            CALL GET_RVC(NM,BC%IIG,BC%JJG,BC%KKG,LP%RVC)
             IF (LP%INIT_INDEX>0) THEN
                DO NN=1,N_DEVC
                   IF (DEVICE(NN)%INIT_ID==INITIALIZATION(LP%INIT_INDEX)%ID .AND. DEVICE(NN)%INIT_ID/='null') THEN
@@ -3660,9 +3668,9 @@ CHARACTER(30) :: FRMT
 
 ! T_USED(1) is the time spent in the main routine; i.e. the time not spent in a subroutine.
 
-T_USED(1) = CURRENT_TIME() - T_USED(1) - SUM(T_USED(2:N_TIMERS))
+T_USED(1) = CURRENT_TIME() - T_USED(1) - SUM(T_USED(2:N_TIMERS-1))
 WRITE(FRMT,'(A,I2.2,A)') '(I5,',N_TIMERS+1,'(",",ES10.3))'
-WRITE(LINE,FRMT) MY_RANK,(T_USED(I),I=1,N_TIMERS),SUM(T_USED(1:N_TIMERS))
+WRITE(LINE,FRMT) MY_RANK,(T_USED(I),I=1,N_TIMERS),SUM(T_USED(1:N_TIMERS-1))
 
 ! All MPI processes except root send their timings to the root process. The root process then writes them out to a file.
 
@@ -3675,7 +3683,7 @@ ELSE
    ENDDO
    FN_CPU = TRIM(CHID)//'_cpu.csv'
    OPEN(LU_CPU,FILE=FN_CPU,STATUS='REPLACE',FORM='FORMATTED')
-   WRITE(LU_CPU,'(A)') 'Rank,MAIN,DIVG,MASS,VELO,PRES,WALL,DUMP,PART,RADI,FIRE,COMM,BLNK,HVAC,GEOM,VEGE,Total T_USED (s)'
+   WRITE(LU_CPU,'(A)') 'Rank,MAIN,DIVG,MASS,VELO,PRES,WALL,DUMP,PART,RADI,FIRE,COMM,BLNK,HVAC,GEOM,VEGE,CHEM,Total T_USED (s)'
    DO N=0,N_MPI_PROCESSES-1
       WRITE(LU_CPU,'(A)') LINE_ARRAY(N)
    ENDDO
