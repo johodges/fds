@@ -194,6 +194,7 @@ IF (READ_EXTERNAL) THEN
    ALLOCATE(EXTERNAL_CTRL(N_CTRL))
    EXTERNAL_CTRL = CONTROL%INITIAL_STATE
    LU_EXTERNAL  = GET_FILE_NUMBER()
+   IF (DT_EXTERNAL_HEARTBEAT > 0._EB) LU_EXTERNAL_HEARTBEAT = GET_FILE_NUMBER()
 ENDIF
 
 ! Allocate and initialize mesh-specific variables, and check to see if the code should stop
@@ -407,7 +408,7 @@ IF (RESTART) THEN
    ENDDO
    IF (ABS(T-T_END)<TWO_EPSILON_EB) THEN
       STOP_STATUS = SETUP_STOP
-      IF (MY_RANK==0) WRITE(LU_ERR,*) 'ERROR: RESTART initial time equals T_END'
+      IF (MY_RANK==0) WRITE(LU_ERR,*) 'ERROR(1051): RESTART initial time equals T_END.'
    ENDIF
    IF (CC_IBM) CALL INIT_CUTCELL_DATA(T,DT,FIRST_CALL=.FALSE.)  ! Init centroid data (rho,zz) on cut-cells and cut-faces.
    CALL STOP_CHECK(1)
@@ -416,6 +417,7 @@ ENDIF
 ! Initialize output clocks
 
 CALL INITIALIZE_OUTPUT_CLOCKS(T)
+CALL STOP_CHECK(SETUP_STOP)
 
 ! Initialize output files that are mesh-specific
 
@@ -473,12 +475,18 @@ CALL STOP_CHECK(1)
 
 ! Check to see if only a TGA analysis is to be performed
 
-IF (TGA_SURF_INDEX>0) THEN
-   IF (MY_RANK==0) CALL TGA_ANALYSIS
-   IF (MY_RANK==0) CALL INITIALIZE_DIAGNOSTIC_FILE(DT)
-   STOP_STATUS = TGA_ANALYSIS_STOP
+TGA_IF: IF (TGA_SURF_INDEX>0) THEN
+   CALL MPI_ALLREDUCE(MPI_IN_PLACE,TGA_MESH_INDEX,INTEGER_ONE,MPI_INTEGER,MPI_MIN,MPI_COMM_WORLD,IERR)
+   IF (TGA_MESH_INDEX>NMESHES) THEN
+      IF (MY_RANK==0) WRITE(LU_ERR,'(3A)') 'ERROR(299): SURF ',TRIM(SURFACE(TGA_SURF_INDEX)%ID),' has no solid or particle for TGA.'
+      STOP_STATUS = SETUP_STOP
+   ELSE
+      IF (MY_RANK==PROCESS(TGA_MESH_INDEX)) CALL TGA_ANALYSIS(TGA_MESH_INDEX)
+      IF (MY_RANK==0) CALL INITIALIZE_DIAGNOSTIC_FILE(DT)
+      STOP_STATUS = TGA_ANALYSIS_STOP
+   ENDIF
    CALL STOP_CHECK(1)
-ENDIF
+ENDIF TGA_IF
 
 ! Initialize output files containing global data (Master Node Only)
 
@@ -568,7 +576,8 @@ MAIN_LOOP: DO
 
    ! Check for program stops
 
-   INQUIRE(FILE=FN_STOP,EXIST=EX)
+   IF(MY_RANK==0) INQUIRE(FILE=FN_STOP,EXIST=EX)
+   IF(N_MPI_PROCESSES>1) CALL MPI_BCAST(EX,1,MPI_LOGICAL,0,MPI_COMM_WORLD,IERR)
    IF (EX .AND. ICYC>=STOP_AT_ITER) THEN
       IF (VERBOSE .AND. STOP_STATUS/=USER_STOP) WRITE(LU_ERR,'(A,I5)') ' STOP file detected, MPI Process =',MY_RANK
       STOP_STATUS = USER_STOP
@@ -586,7 +595,7 @@ MAIN_LOOP: DO
    ! Determine when to dump out diagnostics to the .out file
 
    LO10 = INT(LOG10(REAL(MAX(1,ABS(ICYC)),EB)))
-   IF (MOD(ICYC,10**LO10)==0 .OR. MOD(ICYC,100)==0 .OR. (T+DT)>=T_END) DIAGNOSTICS = .TRUE.
+   IF (MOD(ICYC,10**LO10)==0 .OR. MOD(ICYC,DIAGNOSTICS_INTERVAL)==0 .OR. (T+DT)>=T_END) DIAGNOSTICS = .TRUE.
 
    !================================================================================================================================
    !                                           Start of Predictor part of time step
@@ -595,12 +604,13 @@ MAIN_LOOP: DO
    PREDICTOR = .TRUE.
    CORRECTOR = .FALSE.
 
-   ! Process externall controlled variables
+   ! Process externally controlled variables
    IF (READ_EXTERNAL) THEN
       IF (MY_RANK==0 .AND. T > T_EXTERNAL) THEN
          CALL READ_EXTERNAL_FILE(EXTERNAL_FAIL)
          IF (.NOT. EXTERNAL_FAIL) T_EXTERNAL = T + DT_EXTERNAL
       ENDIF
+      IF (HEARTBEAT_FAIL) CALL STOP_CHECK(1)
       CALL EXCHANGE_EXTERNAL
    ENDIF
    ! Begin the finite differencing of the PREDICTOR step
@@ -1047,7 +1057,7 @@ END SUBROUTINE CHECK_MPI
 SUBROUTINE MPI_INITIALIZATION_CHORES(TASK_NUMBER)
 
 INTEGER, INTENT(IN) :: TASK_NUMBER
-TYPE (MPI_REQUEST), ALLOCATABLE, DIMENSION(:) :: REQ0
+TYPE (MPI_REQUEST), ALLOCATABLE, DIMENSION(:) :: REQ0,REQ0DUM
 TYPE (MPI_GROUP) :: GROUP_WORLD,SUBGROUP
 INTEGER :: N_REQ0,SNODE,MEMBERS(0:NMESHES-1),NN,NOM,N_COMMUNICATIONS
 CHARACTER(50) :: DUMMY_STRING
@@ -1230,13 +1240,18 @@ SELECT CASE(TASK_NUMBER)
 
       IF (N_MPI_PROCESSES>1) THEN
 
-         ALLOCATE(REQ0(NMESHES**2)) ; N_REQ0 = 0
+         ALLOCATE(REQ0(NMESHES)) ; N_REQ0 = 0
 
          DO NM=1,NMESHES
             DO NOM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
                IF (PROCESS(NM)/=MY_RANK .AND. MESHES(NOM)%CONNECTED_MESH(NM)) THEN
                   M2 => MESHES(NOM)%OMESH(NM)
                   N_REQ0 = N_REQ0 + 1
+                  IF(N_REQ0>SIZE(REQ0,DIM=1)) THEN
+                     ALLOCATE(REQ0DUM(SIZE(REQ0,DIM=1)+NMESHES))
+                     REQ0DUM(1:N_REQ0-1) = REQ0(1:N_REQ0-1)
+                     CALL MOVE_ALLOC(REQ0DUM,REQ0)
+                  ENDIF
                   CALL MPI_IRECV(M2%INTEGER_RECV_BUFFER(1),7,MPI_INTEGER,PROCESS(NM),NM,MPI_COMM_WORLD,REQ0(N_REQ0),IERR)
                ENDIF
             ENDDO
@@ -1266,6 +1281,11 @@ SELECT CASE(TASK_NUMBER)
                M3%INTEGER_SEND_BUFFER(6) = M3%K_MAX_R
                M3%INTEGER_SEND_BUFFER(7) = M3%NIC_R
                N_REQ0 = N_REQ0 + 1
+               IF(N_REQ0>SIZE(REQ0,DIM=1)) THEN
+                  ALLOCATE(REQ0DUM(SIZE(REQ0,DIM=1)+NMESHES))
+                  REQ0DUM(1:N_REQ0-1) = REQ0(1:N_REQ0-1)
+                  CALL MOVE_ALLOC(REQ0DUM,REQ0)
+               ENDIF
                CALL MPI_ISEND(M3%INTEGER_SEND_BUFFER(1),7,MPI_INTEGER,PROCESS(NOM),NM,MPI_COMM_WORLD,REQ0(N_REQ0),IERR)
             ELSE
                M2 => MESHES(NOM)%OMESH(NM)
@@ -1734,7 +1754,7 @@ IF (MY_RANK==0) THEN
          WRITE(MESSAGE,'(A)') 'STOP: FDS completed successfully'
          IF (STATUS_FILES) CLOSE(LU_NOTREADY,STATUS='DELETE')
       CASE(INSTABILITY_STOP)
-         WRITE(MESSAGE,'(A)') 'ERROR: Numerical Instability - FDS stopped'
+         WRITE(MESSAGE,'(A)') 'ERROR(374): Numerical Instability - FDS stopped'
       CASE(USER_STOP)
          WRITE(MESSAGE,'(A)') 'STOP: FDS stopped by user'
       CASE(SETUP_STOP)
@@ -1749,6 +1769,10 @@ IF (MY_RANK==0) THEN
          WRITE(MESSAGE,'(A)') 'STOP: FDS performed a level set analysis only and finished successfully'
       CASE(REALIZABILITY_STOP)
          WRITE(MESSAGE,'(A)') 'ERROR: Unrealizable mass density - FDS stopped'
+      CASE(ODE_STOP)
+         WRITE(MESSAGE,'(A)') 'ERROR: Combustion ODE solver failure - FDS stopped'
+      CASE(HEARTBEAT_STOP)
+         WRITE(MESSAGE,'(A)') 'ERROR: External program failure - FDS stopped'
       CASE DEFAULT
          WRITE(MESSAGE,'(A)') 'null'
    END SELECT
@@ -1792,6 +1816,7 @@ SUBROUTINE EXCHANGE_DIVERGENCE_INFO
 
 INTEGER :: IPZ,IOPZ,IOPZ2
 REAL(EB) :: TNOW
+LOGICAL :: NEW_CONNECTION
 
 TNOW = CURRENT_TIME()
 
@@ -1835,16 +1860,23 @@ ENDDO
 ! Connect zones to others which are not directly connected
 
 DO NM=1,NMESHES
-   DO IPZ=1,N_ZONE
-      DO IOPZ=1,N_ZONE
-         IF (IOPZ==IPZ) CYCLE
-         IF (CONNECTED_ZONES(IPZ,IOPZ,NM)) THEN
-            DO IOPZ2=0,N_ZONE
-               IF (IOPZ==IOPZ2) CYCLE
-               IF (CONNECTED_ZONES(IOPZ,IOPZ2,NM)) CONNECTED_ZONES(IPZ,IOPZ2,NM) = .TRUE.
-               IF (CONNECTED_ZONES(IOPZ,IOPZ2,NM)) CONNECTED_ZONES(IOPZ2,IPZ,NM) = .TRUE.
-            ENDDO
-         ENDIF
+   NEW_CONNECTION = .TRUE.
+   DO WHILE (NEW_CONNECTION)
+      NEW_CONNECTION = .FALSE.
+      DO IPZ=1,N_ZONE
+         DO IOPZ=1,N_ZONE
+            IF (IOPZ==IPZ) CYCLE
+            IF (CONNECTED_ZONES(IPZ,IOPZ,NM)) THEN
+               DO IOPZ2=0,N_ZONE
+                  IF (IOPZ==IOPZ2) CYCLE
+                  IF (CONNECTED_ZONES(IOPZ,IOPZ2,NM)) THEN
+                     IF (.NOT.CONNECTED_ZONES(IPZ,IOPZ2,NM)) NEW_CONNECTION = .TRUE.
+                     CONNECTED_ZONES(IPZ,IOPZ2,NM) = .TRUE.
+                     CONNECTED_ZONES(IOPZ2,IPZ,NM) = .TRUE.
+                  ENDIF
+               ENDDO
+            ENDIF
+         ENDDO
       ENDDO
    ENDDO
 ENDDO
@@ -1962,11 +1994,11 @@ OTHER_MESH_LOOP: DO NOM=1,NMESHES
 
    ENDIF
 
-   ! For PERIODIC boundaries with 1 or 2 meshes, we must revert to allocating whole copies of OMESH
+   ! For a single mesh with PERIODIC boundaries, allocate the entire OMESH array
 
-   IF (IMIN>IMAX) THEN; IMIN=0; IMAX=M2%IBP1; ENDIF
-   IF (JMIN>JMAX) THEN; JMIN=0; JMAX=M2%JBP1; ENDIF
-   IF (KMIN>KMAX) THEN; KMIN=0; KMAX=M2%KBP1; ENDIF
+   IF (IMIN>IMAX .OR. NM==NOM) THEN ; IMIN=0 ; IMAX=M2%IBP1 ; ENDIF
+   IF (JMIN>JMAX .OR. NM==NOM) THEN ; JMIN=0 ; JMAX=M2%JBP1 ; ENDIF
+   IF (KMIN>KMAX .OR. NM==NOM) THEN ; KMIN=0 ; KMAX=M2%KBP1 ; ENDIF
 
    ! Embedded meshes. This is the case where mesh NOM is completely inside mesh NM. Mesh NM cannot "see" mesh NOM because mesh NOM
    ! is not connected at the external boundary of mesh NM. The variable CONNECTED_MESH is needed to save this information.
@@ -2123,7 +2155,7 @@ END SUBROUTINE INITIALIZE_RADIATION_EXCHANGE
 
 SUBROUTINE INITIALIZE_BACK_WALL_EXCHANGE
 
-INTEGER :: NOM,IW
+INTEGER :: NOM,IW,ITW
 TYPE(WALL_TYPE), POINTER :: WC
 TYPE(THIN_WALL_TYPE), POINTER :: TW
 TYPE(STORAGE_TYPE), POINTER :: OS
@@ -2139,10 +2171,6 @@ ENDDO
 DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
    CALL ADJUST_HT3D_WALL_CELLS(NM)
 ENDDO
-
-! Allocate arrays that are used in the 1-D or 3-D heat conduction routine
-
-CALL ALLOCATE_HT1D_UTILITY_ARRAYS
 
 ! Current mesh sends to neighboring meshes the number of WALL and THIN_WALL cells that it expects to be SENT
 
@@ -2170,7 +2198,7 @@ ENDDO
 CALL POST_RECEIVES(9)
 CALL MESH_EXCHANGE(9)
 
-! Set up storage arrays for packing WALL variables during a RESTART.
+! Set up storage arrays for packing WALL and THIN_WALL variables during a RESTART.
 
 DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
    M => MESHES(NM)
@@ -2180,6 +2208,12 @@ DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
       OS%N_REALS_DIM    = MAX(OS%N_REALS_DIM,WC%N_REALS)
       OS%N_INTEGERS_DIM = MAX(OS%N_INTEGERS_DIM,WC%N_INTEGERS)
       OS%N_LOGICALS_DIM = MAX(OS%N_LOGICALS_DIM,WC%N_LOGICALS)
+   ENDDO
+   DO ITW=1,M%N_THIN_WALL_CELLS
+      TW => M%THIN_WALL(ITW)
+      OS%N_REALS_DIM    = MAX(OS%N_REALS_DIM,TW%N_REALS)
+      OS%N_INTEGERS_DIM = MAX(OS%N_INTEGERS_DIM,TW%N_INTEGERS)
+      OS%N_LOGICALS_DIM = MAX(OS%N_LOGICALS_DIM,TW%N_LOGICALS)
    ENDDO
    ALLOCATE(OS%REALS(OS%N_REALS_DIM))
    ALLOCATE(OS%INTEGERS(OS%N_INTEGERS_DIM))
@@ -2344,7 +2378,7 @@ MESH_LOOP_1: DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
       IF (NOM/=NM) CYCLE ZONE_LOOP
       CALL ASSIGN_PRESSURE_ZONE(NM,I,J,K,N,N_OVERLAP)
       IF (N_OVERLAP>0) THEN
-         WRITE(LU_ERR,'(A,I2,A,I2,A,I4)') 'ERROR: ZONE ',N,' overlaps ZONE ',N_OVERLAP,' in MESH ',NM
+         WRITE(LU_ERR,'(A,I2,A,I2,A,I4)') 'ERROR(872): ZONE ',N,' overlaps ZONE ',N_OVERLAP,' in MESH ',NM
          STOP_STATUS = SETUP_STOP
          EXIT MESH_LOOP_1
       ENDIF
@@ -2584,7 +2618,7 @@ DO WHILE (ANY(SETUP_PRESSURE_ZONES_INDEX==0))
          IF (WC%BOUNDARY_TYPE==OPEN_BOUNDARY .AND. M%PRESSURE_ZONE(IIG,JJG,KKG)<0) THEN
             CALL ASSIGN_PRESSURE_ZONE(NM,IIG,JJG,KKG,0,N_OVERLAP)
             IF (N_OVERLAP>=0) THEN
-               WRITE(LU_ERR,'(A,I2,A,I2,A,I4)') 'ERROR: ZONE ',0,' overlaps ZONE ',N_OVERLAP,' in MESH ',NM
+               WRITE(LU_ERR,'(A,I2,A,I2,A,I4)') 'ERROR(872): ZONE ',0,' overlaps ZONE ',N_OVERLAP,' in MESH ',NM
                STOP_STATUS = SETUP_STOP
                EXIT MESH_LOOP
             ENDIF
@@ -2597,7 +2631,7 @@ DO WHILE (ANY(SETUP_PRESSURE_ZONES_INDEX==0))
             OM => MESHES(NOM)
             IF (WC%BOUNDARY_TYPE==INTERPOLATED_BOUNDARY .AND. M%PRESSURE_ZONE(IIG,JJG,KKG)>=0 .AND. &
                OM%PRESSURE_ZONE(IIO,JJO,KKO)>=0 .AND. M%PRESSURE_ZONE(IIG,JJG,KKG)/=OM%PRESSURE_ZONE(IIO,JJO,KKO)) THEN
-               WRITE(LU_ERR,'(10(A,I0),A)') 'ERROR: ZONE ',OM%PRESSURE_ZONE(IIO,JJO,KKO),' meets ZONE ',&
+               WRITE(LU_ERR,'(10(A,I0),A)') 'ERROR(873): ZONE ',OM%PRESSURE_ZONE(IIO,JJO,KKO),' meets ZONE ',&
                   M%PRESSURE_ZONE(IIG,JJG,KKG),' at the boundary of MESH ',NOM,' (',IIO,',',JJO,',',KKO,') and MESH ',&
                   NM,' (',IIG,',',JJG,',',KKG,')'
                STOP_STATUS = SETUP_STOP
@@ -2608,7 +2642,7 @@ DO WHILE (ANY(SETUP_PRESSURE_ZONES_INDEX==0))
                CALL ASSIGN_PRESSURE_ZONE(NM,IIG,JJG,KKG,OM%PRESSURE_ZONE(IIO,JJO,KKO),N_OVERLAP)
                IF (N_OVERLAP>0) THEN
                   WRITE(LU_ERR,'(A,I0,A,I0,A,I0)') &
-                     'ERROR: ZONE ',OM%PRESSURE_ZONE(IIO,JJO,KKO),' overlaps ZONE ',N_OVERLAP,' in MESH ',NM
+                     'ERROR(872): ZONE ',OM%PRESSURE_ZONE(IIO,JJO,KKO),' overlaps ZONE ',N_OVERLAP,' in MESH ',NM
                   STOP_STATUS = SETUP_STOP
                   EXIT MESH_LOOP
                ENDIF
@@ -3174,11 +3208,11 @@ SENDING_MESH_LOOP: DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
 
       OS => M3%THIN_WALL_SEND_BUFFER
       IF (CODE==6 .AND. RNODE/=SNODE .AND. OS%N_ITEMS>0) THEN
-         RC=0 ; IC=0
+         RC=0 ; IC=0 ; LC=0
          DO I=1,OS%N_ITEMS
             IW = OS%ITEM_INDEX(I)
             TW => M%THIN_WALL(IW)
-            CALL PACK_THIN_WALL(NM,OS,TW,OS%SURF_INDEX(I),RC,IC,UNPACK_IT=.FALSE.,COUNT_ONLY=.FALSE.)
+            CALL PACK_THIN_WALL(NM,OS,TW,OS%SURF_INDEX(I),RC,IC,LC,UNPACK_IT=.FALSE.,COUNT_ONLY=.FALSE.)
          ENDDO
       ENDIF
 
@@ -3491,11 +3525,11 @@ RECV_MESH_LOOP: DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
 
       OS => M2%THIN_WALL_RECV_BUFFER
       RECEIVE_BACK_THIN_WALL: IF (CODE==6 .AND. SNODE/=RNODE .AND. OS%N_ITEMS>0) THEN
-         RC=0 ; IC=0
+         RC=0 ; IC=0 ; LC=0
          DO I=1,OS%N_ITEMS
             IW = OS%ITEM_INDEX(I)
             TW => MESHES(NOM)%THIN_WALL(IW)
-            CALL PACK_THIN_WALL(NOM,OS,TW,OS%SURF_INDEX(I),RC,IC,UNPACK_IT=.TRUE.,COUNT_ONLY=.FALSE.)
+            CALL PACK_THIN_WALL(NOM,OS,TW,OS%SURF_INDEX(I),RC,IC,LC,UNPACK_IT=.TRUE.,COUNT_ONLY=.FALSE.)
          ENDDO
       ENDIF RECEIVE_BACK_THIN_WALL
 
@@ -3526,10 +3560,11 @@ RECV_MESH_LOOP: DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
             LP => M%LAGRANGIAN_PARTICLE(IP)
             CALL PACK_PARTICLE(NM,OS,LP,IPC,RC,IC,LC,UNPACK_IT=.TRUE.,COUNT_ONLY=.FALSE.)
             LP%WALL_INDEX  = 0  ! If the droplet was stuck to a wall, unstick it when it arrives in the new mesh
-            LP%CFACE_INDEX = 0
+            IF(LP%CFACE_INDEX/=EXTERNAL_CFACE) LP%CFACE_INDEX = 0
             BC=>M%BOUNDARY_COORD(LP%BC_INDEX)
             CALL GET_IJK(BC%X,BC%Y,BC%Z,NM,XI,YJ,ZK,BC%IIG,BC%JJG,BC%KKG)
             BC%II=BC%IIG ; BC%JJ=BC%JJG ; BC%KK=BC%KKG
+            CALL GET_RVC(NM,BC%IIG,BC%JJG,BC%KKG,LP%RVC)
             IF (LP%INIT_INDEX>0) THEN
                DO NN=1,N_DEVC
                   IF (DEVICE(NN)%INIT_ID==INITIALIZATION(LP%INIT_INDEX)%ID .AND. DEVICE(NN)%INIT_ID/='null') THEN
@@ -3624,7 +3659,7 @@ IF (.NOT.PROFILING) THEN
       CALL MPI_TESTALL(NR,RR(1:NR),FLAG,MPI_STATUSES_IGNORE,IERR)
       WAIT_TIME = MPI_WTIME() - START_TIME
       IF (WAIT_TIME>MPI_TIMEOUT) THEN
-         WRITE(LU_ERR,'(/A,A,A,I0,A,A,A/)') 'ERROR: ',TRIM(RNAME),' timed out for MPI process ',MY_RANK,' running on ',&
+         WRITE(LU_ERR,'(/A,A,A,I0,A,A,A/)') 'ERROR(123): ',TRIM(RNAME),' timed out for MPI process ',MY_RANK,' running on ',&
                                             PNAME(1:PNAMELEN),'. FDS will abort.'
          ERRORCODE = 1
          CALL MPI_ABORT(MPI_COMM_WORLD,ERRORCODE,IERR)
@@ -3653,9 +3688,9 @@ CHARACTER(30) :: FRMT
 
 ! T_USED(1) is the time spent in the main routine; i.e. the time not spent in a subroutine.
 
-T_USED(1) = CURRENT_TIME() - T_USED(1) - SUM(T_USED(2:N_TIMERS))
+T_USED(1) = CURRENT_TIME() - T_USED(1) - SUM(T_USED(2:N_TIMERS-1))
 WRITE(FRMT,'(A,I2.2,A)') '(I5,',N_TIMERS+1,'(",",ES10.3))'
-WRITE(LINE,FRMT) MY_RANK,(T_USED(I),I=1,N_TIMERS),SUM(T_USED(1:N_TIMERS))
+WRITE(LINE,FRMT) MY_RANK,(T_USED(I),I=1,N_TIMERS),SUM(T_USED(1:N_TIMERS-1))
 
 ! All MPI processes except root send their timings to the root process. The root process then writes them out to a file.
 
@@ -3668,7 +3703,7 @@ ELSE
    ENDDO
    FN_CPU = TRIM(CHID)//'_cpu.csv'
    OPEN(LU_CPU,FILE=FN_CPU,STATUS='REPLACE',FORM='FORMATTED')
-   WRITE(LU_CPU,'(A)') 'Rank,MAIN,DIVG,MASS,VELO,PRES,WALL,DUMP,PART,RADI,FIRE,COMM,BLNK,HVAC,GEOM,VEGE,Total T_USED (s)'
+   WRITE(LU_CPU,'(A)') 'Rank,MAIN,DIVG,MASS,VELO,PRES,WALL,DUMP,PART,RADI,FIRE,COMM,BLNK,HVAC,GEOM,VEGE,CHEM,Total T_USED (s)'
    DO N=0,N_MPI_PROCESSES-1
       WRITE(LU_CPU,'(A)') LINE_ARRAY(N)
    ENDDO
@@ -3683,6 +3718,7 @@ END SUBROUTINE DUMP_TIMERS
 SUBROUTINE WRITE_STRINGS
 
 INTEGER :: N,NOM,N_STRINGS_DUM
+CHARACTER(:), ALLOCATABLE :: STRING_BUF
 CHARACTER(MESH_STRING_LENGTH), ALLOCATABLE, DIMENSION(:) :: STRING_DUM
 REAL(EB) :: TNOW
 LOGICAL :: WRITE_ALL
@@ -3694,8 +3730,18 @@ TNOW = CURRENT_TIME()
 DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
    IF (MY_RANK>0) THEN
       CALL MPI_SEND(MESHES(NM)%N_STRINGS,1,MPI_INTEGER,0,1,MPI_COMM_WORLD,IERR)
-      IF (MESHES(NM)%N_STRINGS>0) CALL MPI_SEND(MESHES(NM)%STRING(1),MESHES(NM)%N_STRINGS*MESH_STRING_LENGTH,MPI_CHARACTER,0,NM, &
-                                                MPI_COMM_WORLD,IERR)
+      IF (MESHES(NM)%N_STRINGS>0) THEN
+        ! Pack the strings:
+        ALLOCATE(CHARACTER(MESHES(NM)%N_STRINGS * MESH_STRING_LENGTH) :: &
+                 STRING_BUF)
+        DO N=1,MESHES(NM)%N_STRINGS
+          ASSOCIATE ( MST => MESH_STRING_LENGTH )
+          STRING_BUF ((N-1)*MST+1:N*MST) = MESHES(NM)%STRING(N)
+          END ASSOCIATE
+        END DO
+        CALL MPI_SEND(STRING_BUF,MESHES(NM)%N_STRINGS*MESH_STRING_LENGTH,MPI_CHARACTER,0,NM,MPI_COMM_WORLD,IERR)
+        DEALLOCATE(STRING_BUF)
+      ENDIF
    ENDIF
 ENDDO
 
@@ -3709,9 +3755,16 @@ IF (MY_RANK==0) THEN
       IF (PROCESS(NOM)>0) THEN
          CALL MPI_RECV(N_STRINGS_DUM,1,MPI_INTEGER,PROCESS(NOM),1,MPI_COMM_WORLD,STATUS,IERR)
          IF (N_STRINGS_DUM>0) THEN
+            ALLOCATE(CHARACTER(LEN=N_STRINGS_DUM*MESH_STRING_LENGTH) :: STRING_BUF )
+            CALL MPI_RECV(STRING_BUF,N_STRINGS_DUM*MESH_STRING_LENGTH,MPI_CHARACTER,PROCESS(NOM),NOM,MPI_COMM_WORLD,STATUS,IERR)
+            ! Unpack the strings:
             ALLOCATE(STRING_DUM(N_STRINGS_DUM))
-            CALL MPI_RECV(STRING_DUM(1),N_STRINGS_DUM*MESH_STRING_LENGTH, &
-            MPI_CHARACTER,PROCESS(NOM),NOM,MPI_COMM_WORLD,STATUS,IERR)
+            ASSOCIATE ( MST => MESH_STRING_LENGTH )
+            DO N=1,N_STRINGS_DUM
+              STRING_DUM(N) = STRING_BUF((N-1)*MST+1:N*MST)
+            END DO
+            END ASSOCIATE
+            DEALLOCATE (STRING_BUF)
          ENDIF
       ELSE
          N_STRINGS_DUM = MESHES(NOM)%N_STRINGS
