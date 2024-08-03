@@ -884,6 +884,10 @@ TYPE SURFACE_TYPE
    REAL(EB) :: NUSSELT_C1=-1._EB                       !< Re multiplier term for user defined HTC correlation
    REAL(EB) :: NUSSELT_C2=-1._EB                       !< Re adjustment before Pr multiplication for user defined HTC correlation
    REAL(EB) :: NUSSELT_M=-1._EB                        !< Re exponent for user defined HTC correlation
+   REAL(EB) :: NUSSELT_IMP_C0=-1._EB                   !< Constant term for user defined HTC correlation impingement
+   REAL(EB) :: NUSSELT_IMP_C1=-1._EB                   !< Re multiplier term for user defined HTC correlation impingement
+   REAL(EB) :: NUSSELT_IMP_C2=-1._EB       !< Re adjustment before Pr multiplication for user defined HTC correlation impingement
+   REAL(EB) :: NUSSELT_IMP_M=-1._EB                    !< Re exponent for user defined HTC correlation impingement
    REAL(EB) :: EMBER_IGNITION_POWER_MEAN=-1._EB
    REAL(EB) :: EMBER_IGNITION_POWER_SIGMA=0.001_EB
    REAL(EB) :: EMBER_TRACKING_RATIO=100._EB            !< Ratio of 'real' embers to Lagrangian particles (-)

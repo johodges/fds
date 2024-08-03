@@ -3431,10 +3431,10 @@ ELSE H_FIXED_IF
                ! Huang, G.C. : Investigations of Heat-Transfer Coefficients for Air Flow Through Round Jets Impinging
                ! Normal to a Heat-Transfer Surface. J. Heat Transfer, vol. 85, no. 3, Aug. 1963, pp. 237-245.
                RE = RHO_G*P1X%U_IMPACT*SFX%CONV_LENGTH2/MU_G
-               C0_IMP = 0.000_EB; IF (SFX%NUSSELT_C0>0._EB) THEN; C0_IMP = SFX%NUSSELT_C0; ENDIF
-               C1_IMP = 0.055_EB; IF (SFX%NUSSELT_C1>0._EB) THEN; C1_IMP = SFX%NUSSELT_C1; ENDIF
-               C2_IMP = 0.000_EB; IF (SFX%NUSSELT_C2>0._EB) THEN; C2_IMP = SFX%NUSSELT_C2; ENDIF
-               M_IMP  = 0.800_EB; IF (SFX%NUSSELT_M >0._EB) THEN; M_IMP  = SFX%NUSSELT_M ; ENDIF
+               C0_IMP = 0.000_EB; IF (SFX%NUSSELT_IMP_C0>0._EB) THEN; C0_IMP = SFX%NUSSELT_IMP_C0; ENDIF
+               C1_IMP = 0.055_EB; IF (SFX%NUSSELT_IMP_C1>0._EB) THEN; C1_IMP = SFX%NUSSELT_IMP_C1; ENDIF
+               C2_IMP = 0.000_EB; IF (SFX%NUSSELT_IMP_C2>0._EB) THEN; C2_IMP = SFX%NUSSELT_IMP_C2; ENDIF
+               M_IMP  = 0.800_EB; IF (SFX%NUSSELT_IMP_M >0._EB) THEN; M_IMP  = SFX%NUSSELT_IMP_M ; ENDIF
                NUSSELT_IMPINGE = C0_IMP + (C1_IMP*RE**M_IMP - C2_IMP) * PR_ONTH
             ENDIF
             IF (PRESENT(PARTICLE_INDEX_IN)) THEN
