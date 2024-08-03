@@ -1440,7 +1440,7 @@ IF (IN%ID/='null') THEN
 
    DO ND=1,N_DEVC
       DV => DEVICE(ND)
-      IF (IN%ID==DV%INIT_ID .AND. IP==DV%POINT) THEN
+      IF ((IN%ID==DV%INIT_ID .AND. IP==DV%POINT) .OR. DV%LP_TAG==PARTICLE_TAG) THEN
          IF (DV%LP_TAG>0 .AND. DV%LP_TAG/=PARTICLE_TAG) THEN
             WRITE(MESSAGE,'(A,A,A)') 'ERROR: INIT_ID on DEVC ',TRIM(DV%ID),' cannot have more than one particle'
             CALL SHUTDOWN(MESSAGE,PROCESS_0_ONLY=.FALSE.)
@@ -1461,7 +1461,7 @@ IF (IN%ID/='null') THEN
 
    DO ND=1,N_PROF
       PF => PROFILE(ND)
-      IF (IN%ID==PF%INIT_ID) THEN
+      IF (IN%ID==PF%INIT_ID .OR. PF%LP_TAG==PARTICLE_TAG) THEN
          IF (PF%LP_TAG>0 .AND. PF%LP_TAG/=PARTICLE_TAG) THEN
             WRITE(MESSAGE,'(A,A,A)') 'ERROR: INIT_ID on PROF ',TRIM(PF%ID),' cannot have more than one particle'
             CALL SHUTDOWN(MESSAGE,PROCESS_0_ONLY=.FALSE.)
@@ -1565,7 +1565,10 @@ B1 => MESHES(NM)%BOUNDARY_PROP1(LP%B1_INDEX)
 
 IF (LPC%SOLID_PARTICLE) THEN
 
-   IF (LPC%SURF_INDEX==TGA_SURF_INDEX) TGA_PARTICLE_INDEX = NLP
+   IF (LPC%SURF_INDEX==TGA_SURF_INDEX) THEN
+      TGA_PARTICLE_INDEX = NLP
+      TGA_MESH_INDEX = NM
+   ENDIF
 
    LP%MASS = 0._EB
    SCALE_FACTOR = 1._EB
@@ -1912,6 +1915,7 @@ PARTICLE_LOOP: DO IP=1,NLP
       ! HIT_SOLID indicates that it has.
 
       HIT_SOLID = .FALSE.
+      IW = 0
 
       ! Determine if the particle is near a CFACE, and if so, change its trajectory
 

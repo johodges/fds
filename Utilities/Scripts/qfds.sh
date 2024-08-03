@@ -341,10 +341,12 @@ stop_fds_if_requested
 
 if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
   QSUB="sbatch -p $queue"
-  if [ "$use_intel_mpi" == "1" ]; then
-     MPIRUN="srun --mpi=pmi2"
+  if [ "$USE_MPIRUN" == "" ]; then
+# use on blaze  note this if statement can be removed once blaze goes away
+     MPIRUN="srun --mpi=pmi2 "
   else
-     MPIRUN="srun "
+#  use on spark ( USE_MPIRUN variable is set to 1 in /etc/profile )
+     MPIRUN="mpirun "
   fi
 else
   QSUB="qsub -q $queue"
@@ -361,30 +363,40 @@ cat << EOF > $scriptfile
 EOF
 
 if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
+
 cat << EOF >> $scriptfile
 #SBATCH -J $JOBPREFIX$infile
 #SBATCH -e $outerr
 #SBATCH -o $outlog
 #SBATCH --partition=$queue
 #SBATCH --ntasks=$n_mpi_processes
-#SBATCH --nodes=$nodes
 #SBATCH --cpus-per-task=$n_openmp_threads
-#SBATCH --ntasks-per-node=$n_mpi_processes_per_node
 #SBATCH --time=$walltime
 EOF
+
+if [[ $n_openmp_threads -gt 1 ]] || [[ $max_mpi_processes_per_node -lt 1000 ]] ; then
+cat << EOF >> $scriptfile
+#SBATCH --nodes=$nodes
+#SBATCH --ntasks-per-node=$n_mpi_processes_per_node
+EOF
+fi
+
 if [ "$EMAIL" != "" ]; then
-    cat << EOF >> $scriptfile
+cat << EOF >> $scriptfile
 #SBATCH --mail-user=$EMAIL
 #SBATCH --mail-type=ALL
 EOF
 fi
+
 if [ "$benchmark" == "yes" ]; then
 cat << EOF >> $scriptfile
 #SBATCH --exclusive
 #SBATCH --cpu-freq=Performance
 EOF
 fi
+
 else # PBS/Torque
+
 cat << EOF >> $scriptfile
 #PBS -N $JOBPREFIX$infile
 #PBS -e $outerr
