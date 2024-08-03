@@ -861,6 +861,7 @@ TYPE SURFACE_TYPE
    REAL(EB) :: HM_FIXED=-1._EB                         ! Frontside mass transfer coefficient (m/s)
    REAL(EB) :: EMISSIVITY_BACK                         ! Backside emissivity
    REAL(EB) :: CONV_LENGTH                             ! Length used in heat transfer correlations
+   REAL(EB) :: CONV_LENGTH2                            ! Length used in impinging jet heat transfer correlations
    REAL(EB) :: XYZ(3)                                  ! Starting point for a spreading fire
    REAL(EB) :: FIRE_SPREAD_RATE                        ! Defines speed (m/s) of spread from XYZ
    REAL(EB) :: INNER_RADIUS=0._EB                      ! Inner radius when SURF GEOMETRY = CYLINDRICAL
