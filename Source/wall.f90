@@ -3430,12 +3430,14 @@ ELSE H_FIXED_IF
             IF (SFX%HEAT_TRANSFER_MODEL==IMPINGING_JET_HTC_MODEL) THEN
                ! Huang, G.C. : Investigations of Heat-Transfer Coefficients for Air Flow Through Round Jets Impinging
                ! Normal to a Heat-Transfer Surface. J. Heat Transfer, vol. 85, no. 3, Aug. 1963, pp. 237-245.
-               RE = RHO_G*P1X%U_IMPACT*SFX%CONV_LENGTH2/MU_G
+               CALL GET_VISCOSITY(ZZ_G,MU_G,TMPA)
+               RE = RHOA%U_IMPACT*SFX%CONV_LENGTH2/MU_G
                C0_IMP = 0.000_EB; IF (SFX%NUSSELT_IMP_C0>0._EB) THEN; C0_IMP = SFX%NUSSELT_IMP_C0; ENDIF
                C1_IMP = 0.055_EB; IF (SFX%NUSSELT_IMP_C1>0._EB) THEN; C1_IMP = SFX%NUSSELT_IMP_C1; ENDIF
                C2_IMP = 0.000_EB; IF (SFX%NUSSELT_IMP_C2>0._EB) THEN; C2_IMP = SFX%NUSSELT_IMP_C2; ENDIF
                M_IMP  = 0.800_EB; IF (SFX%NUSSELT_IMP_M >0._EB) THEN; M_IMP  = SFX%NUSSELT_IMP_M ; ENDIF
                NUSSELT_IMPINGE = C0_IMP + (C1_IMP*RE**M_IMP - C2_IMP) * PR_ONTH
+               CALL GET_VISCOSITY(ZZ_G,MU_G,TMP_FILM)
             ENDIF
             IF (PRESENT(PARTICLE_INDEX_IN)) THEN
                HEAT_TRANSFER_COEFFICIENT = MAX(NUSSELT_FORCED,NUSSELT_FREE)*K_G/CONV_LENGTH
