@@ -1166,7 +1166,7 @@ END SUBROUTINE WALE_VISCOSITY
 
 
 SUBROUTINE WALL_MODEL(SLIP_FACTOR,U_TAU,Y_PLUS,NU,S,Y_EXTERNAL_POINT,U_EXTERNAL_POINT,&
-                      Y_FORCING_POINT,U_FORCING_POINT,DUDY_FORCING_POINT)
+                      Y_FORCING_POINT,U_FORCING_POINT,DUDY_FORCING_POINT,GAS_BURNER)
 
 REAL(EB), INTENT(OUT) :: SLIP_FACTOR,U_TAU,Y_PLUS
 ! S is the "sandgrain" roughness length scale (Pope's notation)
@@ -1174,6 +1174,7 @@ REAL(EB), INTENT(OUT) :: SLIP_FACTOR,U_TAU,Y_PLUS
 ! Y_FORCING_POINT  is the distance from the wall to the "forcing point" where the forced velocity lives
 REAL(EB), INTENT(IN) :: NU,S,Y_EXTERNAL_POINT,U_EXTERNAL_POINT
 REAL(EB), OPTIONAL, INTENT(IN) :: Y_FORCING_POINT
+LOGICAL, OPTIONAL, INTENT(IN) :: GAS_BURNER
 REAL(EB), OPTIONAL, INTENT(OUT) :: U_FORCING_POINT,DUDY_FORCING_POINT
 
 REAL(EB), PARAMETER :: B=5.2_EB,BTILDE_MAX=9.5_EB ! BTILDE_ROUGH=8.5 set in GLOBAL_CONSTANTS; see Pope (2000) pp. 294,297,298
@@ -1261,7 +1262,14 @@ LES_IF: IF (SIM_MODE/=DNS_MODE) THEN
    ! DUDY = (u-u0)/dy = (u-SF*u)/dy = u/dy*(1-SF) => SF = 1 - DUDY*dy/u
    ! In this routine, DUDY is sampled from the wall model at the location y_cell_center.
 
-   SLIP_FACTOR = MAX(-1._EB,MIN(1._EB,1._EB-DUDY*DY/(ABS(U)+EPS))) ! -1.0 <= SLIP_FACTOR <= 1.0
+   SLIP_FACTOR = 1._EB-DUDY*DY/(ABS(U)+EPS) ! No limit on a porous gas burner
+   IF (.NOT.PRESENT(GAS_BURNER)) THEN
+      SLIP_FACTOR = MAX(-1._EB,MIN(1._EB,SLIP_FACTOR))
+   ELSE
+      IF (.NOT.GAS_BURNER) THEN 
+         SLIP_FACTOR = MAX(-1._EB,MIN(1._EB,SLIP_FACTOR)) ! -1.0 <= SLIP_FACTOR <= 1.0
+      ENDIF
+   ENDIF
 
 ENDIF LES_IF
 
