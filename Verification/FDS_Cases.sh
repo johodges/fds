@@ -30,18 +30,24 @@ $QFDS -p 32 -d Atmospheric_Effects wind_example_32.fds
 $QFDS -d Atmospheric_Effects MO_velocity_profile_stable.fds
 $QFDS -d Atmospheric_Effects MO_velocity_profile_unstable.fds
 
-$QFDS -d Chemistry ignition_delay_T900K_Phi0p6.fds
-$QFDS -d Chemistry ignition_delay_T900K_Phi1p0.fds
-$QFDS -d Chemistry ignition_delay_T900K_Phi1p4.fds
-$QFDS -d Chemistry ignition_delay_T1000K_Phi0p6.fds
-$QFDS -d Chemistry ignition_delay_T1000K_Phi1p0.fds
-$QFDS -d Chemistry ignition_delay_T1000K_Phi1p4.fds
-$QFDS -d Chemistry ignition_delay_T1100K_Phi0p6.fds
-$QFDS -d Chemistry ignition_delay_T1100K_Phi1p0.fds
-$QFDS -d Chemistry ignition_delay_T1100K_Phi1p4.fds
-$QFDS -d Chemistry ignition_delay_T1200K_Phi0p6.fds
-$QFDS -d Chemistry ignition_delay_T1200K_Phi1p0.fds
-$QFDS -d Chemistry ignition_delay_T1200K_Phi1p4.fds
+$QFDS -d Chemistry ign_delay_Methane_grimech30_T900K_Phi0p6.fds
+$QFDS -d Chemistry ign_delay_Methane_grimech30_T900K_Phi1p0.fds
+$QFDS -d Chemistry ign_delay_Methane_grimech30_T900K_Phi1p4.fds
+$QFDS -d Chemistry ign_delay_Methane_grimech30_T1000K_Phi0p6.fds
+$QFDS -d Chemistry ign_delay_Methane_grimech30_T1000K_Phi1p0.fds
+$QFDS -d Chemistry ign_delay_Methane_grimech30_T1000K_Phi1p4.fds
+$QFDS -d Chemistry ign_delay_Methane_grimech30_T1100K_Phi0p6.fds
+$QFDS -d Chemistry ign_delay_Methane_grimech30_T1100K_Phi1p0.fds
+$QFDS -d Chemistry ign_delay_Methane_grimech30_T1100K_Phi1p4.fds
+$QFDS -d Chemistry ign_delay_Methane_grimech30_T1200K_Phi0p6.fds
+$QFDS -d Chemistry ign_delay_Methane_grimech30_T1200K_Phi1p0.fds
+$QFDS -d Chemistry ign_delay_Methane_grimech30_T1200K_Phi1p4.fds
+$QFDS -d Chemistry ign_delay_Methane_TianfengLu_T1100K_Phi1p0.fds
+$QFDS -d Chemistry ign_delay_Methane_Smooke_T1100K_Phi1p0.fds
+$QFDS -d Chemistry ign_delay_Ethylene_TianfengLu_T1100K_Phi1p0.fds
+$QFDS -d Chemistry ign_delay_Propane_USC_T1100K_Phi1p0.fds
+$QFDS -d Chemistry ign_delay_Propane_Z66_T1100K_Phi1p0.fds
+$QFDS -d Chemistry ign_delay_nHeptane_Chalmers_T1100K_Phi1p0.fds
 
 $QFDS -d Complex_Geometry geom_channel.fds
 $QFDS -d Complex_Geometry geom_channel2.fds
@@ -150,6 +156,7 @@ $QFDS -d Controls hrr_freeze.fds
 $QFDS -d Controls rms_cov_corr.fds
 $QFDS -d Controls rms_example.fds
 $QFDS -d Controls special_time_ramps.fds
+$QFDS -p 4 -d Controls spreading_fire.fds
 
 $QFDS -d Detectors aspiration_detector.fds
 $QFDS -p 8 -d Detectors beam_detector.fds
@@ -451,7 +458,7 @@ $QFDS -d Pyrolysis surf_mass_part_specified.fds
 $QFDS -d Pyrolysis surf_mass_two_species_cart.fds
 $QFDS -d Pyrolysis surf_mass_two_species_cyl.fds
 $QFDS -d Pyrolysis surf_mass_two_species_spher.fds
-$QFDS -d Pyrolysis tga_analysis.fds
+$QFDS -p 2 -d Pyrolysis tga_analysis.fds
 $QFDS -d Pyrolysis tga_sample.fds
 $QFDS -d Pyrolysis two_step_solid_reaction.fds
 $QFDS -d Pyrolysis water_pool.fds
@@ -791,7 +798,7 @@ $QFDS -d WUI char_oxidation_1.fds
 $QFDS -p 2 -d WUI char_oxidation_2.fds
 $QFDS -d WUI dragon_5a.fds
 $QFDS -p 2 -d WUI ground_vegetation_conv.fds
-$QFDS -p 2 -d WUI ground_vegetation_drag.fds
+$QFDS -p 3 -d WUI ground_vegetation_drag.fds
 $QFDS -p 2 -d WUI ground_vegetation_load.fds
 $QFDS -p 2 -d WUI ground_vegetation_radi.fds
 $QFDS -d WUI hot_rods.fds
@@ -812,6 +819,16 @@ $QFDS -d WUI Needle_TGA_E.fds
 $QFDS -d WUI Needle_TGA_F.fds
 $QFDS -d WUI Needle_TGA_G.fds
 $QFDS -d WUI Needle_TGA_H.fds
+$QFDS -d WUI part_drag_prof_ux.fds
+$QFDS -d WUI part_drag_prof_uy.fds
+$QFDS -d WUI part_drag_prof_uz.fds
+$QFDS -d WUI part_drag_prof_vx.fds
+$QFDS -d WUI part_drag_prof_vy.fds
+$QFDS -d WUI part_drag_prof_vz.fds
+$QFDS -d WUI part_drag_prof_wx.fds
+$QFDS -d WUI part_drag_prof_wy.fds
+$QFDS -d WUI part_drag_prof_wz.fds
+$QFDS -d WUI part_drag_stretched.fds
 $QFDS -d WUI pine_needles.fds
 $QFDS -d WUI radiation_gas-veg_consistency_gas.fds
 $QFDS -d WUI radiation_gas-veg_consistency_veg.fds
