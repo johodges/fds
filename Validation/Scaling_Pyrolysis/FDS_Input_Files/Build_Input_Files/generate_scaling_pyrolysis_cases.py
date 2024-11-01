@@ -483,7 +483,7 @@ def findFds():
     fdsDir = os.getenv('FDSDIR')
     if fdsDir is not None: return fdsDir, 'fds'
     print("Warning FDSDIR environmental variable not set. Trying to find FDS in path.")
-    checklist = ['fds', 'fds_ompi_gnu_linux']
+    checklist = ['fds', 'fds_ompi_gnu_linux', 'fds_impi_intel_win']
     for check in checklist:
         fdsPath = shutil.which(check)
         if fdsPath is not None:
@@ -1509,6 +1509,7 @@ if __name__ == "__main__":
     runcommand = [sys.executable, os.path.join(systemPath, 'materials','scripts','evaluate_database.py'),'--inputfiles',os.path.join(systemPath,'..')]
     if cmdargs.donotrun is True:
         runcommand.append('--donotrun')
+    print(runcommand)
     process = subprocess.Popen(runcommand, env=my_env, shell=False)
     out, err = process.communicate()
     errcode = process.returncode
