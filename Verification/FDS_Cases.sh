@@ -347,6 +347,8 @@ $QFDS -d Miscellaneous mesh_transformation.fds
 $QFDS -d Miscellaneous obst_sphere.fds
 $QFDS -d Miscellaneous obst_cylinder.fds
 $QFDS -d Miscellaneous obst_cone.fds
+$QFDS -d Miscellaneous obst_multi.fds
+$QFDS -d Miscellaneous obst_single.fds
 $QFDS -d Miscellaneous obst_rotbox.fds
 $QFDS -d Miscellaneous obst_sphere_mass_flux.fds
 $QFDS -d Miscellaneous obst_cylinder_mass_flux.fds
@@ -411,6 +413,7 @@ $QFDS -p 4 -d Pressure_Solver stairwell.fds
 $QFDS -p 2 -d Pressure_Solver ulmat_2zone.fds
 $QFDS -p 4 -d Pressure_Solver obst_activation_default.fds
 $QFDS -p 4 -d Pressure_Solver obst_activation_ulmat.fds
+$QFDS -p 4 -d Pressure_Solver obst_activation_default_gases.fds
 
 $QFDS -d Pyrolysis cable_11_insulation_mcc.fds
 $QFDS -d Pyrolysis cable_23_insulation_mcc.fds
