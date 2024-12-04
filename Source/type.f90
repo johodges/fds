@@ -131,9 +131,9 @@ TYPE LAGRANGIAN_PARTICLE_CLASS_TYPE
    INTEGER :: NEAREST_RAD_ANGLE_INDEX=0   !< Index of the radiation angle nearest the given orientation vector
    INTEGER :: CNF_RAMP_INDEX=-1           !< Ramp index for Cumulative Number Fraction function
    INTEGER :: BREAKUP_CNF_RAMP_INDEX=-1   !< Ramp index for break-up Cumulative Number Fraction function
-   INTEGER :: N_STORAGE_REALS=0           !< Number of reals to store for this particle class
-   INTEGER :: N_STORAGE_INTEGERS=0        !< Number of integers to store for this particle class
-   INTEGER :: N_STORAGE_LOGICALS=0        !< Number of logicals to store for this particle class
+   INTEGER :: N_REALS=0                   !< Number of reals to store for this particle class
+   INTEGER :: N_INTEGERS=0                !< Number of integers to store for this particle class
+   INTEGER :: N_LOGICALS=0                !< Number of logicals to store for this particle class
    INTEGER :: NEW_PARTICLE_INCREMENT=1000 !< Number of new storage slots to allocate when NPLDIM is exceeded
    INTEGER :: EVAP_MODEL                  !< Evaporation correlation
 
@@ -252,6 +252,7 @@ TYPE BOUNDARY_ONE_D_TYPE
    INTEGER :: PYROLYSIS_MODEL=0 !< Indicator of a pyrolysis model used in depth
 
    LOGICAL, ALLOCATABLE, DIMENSION(:) :: HT3D_LAYER           !< (1:ONE_D\%N_LAYERS) Indicator that layer in 3D
+   LOGICAL :: INTERNAL_RADIATION=.FALSE.                      !< Indicator that internal radiation transport done in solid
 
 END TYPE BOUNDARY_ONE_D_TYPE
 
@@ -391,9 +392,6 @@ TYPE LAGRANGIAN_PARTICLE_TYPE
    INTEGER :: DUCT_CELL_INDEX=0      !< Index of duct cell
    INTEGER :: CFACE_INDEX=0          !< Index of immersed boundary CFACE that the droplet has attached to
    INTEGER :: PROP_INDEX=0           !< Index of the PROPERTY_TYPE assigned to the particle
-   INTEGER :: N_REALS=0              !< Number of reals to pack into restart or send/recv buffer
-   INTEGER :: N_INTEGERS=0           !< Number of integers to pack into restart or send/recv buffer
-   INTEGER :: N_LOGICALS=0           !< Number of logicals to pack into restart or send/recv buffer
 
    LOGICAL :: SHOW=.FALSE.         !< Show the particle in Smokeview
    LOGICAL :: SPLAT=.FALSE.        !< The liquid droplet has hit a solid
@@ -461,6 +459,7 @@ TYPE EXTERNAL_WALL_TYPE
    INTEGER :: KKO_MIN                                 !< Minimum K index of adjacent cell in other mesh
    INTEGER :: KKO_MAX                                 !< Maximum K index of adjacent cell in other mesh
    INTEGER :: PRESSURE_BC_TYPE                        !< Poisson boundary condition, NEUMANN or DIRICHLET
+   INTEGER :: BOUNDARY_TYPE_PREVIOUS=0                !< Boundary type at previous time step
    INTEGER :: SURF_INDEX_ORIG=0                       !< Original SURFace index for this cell
    REAL(EB) :: AREA_RATIO                             !< Ratio of face areas of adjoining cells
    REAL(EB) :: DUNDT=0._EB                            !< \f$ \partial u_n / \partial t \f$
@@ -533,8 +532,8 @@ TYPE SPECIES_TYPE
    REAL(EB) :: ODE_REL_ERROR                      !< Relative error for finite rate chemistry
    REAL(EB) :: POLYNOMIAL_TEMP(4)                 !< Temperature bands for user polynomial
    REAL(EB) :: POLYNOMIAL_COEFF(9,3)              !< Coefficients for user polynomial
-   REAL(EB) :: REAL_REFRACTIVE_INDEX            
-   REAL(EB) :: COMPLEX_REFRACTIVE_INDEX            
+   REAL(EB) :: REAL_REFRACTIVE_INDEX
+   REAL(EB) :: COMPLEX_REFRACTIVE_INDEX
 
    LOGICAL ::  ISFUEL=.FALSE.                     !< Fuel species
    LOGICAL ::  LISTED=.FALSE.                     !< Properties are known to FDS
@@ -966,7 +965,7 @@ TYPE SURFACE_TYPE
    CHARACTER(LABEL_LENGTH), ALLOCATABLE, DIMENSION(:) :: MATL_NAME
    CHARACTER(LABEL_LENGTH), DIMENSION(MAX_LAYERS,MAX_MATERIALS) :: MATL_ID
    REAL(EB), DIMENSION(MAX_LAYERS,MAX_MATERIALS) :: MATL_MASS_FRACTION
-   LOGICAL :: BURN_AWAY,ADIABATIC,INTERNAL_RADIATION,USER_DEFINED=.TRUE., &
+   LOGICAL :: BURN_AWAY,ADIABATIC,USER_DEFINED=.TRUE., &
               FREE_SLIP=.FALSE.,NO_SLIP=.FALSE.,SPECIFIED_NORMAL_VELOCITY=.FALSE.,SPECIFIED_TANGENTIAL_VELOCITY=.FALSE., &
               SPECIFIED_NORMAL_GRADIENT=.FALSE.,CONVERT_VOLUME_TO_MASS=.FALSE.,&
               BOUNDARY_FUEL_MODEL=.FALSE.,SET_H=.FALSE.,DIRICHLET_FRONT=.FALSE.,DIRICHLET_BACK=.FALSE.,BLOWING=.FALSE.
@@ -1055,9 +1054,10 @@ TYPE OBSTRUCTION_TYPE
    CHARACTER(LABEL_LENGTH) :: CTRL_ID='null'  !< Name of controller
    CHARACTER(LABEL_LENGTH) :: ID='null'       !< Name of obstruction
 
-   INTEGER, DIMENSION(-3:3) :: SURF_INDEX=0   !< SURFace properties for each face
-   INTEGER :: SURF_INDEX_INTERIOR=0           !< SURFace properties for a newly exposed interior cell
-   INTEGER, DIMENSION(3) :: RGB=(/0,0,0/)     !< Color indices for Smokeview
+   INTEGER, DIMENSION(-3:3) :: SURF_INDEX=0          !< SURFace properties for each face
+   INTEGER, DIMENSION(1:6)  :: EXPOSED_FACE_INDEX=0  !< OBST face exposed (1) or blocked (0)
+   INTEGER :: SURF_INDEX_INTERIOR=0                  !< SURFace properties for a newly exposed interior cell
+   INTEGER, DIMENSION(3) :: RGB=(/0,0,0/)            !< Color indices for Smokeview
 
    REAL(EB) :: TRANSPARENCY=1._EB             !< Transparency index for Smokeview, 0=invisible, 1=solid
    REAL(EB) :: VOLUME_ADJUST=1._EB            !< Effective volume divided by user specified volume
@@ -1558,7 +1558,7 @@ TYPE RAD_FILE_TYPE
 END TYPE RAD_FILE_TYPE
 
 TYPE PATCH_TYPE
-   INTEGER :: I1,I2,J1,J2,K1,K2,IG1,IG2,JG1,JG2,KG1,KG2,IOR,OBST_INDEX
+   INTEGER :: I1,I2,J1,J2,K1,K2,IG1,IG2,JG1,JG2,KG1,KG2,IOR=0,OBST_INDEX=0,VENT_INDEX=0,MESH_INDEX=0
 END TYPE PATCH_TYPE
 
 TYPE BOUNDARY_FILE_TYPE
@@ -1737,6 +1737,11 @@ TYPE ZONE_SOLVE_TYPE
 #else
    INTEGER, ALLOCATABLE :: PT_H(:)
 #endif /* WITH_MKL */
+#ifdef WITH_HYPRE
+   TYPE(HYPRE_ZM_TYPE) HYPRE_ZSL
+#else
+   INTEGER :: HYPRE_ZSL
+#endif /* WITH_HYPRE */
    INTEGER :: NUNKH_LOCAL=0                           !< SUM(NUNKH_LOC(LOWER_MESH_INDEX:UPPER_MESH_INDEX)).
    INTEGER :: NUNKH_TOTAL=0                           !< SUM(NUNKH_TOT(LOWER_MESH_INDEX:UPPER_MESH_INDEX)).
    INTEGER :: TOT_NNZ_H=0                             !< Total number of non-zeros owned by this process for a pres zone.

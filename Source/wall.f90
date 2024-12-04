@@ -214,7 +214,7 @@ IF (SOLID_PARTICLES) THEN
 
       IF (LPC%SOLID_PARTICLE) THEN
          CALL CALCULATE_ZZ_F(T,DT,PARTICLE_INDEX=IP)
-         IF (CORRECTOR) CALL DEPOSIT_PARTICLE_MASS(NM,LP,LPC,CALL_HT_1D)  ! Add the particle off-gas to the gas phase mesh
+         IF (CORRECTOR) CALL DEPOSIT_PARTICLE_MASS(NM,LP,LPC)  ! Add the particle off-gas to the gas phase mesh
       ENDIF
 
    ENDDO PARTICLE_LOOP
@@ -1364,16 +1364,14 @@ END SUBROUTINE CALCULATE_ZZ_F
 !> \param NM Mesh number
 !> \param LP Pointer to Lagrangian Particle derived type variable
 !> \param LPC Pointer to Lagrangian Particle Class
-!> \param CALL_HT_1D Logical indicating if the 1-D heat transfer routine was called
 !> \details Deposit the particle off-gas onto the mesh
 
-SUBROUTINE DEPOSIT_PARTICLE_MASS(NM,LP,LPC,CALL_HT_1D)
+SUBROUTINE DEPOSIT_PARTICLE_MASS(NM,LP,LPC)
 
 USE PHYSICAL_FUNCTIONS, ONLY: SURFACE_DENSITY,GET_SPECIFIC_HEAT,GET_SENSIBLE_ENTHALPY
 USE OUTPUT_DATA, ONLY: M_DOT,Q_DOT
 INTEGER, INTENT(IN) :: NM
-LOGICAL, INTENT(IN) :: CALL_HT_1D
-REAL(EB) :: RADIUS,AREA_SCALING,M_DOT_SINGLE,CP,MW_RATIO,H_G,ZZ_GET(1:N_TRACKED_SPECIES),M_GAS,LENGTH,WIDTH,H_S_B
+REAL(EB) :: RADIUS,M_DOT_SINGLE,CP,MW_RATIO,H_G,ZZ_GET(1:N_TRACKED_SPECIES),M_GAS,LENGTH,WIDTH,H_S_B
 INTEGER :: NS
 TYPE(BOUNDARY_ONE_D_TYPE), POINTER :: ONE_D
 TYPE(LAGRANGIAN_PARTICLE_TYPE), POINTER :: LP
@@ -1396,7 +1394,6 @@ ENDIF
 
 IF (ABS(RADIUS)<TWO_EPSILON_EB) RETURN
 
-AREA_SCALING = 1._EB
 IF (LPC%DRAG_LAW == SCREEN_DRAG .OR. LPC%DRAG_LAW == POROUS_DRAG) THEN
    LENGTH = LP%LENGTH
    WIDTH = LP%LENGTH
@@ -1409,25 +1406,9 @@ SELECT CASE(SF%GEOMETRY)
       B1%AREA = 2._EB*LENGTH*WIDTH
    CASE(SURF_CYLINDRICAL,SURF_INNER_CYLINDRICAL)
       B1%AREA = TWOPI*RADIUS*LENGTH
-      IF (SF%THERMAL_BC_INDEX == THERMALLY_THICK) AREA_SCALING = (SF%INNER_RADIUS+SF%THICKNESS)/RADIUS
    CASE(SURF_SPHERICAL)
       B1%AREA = 4._EB*PI*RADIUS**2
-      IF (SF%THERMAL_BC_INDEX == THERMALLY_THICK) AREA_SCALING = ((SF%INNER_RADIUS+SF%THICKNESS)/RADIUS)**2
 END SELECT
-
-! In PYROLYSIS, all the mass fluxes are based on the INITIAL surface area.
-! Here, correct the mass flux using the CURRENT surface area.
-
-IF (CALL_HT_1D) THEN
-   B1%M_DOT_G_PP_ADJUST(1:N_TRACKED_SPECIES) = B1%M_DOT_G_PP_ADJUST(1:N_TRACKED_SPECIES)*AREA_SCALING
-   B1%M_DOT_G_PP_ACTUAL(1:N_TRACKED_SPECIES) = B1%M_DOT_G_PP_ACTUAL(1:N_TRACKED_SPECIES)*AREA_SCALING
-   B1%Q_DOT_G_PP                             = B1%Q_DOT_G_PP                            *AREA_SCALING
-   B1%Q_DOT_O2_PP                            = B1%Q_DOT_O2_PP                           *AREA_SCALING
-   IF (LP%OD_INDEX>0) THEN
-      ONE_D => BOUNDARY_ONE_D(LP%OD_INDEX)
-      ONE_D%M_DOT_S_PP(1:ONE_D%N_MATL)       = ONE_D%M_DOT_S_PP(1:ONE_D%N_MATL)         *AREA_SCALING
-   ENDIF
-ENDIF
 
 ! Add evaporated particle species to gas phase and compute resulting contribution to the divergence
 
@@ -1444,7 +1425,7 @@ DO NS=1,N_TRACKED_SPECIES
    ZZ_GET(NS) = 1._EB
    CALL GET_SENSIBLE_ENTHALPY(ZZ_GET,H_S_B,B1%TMP_F)
    !$OMP CRITICAL
-   Q_DOT(3,NM) = Q_DOT(3,NM) + B1%M_DOT_G_PP_ADJUST(NS)*B1%AREA*H_S_B*LP%PWT    ! Q_CONV
+   Q_DOT(4,NM) = Q_DOT(4,NM) + B1%M_DOT_G_PP_ADJUST(NS)*B1%AREA*H_S_B*LP%PWT    ! Q_CONV
    !$OMP END CRITICAL
 ENDDO
 
@@ -1463,8 +1444,8 @@ D_SOURCE(BC%IIG,BC%JJG,BC%KKG) = D_SOURCE(BC%IIG,BC%JJG,BC%KKG) - B1%Q_CON_F*B1%
 
 ! Add energy losses and gains to overall energy budget array
 
-Q_DOT(7,NM) = Q_DOT(7,NM) - (B1%Q_CON_F + B1%Q_RAD_IN - B1%Q_RAD_OUT)*B1%AREA*LP%PWT      ! Q_PART
-Q_DOT(2,NM) = Q_DOT(2,NM) + (B1%Q_RAD_IN-B1%Q_RAD_OUT)*B1%AREA*LP%PWT                        ! Q_RADI
+Q_DOT(8,NM) = Q_DOT(8,NM) - (B1%Q_CON_F + B1%Q_RAD_IN - B1%Q_RAD_OUT)*B1%AREA*LP%PWT      ! Q_PART
+Q_DOT(3,NM) = Q_DOT(3,NM) + (B1%Q_RAD_IN-B1%Q_RAD_OUT)*B1%AREA*LP%PWT                        ! Q_RADI
 !$OMP END CRITICAL
 
 ! Calculate the mass flux of fuel gas from particles
@@ -1949,7 +1930,7 @@ ENDDO
 ! Set mass and energy fluxes to zero prior to time sub-iteration
 
 B1%Q_CON_F = 0._EB
-IF (SF%INTERNAL_RADIATION) Q_RAD_OUT_OLD = B1%Q_RAD_OUT
+IF (ONE_D%INTERNAL_RADIATION) Q_RAD_OUT_OLD = B1%Q_RAD_OUT
 B1%Q_RAD_OUT = 0._EB
 
 IF (ONE_D%PYROLYSIS_MODEL==PYROLYSIS_PREDICTED) THEN
@@ -2208,7 +2189,7 @@ SUB_TIMESTEP_LOOP: DO
 
    ! Calculate internal radiation for Cartesian geometry only
 
-   IF (SF%INTERNAL_RADIATION) THEN
+   IF (ONE_D%INTERNAL_RADIATION) THEN
       DO I=1,NWP
          IF (SF%KAPPA_S(LAYER_INDEX(I))<0._EB) THEN
             VOLSUM = 0._EB
@@ -2249,7 +2230,7 @@ SUB_TIMESTEP_LOOP: DO
    ! Explicitly update the temperature field and adjust time step if the change in temperature exceeds DELTA_TMP_MAX
 
    IF (ICYC>WALL_INCREMENT) THEN
-      IF (SF%INTERNAL_RADIATION) THEN
+      IF (ONE_D%INTERNAL_RADIATION) THEN
          Q_NET_F = Q_CON_F
          Q_NET_B = Q_CON_B
       ELSE
@@ -2278,7 +2259,7 @@ SUB_TIMESTEP_LOOP: DO
 
    ! Store the mass and energy fluxes from this time sub-iteration
 
-   IF (SF%INTERNAL_RADIATION) THEN
+   IF (ONE_D%INTERNAL_RADIATION) THEN
       Q_RAD_OUT_OLD = Q_RAD_OUT
       B1%Q_RAD_OUT = B1%Q_RAD_OUT + Q_RAD_OUT*DT_BC_SUB/DT_BC
    ENDIF
@@ -2398,8 +2379,9 @@ SUB_TIMESTEP_LOOP: DO
       ! Check for layers that are too small, layer thickness dropping too much, or couldn't drop enough nodes last remesh
       I = 0
       DO NL=1,ONE_D%N_LAYERS
+         IF (ONE_D%N_LAYER_CELLS(NL) == 0) CYCLE
          ONE_D%LAYER_THICKNESS(NL) = X_S_NEW(I+ONE_D%N_LAYER_CELLS(NL)) - X_S_NEW(I)
-         IF (ONE_D%N_LAYER_CELLS(NL) > 0 .AND. ONE_D%LAYER_THICKNESS(NL) < 0.1_EB*ONE_D%MINIMUM_LAYER_THICKNESS(NL)) THEN
+         IF (ONE_D%LAYER_THICKNESS(NL) < 0.1_EB*ONE_D%MINIMUM_LAYER_THICKNESS(NL)) THEN
             REMESH_LAYER(NL) = .TRUE.
          ELSE
             IF (.NOT. TMP_CHECK(NL) .AND. ONE_D%LAYER_THICKNESS_OLD(NL)-ONE_D%LAYER_THICKNESS(NL) > &
@@ -2737,7 +2719,7 @@ SUB_TIMESTEP_LOOP: DO
    IF (SF%DIRICHLET_FRONT) THEN
       RFACF2 = -1._EB
       QDXKF  = 2._EB*B1%TMP_F
-   ELSEIF (.NOT.RADIATION .OR. SF%INTERNAL_RADIATION .OR. ISOLATED_THIN_WALL) THEN
+   ELSEIF (.NOT.RADIATION .OR. ONE_D%INTERNAL_RADIATION .OR. ISOLATED_THIN_WALL) THEN
       RFACF  = 0.5_EB*HTCF
       RFACF2 = (KODXF-RFACF)/(KODXF+RFACF)
       QDXKF  = (HTCF*B1%TMP_G  + Q_LIQUID_F)/(KODXF+RFACF)
@@ -2750,7 +2732,7 @@ SUB_TIMESTEP_LOOP: DO
    IF (SF%DIRICHLET_BACK) THEN
       RFACB2 = -1._EB
       QDXKB  = 2._EB*B1%TMP_B
-   ELSEIF (.NOT.RADIATION .OR. SF%INTERNAL_RADIATION .OR. ISOLATED_THIN_WALL_BACK) THEN
+   ELSEIF (.NOT.RADIATION .OR. ONE_D%INTERNAL_RADIATION .OR. ISOLATED_THIN_WALL_BACK) THEN
       RFACB  = 0.5_EB*HTCB
       RFACB2 = (KODXB-RFACB)/(KODXB+RFACB)
       QDXKB  = (HTCB*TMP_GAS_BACK + Q_LIQUID_B)/(KODXB+RFACB)
@@ -2791,8 +2773,8 @@ SUB_TIMESTEP_LOOP: DO
    B1%TMP_B  = 0.5_EB*(ONE_D%TMP(NWP)+ONE_D%TMP(NWP+1))
 
    B1%Q_CON_F = B1%Q_CON_F - 0.5_EB*HTCF*DT_BC_SUB*B1%TMP_F
-   IF (RADIATION .AND. .NOT.SF%INTERNAL_RADIATION) B1%Q_RAD_OUT = B1%Q_RAD_OUT + &
-                                                   DT_BC_SUB*(B1%TMP_F_OLD**4+2._EB*B1%TMP_F_OLD**3*(B1%TMP_F-B1%TMP_F_OLD))
+   IF (RADIATION .AND. .NOT.ONE_D%INTERNAL_RADIATION) B1%Q_RAD_OUT = B1%Q_RAD_OUT + &
+                                                      DT_BC_SUB*(B1%TMP_F_OLD**4+2._EB*B1%TMP_F_OLD**3*(B1%TMP_F-B1%TMP_F_OLD))
 
    ! Clipping for excessively high or low temperatures
 
@@ -2826,7 +2808,7 @@ ENDIF
 IF (ALLOCATED(RHO_DOT) .AND. ONE_D%PYROLYSIS_MODEL==PYROLYSIS_PREDICTED) DEALLOCATE(RHO_DOT)
 
 B1%Q_CON_F = B1%Q_CON_F / DT_BC
-IF (RADIATION .AND. .NOT. SF%INTERNAL_RADIATION) B1%Q_RAD_OUT = B1%Q_RAD_OUT / DT_BC * SIGMA * B1%EMISSIVITY
+IF (RADIATION .AND. .NOT. ONE_D%INTERNAL_RADIATION) B1%Q_RAD_OUT = B1%Q_RAD_OUT / DT_BC * SIGMA * B1%EMISSIVITY
 IF (.NOT. SF%BOUNDARY_FUEL_MODEL) B1%HEAT_TRANS_COEF = HTCF
 
 ! If any gas massflux or particle mass flux is non-zero or the surface temperature exceeds the ignition temperature,
@@ -2927,9 +2909,16 @@ O2_LOOP: DO ITER=1,MAX_ITER
       ENDIF
 
       ! Sum the mass and heat generation within the solid layers (PPP) and transfer result to the surface (PP).
+      ! GEOM_FACTOR accounts for cylindrical and spherical geometry. If this is not a Lagrangian particle, scale with
+      ! the original radius (SF%THICKNESS) because the VENT to which the flux is applied does not change in area.
 
       IF (ONE_D%N_LAYERS==1 .AND. REMOVE_LAYER) MF_FRAC(I) = 1._EB
-      GEOM_FACTOR = MF_FRAC(I)*(R_S(I-1)**I_GRAD-R_S(I)**I_GRAD)/(I_GRAD*(SF%THICKNESS+SF%INNER_RADIUS)**(I_GRAD-1))
+
+      IF (PRESENT(PARTICLE_INDEX)) THEN
+         GEOM_FACTOR = MF_FRAC(I)*(R_S(I-1)**I_GRAD-R_S(I)**I_GRAD)/(I_GRAD*R_S(0)**(I_GRAD-1))
+      ELSE
+         GEOM_FACTOR = MF_FRAC(I)*(R_S(I-1)**I_GRAD-R_S(I)**I_GRAD)/(I_GRAD*(SF%THICKNESS+SF%INNER_RADIUS)**(I_GRAD-1))
+      ENDIF
 
       Q_DOT_G_PP  = Q_DOT_G_PP  + Q_DOT_G_PPP *GEOM_FACTOR
       Q_DOT_O2_PP = Q_DOT_O2_PP + Q_DOT_O2_PPP*GEOM_FACTOR
