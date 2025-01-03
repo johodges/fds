@@ -358,10 +358,12 @@ TYPE BOUNDARY_PROP2_TYPE
    REAL(EB) :: K_SUPPRESSION=0._EB   !< Suppression coefficent (m2/kg/s)
    REAL(EB) :: V_DEP=0._EB           !< Deposition velocity (m/s)
    REAL(EB) :: Y_O2_F=0._EB          !< Oxygen mass fraction at the surface
+   REAL(EB) :: BLOWING_CORRECTION=0._EB !< Ackermann blowing correction to heat transfer coefficient
 
    INTEGER :: SURF_INDEX=-1          !< Surface index
    INTEGER :: HEAT_TRANSFER_REGIME=0 !< 1=Forced convection, 2=Natural convection, 3=Impact convection, 4=Resolved
    INTEGER :: Y_O2_ITER=0            !< Number of iterations for surface O2 solve
+   INTEGER :: I_CHAR_FRONT=1         !< Index of solid cell where char formation starts
 
 END TYPE BOUNDARY_PROP2_TYPE
 
@@ -1041,7 +1043,7 @@ TYPE OMESH_TYPE
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: U_LNK, V_LNK, W_LNK
 
    ! Level Set
-   REAL(EB), ALLOCATABLE, DIMENSION(:,:) :: PHI_LS,PHI1_LS,U_LS,V_LS,Z_LS,TOA
+   REAL(EB), ALLOCATABLE, DIMENSION(:,:) :: PHI_LS,PHI1_LS,U_LS,V_LS,Z_LS
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: REAL_SEND_PKG14,REAL_RECV_PKG14
 
 END TYPE OMESH_TYPE
@@ -1485,15 +1487,15 @@ TYPE(CSVF_TYPE), ALLOCATABLE, DIMENSION(:) :: CSVFINFO
 TYPE VENTS_TYPE
    INTEGER :: I1=-1,I2=-1,J1=-1,J2=-1,K1=-1,K2=-1,BOUNDARY_TYPE=0,IOR=0,SURF_INDEX=0,DEVC_INDEX=-1,CTRL_INDEX=-1, &
               COLOR_INDICATOR=99,TYPE_INDICATOR=0,ORDINAL=0,PRESSURE_RAMP_INDEX=0,TMP_EXTERIOR_RAMP_INDEX=0,NODE_INDEX=-1, &
-              OBST_INDEX=0
+              OBST_INDEX=0,TOTAL_INDEX=-1
    INTEGER, DIMENSION(3) :: RGB=-1
    REAL(EB) :: TRANSPARENCY = 1._EB
    REAL(EB), DIMENSION(3) :: TEXTURE=0._EB
-   REAL(EB) :: X1=0._EB,X2=0._EB,Y1=0._EB,Y2=0._EB,Z1=0._EB,Z2=0._EB,FDS_AREA=0._EB, &
+   REAL(EB) :: X1=0._EB,X2=0._EB,Y1=0._EB,Y2=0._EB,Z1=0._EB,Z2=0._EB,FDS_AREA=0._EB,TOTAL_FDS_AREA=0._EB,&
                X1_ORIG=0._EB,X2_ORIG=0._EB,Y1_ORIG=0._EB,Y2_ORIG=0._EB,Z1_ORIG=0._EB,Z2_ORIG=0._EB, &
                X0=-9.E6_EB,Y0=-9.E6_EB,Z0=-9.E6_EB,FIRE_SPREAD_RATE,UNDIVIDED_INPUT_AREA=0._EB,INPUT_AREA=0._EB,&
                TMP_EXTERIOR=-1000._EB,DYNAMIC_PRESSURE=0._EB,UVW(3)=-1.E12_EB,RADIUS=-1._EB
-   LOGICAL :: ACTIVATED=.TRUE.,GEOM=.FALSE.
+   LOGICAL :: ACTIVATED=.TRUE.,GEOM=.FALSE.,AREA_ADJUST=.TRUE.
    CHARACTER(LABEL_LENGTH) :: DEVC_ID='null',CTRL_ID='null',ID='null'
    ! turbulent inflow (experimental)
    INTEGER :: N_EDDY=0
