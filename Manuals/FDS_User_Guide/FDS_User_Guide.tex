@@ -2252,7 +2252,7 @@ The forced convection heat transfer correlations generally apply to flow paralle
 \be
    \NU_{\rm imp} = C_0 + \left( C_1 \, \RE_{\rm imp}^m - C_2 \right) \, \PR^{1/3}  \quad ; \quad \RE_{\rm imp} = \frac{\rho U_{\rm{imp}} L}{\mu}
 \ee
-The default coefficients are $C_0=0$, $C_1=0.021$, $C_2=0$, $m=0.8$.  But custom values may be entered on the \ct{SURF} line using \ct{NUSSELT_IMP_C0}, \ct{NUSSELT_IMP_C1}, \ct{NUSSELT_IMP_C2}, and \ct{NUSSELT_IMP_M}as described above.  Again, the default length scale is taken to be $L=1$ m, but may be changed.  This value is usually set to the diameter of the jet source in the literature.  The heat transfer coefficient obtained from $\NU_{\rm imp}$ is compared to that from forced and free convection and the largest value is chosen for the surface.
+The default coefficients are $C_0=0$, $C_1=0.021$, $C_2=0$, $m=0.8$.  But custom values may be entered on the \ct{SURF} line using \ct{NUSSELT_IMP_C0}, \ct{NUSSELT_IMP_C1}, \ct{NUSSELT_IMP_C2}, and \ct{NUSSELT_IMP_M} as described above.  Again, the default length scale is taken to be $L=1$ m, but may be changed.  This value is usually set to the diameter of the jet source in the literature.  The heat transfer coefficient obtained from $\NU_{\rm imp}$ is compared to that from forced and free convection and the largest value is chosen for the surface.
 
 \subsubsection{Output for Convective Heat Transfer Regime}
 \label{info:convection_regime}
