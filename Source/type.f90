@@ -892,6 +892,7 @@ TYPE SURFACE_TYPE
    REAL(EB) :: MINIMUM_BURNOUT_TIME=1.E6_EB
    REAL(EB) :: DELTA_TMP_MAX=10._EB                    !< Maximum wall node temperature change before reducining wall timestep (K)
    REAL(EB) :: BURN_DURATION=1.E6_EB
+   REAL(EB) :: REFERENCE_DENSITY=-1._EB                !< Density used in impinging jet heat transfer coefficient Re number (kg/m3)
    REAL(EB) :: REFERENCE_HEAT_FLUX_TIME_INTERVAL=1._EB !< Averaging time interval for computed flux for flux scaling model (s)
    REAL(EB) :: MINIMUM_SCALING_HEAT_FLUX=0._EB         !< Minimum computed flux for input into scaling model (kW/m2)
    REAL(EB) :: MAXIMUM_SCALING_HEAT_FLUX=HUGE(1._EB)   !< Maximum computed flux for input into scaling model (kW/m2)
