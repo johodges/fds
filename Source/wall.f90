@@ -3618,8 +3618,8 @@ ELSE H_FIXED_IF
             IF (SFX%HEAT_TRANSFER_MODEL==IMPINGING_JET_HTC_MODEL) THEN
                ! Huang, G.C. : Investigations of Heat-Transfer Coefficients for Air Flow Through Round Jets Impinging
                ! Normal to a Heat-Transfer Surface. J. Heat Transfer, vol. 85, no. 3, Aug. 1963, pp. 237-245.
-               IF (SFX%TMP_FRONT > 0) THEN ! Use TMP_FRONT if it is specified in Reynolds calculation, else TMPA
-                  CALL GET_VISCOSITY(ZZ_G,MU_G,SFX%TMP_FRONT)
+               IF (SFX%REFERENCE_JET_TEMPERATURE > 0) THEN ! Use REFERENCE_JET_TEMPERATURE if it is specified in Reynolds calculation, else TMPA
+                  CALL GET_VISCOSITY(ZZ_G,MU_G,SFX%REFERENCE_JET_TEMPERATURE)
                ELSE
                   CALL GET_VISCOSITY(ZZ_G,MU_G,TMPA)
                ENDIF
