@@ -52,8 +52,10 @@ res_str = {'coarse','medium','fine'};
 Re_str  = {'1e5','4e5'};
 
 % errors from original implementation (rows = Re_str and cols = res_str)
-E = [0.029521932969818   0.030755969241315   0.120746304035212; ...
-     0.009736035032018   0.080052757086653   0.265447704564341];
+E = [0.056918654162878   0.041857745609598   0.116595781318777; ...
+     0.006162200000000   0.063273295539949   0.270795928496828];
+
+E_FDS = zeros(size(E));
 
 for j=1:length(res_str)
     for i=1:length(Re_str)

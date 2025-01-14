@@ -294,6 +294,9 @@ END SUBROUTINE ASSIGN_GHOST_VALUE
 !> \param SF Pointer to SURFACE derived type
 !> \param BC Pointer to BOUNDARY_COORD derived type
 !> \param B1 Pointer to BOUNDARY_PROP1 derived type
+!> \param LP Pointer to LAGRANGIAN_PARTICLE derived type
+!> \param WALL_INDEX Index of wall cell
+!> \param PARTICLE_INDEX Index of particle
 
 SUBROUTINE NEAR_SURFACE_GAS_VARIABLES(T,SF,BC,B1,LP,WALL_INDEX,PARTICLE_INDEX)
 
@@ -349,6 +352,9 @@ END SUBROUTINE NEAR_SURFACE_GAS_VARIABLES
 !> \brief Calculate the surface temperature TMP_F
 !> \param NM Mesh number
 !> \param T Time (s)
+!> \param SF Pointer to SURFACE derived type variable
+!> \param BC Pointer to BOUNDARY_COORD derived type variable
+!> \param B1 Pointer to BOUNDARY_PROP1 derived type variable
 !> \param WALL_INDEX Optional WALL cell index
 !> \param CFACE_INDEX Optional immersed boundary (CFACE) index
 !> \param PARTICLE_INDEX Optional Lagrangian particle index
@@ -1740,6 +1746,7 @@ END SUBROUTINE CALC_HVAC_BC
 !> \param PARTICLE_INDEX Index of a Lagrangian particle
 !> \param WALL_INDEX Index of a Cartesian WALL cell
 !> \param CFACE_INDEX Index of an immersed boundary CFACE
+!> \param THIN_WALL_INDEX Index of thin wall boundary
 
 SUBROUTINE SOLID_HEAT_TRANSFER(NM,T,DT_BC,PARTICLE_INDEX,WALL_INDEX,CFACE_INDEX,THIN_WALL_INDEX)
 
@@ -2042,7 +2049,7 @@ SUB_TIMESTEP_LOOP: DO
       NWP = SUM(ONE_D%N_LAYER_CELLS(1:ONE_D%N_LAYERS))
       CALL GET_WALL_NODE_WEIGHTS(NWP,ONE_D%N_LAYERS,ONE_D%N_LAYER_CELLS(1:ONE_D%N_LAYERS),ONE_D%LAYER_THICKNESS,SF%GEOMETRY, &
          ONE_D%X(0:NWP),LAYER_DIVIDE,DX_S(1:NWP),RDX_S(0:NWP+1),RDXN_S(0:NWP),DX_WGT_S(0:NWP),DXF,DXB,&
-         LAYER_INDEX(0:NWP+1),MF_FRAC(1:NWP),SF%INNER_RADIUS)
+         LAYER_INDEX(0:NWP+1),MF_FRAC(1:NWP),SF%INNER_RADIUS,ONE_D%PYROLYSIS_DEPTH)
    ELSE COMPUTE_GRID
       NWP                  = SF%N_CELLS_INI
       DXF                  = SF%DXF
@@ -2431,7 +2438,7 @@ SUB_TIMESTEP_LOOP: DO
       DO NL=1,ONE_D%N_LAYERS
          IF (ONE_D%N_LAYER_CELLS(NL) == 0) CYCLE
          ONE_D%LAYER_THICKNESS(NL) = X_S_NEW(I+ONE_D%N_LAYER_CELLS(NL)) - X_S_NEW(I)
-         IF (ONE_D%LAYER_THICKNESS(NL) < 0.1_EB*ONE_D%MINIMUM_LAYER_THICKNESS(NL)) THEN
+         IF (ONE_D%LAYER_THICKNESS(NL) < 0.1_EB*ONE_D%MIN_LAYER_THICKNESS(NL)) THEN
             REMESH_LAYER(NL) = .TRUE.
          ELSE
             IF (.NOT. TMP_CHECK(NL) .AND. ONE_D%LAYER_THICKNESS_OLD(NL)-ONE_D%LAYER_THICKNESS(NL) > &
@@ -2477,7 +2484,7 @@ SUB_TIMESTEP_LOOP: DO
          CALL GET_WALL_NODE_WEIGHTS(NWP,ONE_D%N_LAYERS,ONE_D%N_LAYER_CELLS(1:ONE_D%N_LAYERS), &
                                    ONE_D%LAYER_THICKNESS(1:ONE_D%N_LAYERS),SF%GEOMETRY,X_S_NEW(0:NWP),LAYER_DIVIDE,DX_S(1:NWP), &
                                    RDX_S(0:NWP+1),RDXN_S(0:NWP),DX_WGT_S(0:NWP),DXF,DXB,LAYER_INDEX(0:NWP+1),MF_FRAC(1:NWP),&
-                                   SF%INNER_RADIUS)
+                                   SF%INNER_RADIUS,ONE_D%PYROLYSIS_DEPTH)
       ENDIF
 
       N_LAYER_CELLS_NEW(1:ONE_D%N_LAYERS) = ONE_D%N_LAYER_CELLS(1:ONE_D%N_LAYERS)      
@@ -2495,7 +2502,7 @@ SUB_TIMESTEP_LOOP: DO
 
             ! Layer is too small. Delete it and shift any following nodes up in x-distance
 
-            IF (ONE_D%LAYER_THICKNESS(NL) < 0.1_EB*ONE_D%MINIMUM_LAYER_THICKNESS(NL)) THEN
+            IF (ONE_D%LAYER_THICKNESS(NL) < 0.1_EB*ONE_D%MIN_LAYER_THICKNESS(NL)) THEN
                N_LAYER_CELLS_NEW(NL) = 0
                ONE_D%X(I+ONE_D%N_LAYER_CELLS(NL):NWP) = ONE_D%X(I+ONE_D%N_LAYER_CELLS(NL):NWP)-ONE_D%LAYER_THICKNESS(NL)
                ONE_D%DX_OLD(I+1:I+ONE_D%N_LAYER_CELLS(NL)) = 0._EB
@@ -2626,7 +2633,7 @@ SUB_TIMESTEP_LOOP: DO
             ONE_D%LAYER_THICKNESS(1:ONE_D%N_LAYERS))
          CALL GET_WALL_NODE_WEIGHTS(NWP_NEW,ONE_D%N_LAYERS,N_LAYER_CELLS_NEW(1:ONE_D%N_LAYERS),ONE_D%LAYER_THICKNESS,SF%GEOMETRY, &
             X_S_NEW(0:NWP_NEW),LAYER_DIVIDE,DX_S(1:NWP_NEW),RDX_S(0:NWP_NEW+1),RDXN_S(0:NWP_NEW),&
-            DX_WGT_S(0:NWP_NEW),DXF,DXB,LAYER_INDEX(0:NWP_NEW+1),MF_FRAC(1:NWP_NEW),SF%INNER_RADIUS)
+            DX_WGT_S(0:NWP_NEW),DXF,DXB,LAYER_INDEX(0:NWP_NEW+1),MF_FRAC(1:NWP_NEW),SF%INNER_RADIUS,ONE_D%PYROLYSIS_DEPTH)
          IF(NWP_NEW < NWP) ONE_D%DX_OLD(NWP_NEW:NWP) = 0._EB ! Zero out old values if needed 
          ONE_D%DX_OLD(1:NWP_NEW) = DX_S(1:NWP_NEW)
          ONE_D%LAYER_THICKNESS_OLD(1:ONE_D%N_LAYERS) = ONE_D%LAYER_THICKNESS(1:ONE_D%N_LAYERS)
@@ -2883,7 +2890,7 @@ SUBROUTINE PERFORM_PYROLYSIS
 USE PHYSICAL_FUNCTIONS, ONLY: GET_MASS_FRACTION,GET_SPECIFIC_HEAT
 REAL(EB), DIMENSION(N_TRACKED_SPECIES) :: M_DOT_G_PPP_ADJUST,M_DOT_G_PPP_ACTUAL,ZZ_GET
 REAL(EB), DIMENSION(MAX_MATERIALS) :: RHO_TEMP,M_DOT_S_PPP
-REAL(EB) :: Q_DOT_G_PPP,Q_DOT_O2_PPP,CP_FILM,TMP_FILM,H_MASS,CHAR_FRONT,&
+REAL(EB) :: Q_DOT_G_PPP,Q_DOT_O2_PPP,CP_FILM,TMP_FILM,H_MASS,ASH_DEPTH,&
             Y_O2_G,Y_O2_F,M_DOT_O2_PP,Y_LOWER,Y_UPPER,M_DOT_ERROR,M_DOT_ERROR_OLD,Y_O2_F_OLD,DY,DE
 REAL(EB), DIMENSION(MAX_LPC) :: Q_DOT_PART,M_DOT_PART
 INTEGER :: ITER,MAX_ITER
@@ -2901,17 +2908,17 @@ ENDIF
 
 ! Determine char front position
 
-CHAR_FRONT=0._EB
+ASH_DEPTH=0._EB
 IF (TEST_NEW_CHAR_MODEL .AND. Y_O2_F>TWO_EPSILON_EB .AND. CHAR_INDEX>0) THEN
-   ! The new char model starts the exp profile of O2 at the CHAR_FRONT
+   ! The new char model starts the exp profile of O2 at the ASH_DEPTH
    ! Find first cell where char has not been consumed
-   CHAR_FRONT_POINTS_LOOP: DO I=B2%I_CHAR_FRONT,NWP
+   ASH_DEPTH_POINTS_LOOP: DO I=B2%I_ASH_DEPTH,NWP
       IF (ONE_D%MATL_COMP(CHAR_INDEX)%RHO(I)>CHAR_DENSITY_THRESHOLD) THEN
-         CHAR_FRONT=ONE_D%X(I-1)
-         B2%I_CHAR_FRONT=I ! store last position to save time on next time step
-         EXIT CHAR_FRONT_POINTS_LOOP
+         ASH_DEPTH=ONE_D%X(I-1)
+         B2%I_ASH_DEPTH=I ! store last position to save time on next time step
+         EXIT ASH_DEPTH_POINTS_LOOP
       ENDIF
-   ENDDO CHAR_FRONT_POINTS_LOOP
+   ENDDO ASH_DEPTH_POINTS_LOOP
 ENDIF
 
 ! Initialize iterations for OXPYRO_MODEL
@@ -2955,7 +2962,7 @@ O2_LOOP: DO ITER=1,MAX_ITER
          RHO_TEMP(N) = ONE_D%MATL_COMP(N)%RHO(I)
       ENDDO
 
-      IF (ONE_D%LAYER_THICKNESS(LAYER_INDEX(I))<ONE_D%MINIMUM_LAYER_THICKNESS(LAYER_INDEX(I))) THEN
+      IF (ONE_D%LAYER_THICKNESS(LAYER_INDEX(I))<ONE_D%MIN_LAYER_THICKNESS(LAYER_INDEX(I))) THEN
          REMOVE_LAYER = .TRUE.
          B1%LAYER_REMOVED = .TRUE.
       ELSE
@@ -2964,13 +2971,13 @@ O2_LOOP: DO ITER=1,MAX_ITER
 
       IF (PRESENT(PARTICLE_INDEX)) THEN
          CALL PYROLYSIS(ONE_D%N_MATL,ONE_D%MATL_INDEX,SURF_INDEX,BC%IIG,BC%JJG,BC%KKG,ONE_D%TMP(I),B1%TMP_F,Y_O2_F,BC%IOR,&
-                        RHO_DOT(1:ONE_D%N_MATL,I),RHO_TEMP(1:ONE_D%N_MATL),ONE_D%X(I-1),CHAR_FRONT,DX_S,DT_BC_SUB,&
+                        RHO_DOT(1:ONE_D%N_MATL,I),RHO_TEMP(1:ONE_D%N_MATL),ONE_D%X(I-1),ASH_DEPTH,DX_S,DT_BC_SUB,&
                         M_DOT_G_PPP_ADJUST,M_DOT_G_PPP_ACTUAL,M_DOT_S_PPP,Q_S(I),Q_DOT_G_PPP,Q_DOT_O2_PPP,&
                         Q_DOT_PART,M_DOT_PART,T_BOIL_EFF,B1%B_NUMBER,LAYER_INDEX(I),REMOVE_LAYER,ONE_D,B1,SOLID_CELL_INDEX=I,&
                         R_DROP=R_SURF,LPU=U_SURF,LPV=V_SURF,LPW=W_SURF)
       ELSE
          CALL PYROLYSIS(ONE_D%N_MATL,ONE_D%MATL_INDEX,SURF_INDEX,BC%IIG,BC%JJG,BC%KKG,ONE_D%TMP(I),B1%TMP_F,Y_O2_F,BC%IOR,&
-                        RHO_DOT(1:ONE_D%N_MATL,I),RHO_TEMP(1:ONE_D%N_MATL),0.5*(ONE_D%X(I-1)+ONE_D%X(I)),CHAR_FRONT,DX_S,DT_BC_SUB,&
+                        RHO_DOT(1:ONE_D%N_MATL,I),RHO_TEMP(1:ONE_D%N_MATL),0.5*(ONE_D%X(I-1)+ONE_D%X(I)),ASH_DEPTH,DX_S,DT_BC_SUB,&
                         M_DOT_G_PPP_ADJUST,M_DOT_G_PPP_ACTUAL,M_DOT_S_PPP,Q_S(I),Q_DOT_G_PPP,Q_DOT_O2_PPP,&
                         Q_DOT_PART,M_DOT_PART,T_BOIL_EFF,B1%B_NUMBER,LAYER_INDEX(I),REMOVE_LAYER,ONE_D,B1,SOLID_CELL_INDEX=I)
       ENDIF
@@ -3057,7 +3064,7 @@ END SUBROUTINE SOLID_HEAT_TRANSFER
 !> \param RHO_DOT_OUT (1:N_MATS) Array of component reaction rates (kg/m3/s)
 !> \param RHO_S (1:N_MATS) Array of component densities (kg/m3)
 !> \param DEPTH Distance from surface (m)
-!> \param CHAR_FRONT Distance from surface to start of char front (m)
+!> \param ASH_DEPTH Distance from surface to start of char front (m)
 !> \param DX_S Array of node sizes (m)
 !> \param DT_BC Time step used by the solid phase solver (s)
 !> \param M_DOT_G_PPP_ADJUST (1:N_TRACKED_SPECIES) Adjusted mass generation rate per unit volume of the gas species
@@ -3081,7 +3088,7 @@ END SUBROUTINE SOLID_HEAT_TRANSFER
 !> \param LPW (OPTIONAL) z component of droplet velocity (m/s)
 
 SUBROUTINE PYROLYSIS(N_MATS,MATL_INDEX,SURF_INDEX,IIG,JJG,KKG,TMP_S,TMP_F,Y_O2_F,IOR,&
-                     RHO_DOT_OUT,RHO_S,DEPTH,CHAR_FRONT,DX_S,DT_BC,&
+                     RHO_DOT_OUT,RHO_S,DEPTH,ASH_DEPTH,DX_S,DT_BC,&
                      M_DOT_G_PPP_ADJUST,M_DOT_G_PPP_ACTUAL,M_DOT_S_PPP,Q_DOT_S_PPP,Q_DOT_G_PPP,Q_DOT_O2_PPP,&
                      Q_DOT_PART,M_DOT_PART,T_BOIL_EFF,B_NUMBER,LAYER_INDEX,REMOVE_LAYER,ONE_D,B1,SOLID_CELL_INDEX,&
                      R_DROP,LPU,LPV,LPW)
@@ -3094,7 +3101,7 @@ INTEGER, INTENT(IN) :: N_MATS,SURF_INDEX,IIG,JJG,KKG,IOR,LAYER_INDEX
 INTEGER, INTENT(IN), OPTIONAL :: SOLID_CELL_INDEX
 LOGICAL, INTENT(IN) :: REMOVE_LAYER
 REAL(EB), INTENT(OUT), DIMENSION(:,:) :: RHO_DOT_OUT(N_MATS)
-REAL(EB), INTENT(IN) :: TMP_S,TMP_F,DT_BC,DEPTH,RHO_S(N_MATS),Y_O2_F,CHAR_FRONT
+REAL(EB), INTENT(IN) :: TMP_S,TMP_F,DT_BC,DEPTH,RHO_S(N_MATS),Y_O2_F,ASH_DEPTH
 REAL(EB), INTENT(IN), OPTIONAL :: R_DROP,LPU,LPV,LPW
 REAL(EB), INTENT(IN), DIMENSION(NWP_MAX) :: DX_S
 REAL(EB), DIMENSION(:) :: ZZ_GET(1:N_TRACKED_SPECIES),Y_ALL(1:N_SPECIES)
@@ -3377,7 +3384,7 @@ MATERIAL_LOOP: DO N=1,N_MATS  ! Loop over all materials in the cell (alpha subsc
                ! Calculate oxygen volume fraction at the surface
                X_O2 = SPECIES(O2_INDEX)%RCON*Y_O2_F/RSUM(IIG,JJG,KKG)
                ! Calculate oxygen concentration inside the material, assuming decay function
-               X_O2 = X_O2 * EXP(-MAX(0._EB,DEPTH-CHAR_FRONT)/(TWO_EPSILON_EB+ML%GAS_DIFFUSION_DEPTH(J)))
+               X_O2 = X_O2 * EXP(-MAX(0._EB,DEPTH-ASH_DEPTH)/(TWO_EPSILON_EB+ML%GAS_DIFFUSION_DEPTH(J)))
                REACTION_RATE = REACTION_RATE * X_O2**ML%N_O2(J)
             ENDIF
             REACTION_RATE = MIN(REACTION_RATE,ML%MAX_REACTION_RATE(J))  ! User-specified limit
