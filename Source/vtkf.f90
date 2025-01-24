@@ -15927,6 +15927,7 @@ END FUNCTION IJK_DUP
 SUBROUTINE GET_GEOMINFO_DUP(SLICETYPE,I1,I2,J1,J2,K1,K2,NVERTS,NVERTS_CUTCELLS,NFACES,NFACES_CUTCELLS,&
                         VERTS,FACES,LOCATIONS,SURFIND,GEOMIND)
 
+
 ! generate VERTS(1:3*NVERTS) and FACES(1:3*NFACES) arrays
 
    CHARACTER(*), INTENT(IN) :: SLICETYPE
@@ -15961,7 +15962,7 @@ SUBROUTINE GET_GEOMINFO_DUP(SLICETYPE,I1,I2,J1,J2,K1,K2,NVERTS,NVERTS_CUTCELLS,N
       NI = I2 + 1 - I1
       NJ = J2 + 1 - J1
       NK = K2 + 1 - K1
-      CALL GETSLICEDIR_DUP(I1,I2,J1,J2,K1,K2,DIR,SLICE)
+      CALL GETSLICEDIR(I1,I2,J1,J2,K1,K2,DIR,SLICE)
       IVERT = 0
       IFACE = 0
       IF (DIR==1) THEN
@@ -15980,15 +15981,15 @@ SUBROUTINE GET_GEOMINFO_DUP(SLICETYPE,I1,I2,J1,J2,K1,K2,NVERTS,NVERTS_CUTCELLS,N
                IS_SOLID = CELL(CELL_INDEX(SLICE,J+J1,K+K1))%SOLID
                IFACE = IFACE + 1
                IF (IS_SOLID) LOCATIONS(IFACE) = 1 + 16 ! triangle is in a solid so tag with 1
-               FACES(3*IFACE-2) = IJK_DUP(  J,  K,NJ)
-               FACES(3*IFACE-1) = IJK_DUP(J+1,  K,NJ)
-               FACES(3*IFACE)   = IJK_DUP(J+1,K+1,NJ)
+               FACES(3*IFACE-2) = IJK(  J,  K,NJ)
+               FACES(3*IFACE-1) = IJK(J+1,  K,NJ)
+               FACES(3*IFACE)   = IJK(J+1,K+1,NJ)
 
                IFACE = IFACE + 1
                IF (IS_SOLID) LOCATIONS(IFACE) = 1 + 4 ! triangle is in a solid so tag with 1
-               FACES(3*IFACE-2) = IJK_DUP(  J,  K,NJ)
-               FACES(3*IFACE-1) = IJK_DUP(J+1,K+1,NJ)
-               FACES(3*IFACE)   = IJK_DUP(  J,K+1,NJ)
+               FACES(3*IFACE-2) = IJK(  J,  K,NJ)
+               FACES(3*IFACE-1) = IJK(J+1,K+1,NJ)
+               FACES(3*IFACE)   = IJK(  J,K+1,NJ)
             ENDDO
          ENDDO
       ELSE IF (DIR==2) THEN
@@ -16007,15 +16008,15 @@ SUBROUTINE GET_GEOMINFO_DUP(SLICETYPE,I1,I2,J1,J2,K1,K2,NVERTS,NVERTS_CUTCELLS,N
                IS_SOLID = CELL(CELL_INDEX(I+I1,SLICE,K+K1))%SOLID
                IFACE = IFACE + 1
                IF (IS_SOLID) LOCATIONS(IFACE) = 1 + 16
-               FACES(3*IFACE-2) = IJK_DUP(  I,  K,NI)
-               FACES(3*IFACE-1) = IJK_DUP(I+1,  K,NI)
-               FACES(3*IFACE)   = IJK_DUP(I+1,K+1,NI)
+               FACES(3*IFACE-2) = IJK(  I,  K,NI)
+               FACES(3*IFACE-1) = IJK(I+1,  K,NI)
+               FACES(3*IFACE)   = IJK(I+1,K+1,NI)
 
                IFACE = IFACE + 1
                IF (IS_SOLID) LOCATIONS(IFACE) = 1 + 4
-               FACES(3*IFACE-2) = IJK_DUP(  I,  K,NI)
-               FACES(3*IFACE-1) = IJK_DUP(I+1,K+1,NI)
-               FACES(3*IFACE)   = IJK_DUP(  I,K+1,NI)
+               FACES(3*IFACE-2) = IJK(  I,  K,NI)
+               FACES(3*IFACE-1) = IJK(I+1,K+1,NI)
+               FACES(3*IFACE)   = IJK(  I,K+1,NI)
             ENDDO
          ENDDO
       ELSE
@@ -16034,15 +16035,15 @@ SUBROUTINE GET_GEOMINFO_DUP(SLICETYPE,I1,I2,J1,J2,K1,K2,NVERTS,NVERTS_CUTCELLS,N
                IS_SOLID = CELL(CELL_INDEX(I+I1,J+J1,SLICE))%SOLID
                IFACE = IFACE + 1
                IF (IS_SOLID) LOCATIONS(IFACE) = 1 + 16
-               FACES(3*IFACE-2) = IJK_DUP(  I,  J,NI)
-               FACES(3*IFACE-1) = IJK_DUP(I+1,  J,NI)
-               FACES(3*IFACE)   = IJK_DUP(I+1,J+1,NI)
+               FACES(3*IFACE-2) = IJK(  I,  J,NI)
+               FACES(3*IFACE-1) = IJK(I+1,  J,NI)
+               FACES(3*IFACE)   = IJK(I+1,J+1,NI)
 
                IFACE = IFACE + 1
                IF (IS_SOLID) LOCATIONS(IFACE) = 1 + 4
-               FACES(3*IFACE-2) = IJK_DUP(  I,  J,NI)
-               FACES(3*IFACE-1) = IJK_DUP(I+1,J+1,NI)
-               FACES(3*IFACE)   = IJK_DUP(  I,J+1,NI)
+               FACES(3*IFACE-2) = IJK(  I,  J,NI)
+               FACES(3*IFACE-1) = IJK(I+1,J+1,NI)
+               FACES(3*IFACE)   = IJK(  I,J+1,NI)
             ENDDO
          ENDDO
       ENDIF
@@ -16052,7 +16053,7 @@ SUBROUTINE GET_GEOMINFO_DUP(SLICETYPE,I1,I2,J1,J2,K1,K2,NVERTS,NVERTS_CUTCELLS,N
       NI = I2 + 1 - I1
       NJ = J2 + 1 - J1
       NK = K2 + 1 - K1
-      CALL GETSLICEDIR_DUP(I1,I2,J1,J2,K1,K2,DIR,SLICE)
+      CALL GETSLICEDIR(I1,I2,J1,J2,K1,K2,DIR,SLICE)
       IVERT = 0
       IFACE = 0
       IF (DIR==1) THEN
@@ -16107,16 +16108,16 @@ SUBROUTINE GET_GEOMINFO_DUP(SLICETYPE,I1,I2,J1,J2,K1,K2,NVERTS,NVERTS_CUTCELLS,N
                   IFACE = IFACE + 1 ! store solid and gas faces and vertices (2 faces per cell)
                   LOCATIONS(IFACE) = 0 + 16
                   IF ( FCVAR(SLICE,J,K,CC_FGSC,IAXIS) == CC_SOLID) LOCATIONS(IFACE)=1 + 16
-                  FACES(3*IFACE-2) = IJK_DUP(  J,  K,NJ)
-                  FACES(3*IFACE-1) = IJK_DUP(J+1,  K,NJ)
-                  FACES(3*IFACE)   = IJK_DUP(J+1,K+1,NJ)
+                  FACES(3*IFACE-2) = IJK(  J,  K,NJ)
+                  FACES(3*IFACE-1) = IJK(J+1,  K,NJ)
+                  FACES(3*IFACE)   = IJK(J+1,K+1,NJ)
 
                   IFACE = IFACE + 1
                   LOCATIONS(IFACE) = 0 + 4
                   IF ( FCVAR(SLICE,J,K,CC_FGSC,IAXIS) == CC_SOLID) LOCATIONS(IFACE)=1 + 4
-                  FACES(3*IFACE-2) = IJK_DUP(  J,  K,NJ)
-                  FACES(3*IFACE-1) = IJK_DUP(J+1,K+1,NJ)
-                  FACES(3*IFACE)   = IJK_DUP(  J,K+1,NJ)
+                  FACES(3*IFACE-2) = IJK(  J,  K,NJ)
+                  FACES(3*IFACE-1) = IJK(J+1,K+1,NJ)
+                  FACES(3*IFACE)   = IJK(  J,K+1,NJ)
                ENDIF
             ENDDO
          ENDDO
@@ -16168,16 +16169,16 @@ SUBROUTINE GET_GEOMINFO_DUP(SLICETYPE,I1,I2,J1,J2,K1,K2,NVERTS,NVERTS_CUTCELLS,N
                   IFACE = IFACE + 1
                   LOCATIONS(IFACE) = 0 + 16
                   IF ( FCVAR(I,SLICE,K,CC_FGSC,JAXIS) == CC_SOLID) LOCATIONS(IFACE)=1 + 16
-                  FACES(3*IFACE-2) = IJK_DUP(  I,  K,NI)
-                  FACES(3*IFACE-1) = IJK_DUP(I+1,  K,NI)
-                  FACES(3*IFACE)   = IJK_DUP(I+1,K+1,NI)
+                  FACES(3*IFACE-2) = IJK(  I,  K,NI)
+                  FACES(3*IFACE-1) = IJK(I+1,  K,NI)
+                  FACES(3*IFACE)   = IJK(I+1,K+1,NI)
 
                   IFACE = IFACE + 1
                   LOCATIONS(IFACE) = 0 + 4
                   IF ( FCVAR(I,SLICE,K,CC_FGSC,JAXIS) == CC_SOLID) LOCATIONS(IFACE)=1 + 4
-                  FACES(3*IFACE-2) = IJK_DUP(  I,  K,NI)
-                  FACES(3*IFACE-1) = IJK_DUP(I+1,K+1,NI)
-                  FACES(3*IFACE)   = IJK_DUP(  I,K+1,NI)
+                  FACES(3*IFACE-2) = IJK(  I,  K,NI)
+                  FACES(3*IFACE-1) = IJK(I+1,K+1,NI)
+                  FACES(3*IFACE)   = IJK(  I,K+1,NI)
                ENDIF
             ENDDO
          ENDDO
@@ -16229,16 +16230,16 @@ SUBROUTINE GET_GEOMINFO_DUP(SLICETYPE,I1,I2,J1,J2,K1,K2,NVERTS,NVERTS_CUTCELLS,N
                   IFACE = IFACE + 1
                   LOCATIONS(IFACE) = 0 + 16
                   IF ( FCVAR(I,J,SLICE,CC_FGSC,KAXIS) == CC_SOLID) LOCATIONS(IFACE)=1 + 16
-                  FACES(3*IFACE-2) = IJK_DUP(  I,  J,NI)
-                  FACES(3*IFACE-1) = IJK_DUP(I+1,  J,NI)
-                  FACES(3*IFACE)   = IJK_DUP(I+1,J+1,NI)
+                  FACES(3*IFACE-2) = IJK(  I,  J,NI)
+                  FACES(3*IFACE-1) = IJK(I+1,  J,NI)
+                  FACES(3*IFACE)   = IJK(I+1,J+1,NI)
 
                   IFACE = IFACE + 1
                   LOCATIONS(IFACE) = 0 + 4
                   IF ( FCVAR(I,J,SLICE,CC_FGSC,KAXIS) == CC_SOLID) LOCATIONS(IFACE)=1 + 4
-                  FACES(3*IFACE-2) = IJK_DUP(  I,  J,NI)
-                  FACES(3*IFACE-1) = IJK_DUP(I+1,J+1,NI)
-                  FACES(3*IFACE)   = IJK_DUP(  I,J+1,NI)
+                  FACES(3*IFACE-2) = IJK(  I,  J,NI)
+                  FACES(3*IFACE-1) = IJK(I+1,J+1,NI)
+                  FACES(3*IFACE)   = IJK(  I,J+1,NI)
                ENDIF
             ENDDO
          ENDDO
@@ -16305,7 +16306,7 @@ SUBROUTINE GET_GEOMINFO_DUP(SLICETYPE,I1,I2,J1,J2,K1,K2,NVERTS,NVERTS_CUTCELLS,N
                         I=II; J=JJ; K=KK;
                         SELECT CASE(X1AXIS)
                         CASE(IAXIS)
-                           I=II-FCELL+ILH
+                           I=II-1+ILH
                            DO KADD=-1,0
                               DO JADD=-1,0
                                  IVERTCUT = IVERTCUT + 1
@@ -16315,7 +16316,7 @@ SUBROUTINE GET_GEOMINFO_DUP(SLICETYPE,I1,I2,J1,J2,K1,K2,NVERTS,NVERTS_CUTCELLS,N
                               ENDDO
                            ENDDO
                         CASE(JAXIS)
-                           J=JJ-FCELL+ILH
+                           J=JJ-1+ILH
                            DO IADD=-1,0
                               DO KADD=-1,0
                                  IVERTCUT = IVERTCUT + 1
@@ -16325,7 +16326,7 @@ SUBROUTINE GET_GEOMINFO_DUP(SLICETYPE,I1,I2,J1,J2,K1,K2,NVERTS,NVERTS_CUTCELLS,N
                               ENDDO
                            ENDDO
                         CASE(KAXIS)
-                           K=KK-FCELL+ILH
+                           K=KK-1+ILH
                            DO JADD=-1,0
                               DO IADD=-1,0
                                  IVERTCUT = IVERTCUT + 1
