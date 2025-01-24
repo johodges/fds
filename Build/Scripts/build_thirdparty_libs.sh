@@ -49,7 +49,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --no-libs)
-	    no_libs=true
+	         no_libs=true
             clean_fds=true
             shift
             ;;
