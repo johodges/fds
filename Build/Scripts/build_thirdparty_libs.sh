@@ -44,7 +44,10 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --clean-hdf5)
+            clear_fds=true
             clean_hdf5=true
+            shift
+            ;;
         --no-libs)
 	    no_libs=true
             clean_fds=true
