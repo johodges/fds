@@ -16346,7 +16346,7 @@ SUBROUTINE GET_GEOMINFO_DUP(SLICETYPE,I1,I2,J1,J2,K1,K2,NVERTS,NVERTS_CUTCELLS,N
                      CASE(CC_FTYPE_CFGAS)
                         ICF2    = CUT_CELL(ICC)%FACE_LIST(4,IFACE)
                         IFACE2  = CUT_CELL(ICC)%FACE_LIST(5,IFACE)
-                        X1AXIS  = CUT_FACE(ICF2)%IJK_DUP(KAXIS+1); DIR = X1AXIS
+                        X1AXIS  = CUT_FACE(ICF2)%IJK(KAXIS+1); DIR = X1AXIS
                         NVF     = CUT_FACE(ICF2)%CFELEM(1,IFACE2)
                         VERTBEG = IVERTCUT + 1
                         VERTBEG = 3*VERTBEG - 2
