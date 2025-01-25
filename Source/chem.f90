@@ -1,9 +1,12 @@
+!> \brief CVODE interface for detailed chemistry calculation
 ! CALL CVODE FOR SOLVING CHEMISTRY 
 ! THE DERIVATIVE AND JACOBIAN FUNCTION TRACK N_TRACKED_SPECIES+2
 ! VARIABLES. THE +2 IS TEMPERATURE AND PRESSURE.
 
-
+!> @cond DOXYGEN_IGNORE
 #ifdef WITH_SUNDIALS
+!> @endcond
+
 
 MODULE CVODE_INTERFACE
 
@@ -17,21 +20,22 @@ IMPLICIT NONE
 
 LOGICAL :: DEBUG=.FALSE.
 REAL(EB), PARAMETER :: MIN_CHEM_TMP=200._EB
+REAL(EB) :: CUR_CFD_TIME
 
 PUBLIC CVODE_SERIAL
 
 CONTAINS
 
-  
+
 !> \brief The right hand side function of the ode d[c]/dt = wdot (=f).
 !> \param TN_C is the current time
 !> \param SUNVEC_Y is the current array of molar concentrations, temperature and pressure.
 !> \param SUNVEC_F is the array of derivatives returned
-
+!> \param USER_DATA is the user data array. Not yet used in FDS.
+!> \details The right hand side function of the ode d[c]/dt = wdot (=f). Provides the Derivative function to CVODE.
 INTEGER(C_INT) FUNCTION RHSFN(TN_C, SUNVEC_Y, SUNVEC_F, USER_DATA) &
     RESULT(IERR) BIND(C,NAME='RHSFN')
 
-USE, INTRINSIC :: ISO_C_BINDING
 USE FSUNDIALS_NVECTOR_MOD
 
 ! CALLING VARIABLES
@@ -65,7 +69,7 @@ END FUNCTION RHSFN
 
 
 
-!> \brief Calculate derivative (fvec) for a given cvec(n_tracked_species+2)
+!> \brief Calculate derivative (fvec) for a given concentration vector cvec(n_tracked_species+2)
 !> \param CVEC is the current array of molar concentrations, temperature and pressure.
 !> \param FVEC is the array of derivatives returned
 
@@ -75,10 +79,10 @@ USE PHYSICAL_FUNCTIONS, ONLY : GET_SPECIFIC_HEAT_INTERP, GET_ENTHALPY_Z, MOLAR_C
 REAL(EB), POINTER, INTENT(INOUT)  :: CVEC(:)
 REAL(EB), POINTER, INTENT(INOUT) :: FVEC(:)
 REAL(EB) :: R_F,MIN_SPEC(N_TRACKED_SPECIES), KG,  TMP, RHO, &
-          K_0, K_INF, P_RI, FCENT, B_I, RRTMP, THIRD_BODY_ENHANCEMENT
+          K_0, K_INF, P_RI, FCENT, B_I, RRTMP, THIRD_BODY_ENHANCEMENT, PR
 INTEGER :: I,NS, ITMP
-REAL(EB) :: ZZ(N_TRACKED_SPECIES), CP, HS_I, DG 
-TYPE(REACTION_TYPE), POINTER :: RN=>NULL()
+REAL(EB) :: ZZ(N_TRACKED_SPECIES), CP, HS_I, DG
+TYPE(REACTION_TYPE), POINTER :: RN
 
 TMP = MAX(CVEC(N_TRACKED_SPECIES+1), MIN_CHEM_TMP)
 PR = CVEC(N_TRACKED_SPECIES+2) ! PA
@@ -98,7 +102,7 @@ REACTION_LOOP: DO I=1,N_REACTIONS
    K_INF = RN%A_SI*TMP**RN%N_T*EXP(-RN%E*RRTMP) !A_SI IS IN [KMOL/M3]^() UNIT.
    R_F = K_INF
    IF(RN%REVERSE) THEN ! COMPUTE EQUILIBRIUM CONSTANT
-      ITMP = MIN(I_MAX_TEMP-1,INT(TMP))
+      ITMP = MAX(MIN(I_MAX_TEMP-1,INT(TMP)),0)
       DG = RN%DELTA_G(ITMP) + (TMP-REAL(ITMP,EB))*(RN%DELTA_G(ITMP+1)-RN%DELTA_G(ITMP))
       KG = EXP(DG/TMP)*(P_STP*RRTMP)**RN%C0_EXP
       !KG = EXP(RN%DELTA_G(MIN(I_MAX_TEMP,NINT(TMP)))/TMP)*(P_STP*RRTMP)**RN%C0_EXP
@@ -125,7 +129,7 @@ REACTION_LOOP: DO I=1,N_REACTIONS
       ELSEIF(RN%REACTYPE==FALLOFF_LINDEMANN_TYPE .OR. RN%REACTYPE==FALLOFF_TROE_TYPE ) THEN
          K_0 = RN%A_LOW_PR*TMP**(RN%N_T_LOW_PR)*EXP(-RN%E_LOW_PR*RRTMP)
          P_RI = K_0/K_INF*THIRD_BODY_ENHANCEMENT
-         FCENT = CALCFCENT(TMP,P_RI, RN)
+         FCENT = CALCFCENT(TMP,P_RI, I)
          B_I = P_RI/(1._EB+P_RI)*FCENT
          R_F = R_F * B_I
       ENDIF 
@@ -161,14 +165,16 @@ END SUBROUTINE DERIVATIVE
 !> \brief Calculate fall-off function 
 !> \param TMP is the current temperature.
 !> \param P_RI is the reduced pressure
-!> \param RN is the reaction
+!> \param RNI is the index of reaction
 
-REAL(EB) FUNCTION CALCFCENT(TMP, P_RI, RN)
+REAL(EB) FUNCTION CALCFCENT(TMP, P_RI, RNI)
 REAL(EB), INTENT(IN) :: TMP, P_RI
-TYPE(REACTION_TYPE), POINTER, INTENT(IN) :: RN
+INTEGER, INTENT(IN) :: RNI
+TYPE(REACTION_TYPE), POINTER :: RN
 REAL(EB) :: LOGFCENT, C, N, LOGPRC
 REAL(EB), PARAMETER :: D=0.14_EB
 
+RN => REACTION(RNI)
 IF(RN%REACTYPE==FALLOFF_TROE_TYPE) THEN
    IF (RN%T2_TROE <-1.E20_EB) THEN
       LOGFCENT = LOG10(MAX((1 - RN%A_TROE)*EXP(-TMP*RN%RT3_TROE) + &
@@ -192,16 +198,21 @@ END FUNCTION CALCFCENT
 
 
 
-!> \the jacobian of the ode right hand side function j = df/dy
-!> \param TN_C is the current time
+!> \brief The jacobian of the ode right hand side function j = df/dy
+!> \param TN_C is the current time provided by CVODE during callback, not the actual CFD time.
 !> \param SUNVEC_Y is the current array of molar concentrations, temperature and pressure.
 !> \param SUNVEC_F is the array of derivatives returned
+!> \param SUNMAT_J is the Jacobian array returned to CVODE
+!> \param USER_DATA is the user data array. Not yet used in FDS.
+!> \param TMP1 is not yet used in FDS.
+!> \param TMP2 is not yet used in FDS.
+!> \param TMP3 is not yet used in FDS.
+!> \details The jacobian of the ode right hand side function j = df/dy. Provides the Jacobian function to CVODE.
 
 INTEGER(C_INT) FUNCTION JACFN(TN_C, SUNVEC_Y, SUNVEC_F, SUNMAT_J, &
  USER_DATA, TMP1, TMP2, TMP3) &
  RESULT(IERR) BIND(C,NAME='JACFN')
 
-USE, INTRINSIC :: ISO_C_BINDING
 USE FSUNDIALS_NVECTOR_MOD
 USE FSUNMATRIX_DENSE_MOD
 USE FSUNDIALS_MATRIX_MOD
@@ -254,7 +265,7 @@ RETURN
 END FUNCTION JACFN
 
 
-!> \brief Calculate the jacobian matrix (jmat[n_tracked_species+2,
+!> \brief Calculate the analytical jacobian jmat[n_tracked_species+2,n_tracked_species+2]
 !> \param CVEC is the current array of molar concentrations, temperature and pressure.
 !> \param FVEC is the array of derivatives passed as input
 !> \param JMAT is the jacobian matrix returned
@@ -269,11 +280,11 @@ REAL(EB), POINTER, INTENT(INOUT) :: FVEC(:)
 REAL(EB), INTENT(INOUT) :: JMAT(N_TRACKED_SPECIES+2, N_TRACKED_SPECIES+2)
 
 REAL(EB) :: R_F,DCVEC1,DCVEC2, MIN_SPEC(N_TRACKED_SPECIES), KG,  TMP, RHO, &
-            K_0, K_INF, P_RI, FCENT, B_I, RRTMP, THIRD_BODY_ENHANCEMENT
+            K_0, K_INF, P_RI, FCENT, B_I, RRTMP, THIRD_BODY_ENHANCEMENT, PR
 REAL(EB) :: ZZ(N_TRACKED_SPECIES), CP_I(N_TRACKED_SPECIES), HS_I(N_TRACKED_SPECIES)    
 REAL(EB) :: DKCDTBYKC, DBIDC(N_TRACKED_SPECIES), DBIDT, CP, DCPDT, DKINFDTMPBYKINF, DTMPDT, DG, TMPI   
 INTEGER :: I,NS, NS1, NS2, ITMP
-TYPE(REACTION_TYPE), POINTER :: RN=>NULL()
+TYPE(REACTION_TYPE), POINTER :: RN
 
 TMP = MAX(CVEC(N_TRACKED_SPECIES+1), MIN_CHEM_TMP)
 TMPI = 1._EB/TMP
@@ -302,7 +313,7 @@ REACTION_LOOP: DO I=1,N_REACTIONS
    R_F = K_INF
    DKINFDTMPBYKINF = (RN%N_T+RN%E*RRTMP)*TMPI
    IF(RN%REVERSE) THEN ! COMPUTE EQUILIBRIUM CONSTANT
-      ITMP = MIN(I_MAX_TEMP-1,INT(TMP))
+      ITMP = MAX(MIN(I_MAX_TEMP-1,INT(TMP)),0)
       DG = RN%DELTA_G(ITMP) + (TMP-REAL(ITMP,EB))*(RN%DELTA_G(ITMP+1)-RN%DELTA_G(ITMP))
       KG = EXP(DG*TMPI)*(P_STP*RRTMP)**RN%C0_EXP
       R_F = R_F*KG ! KG IS THE CONCENTRATION EQUILIBRIUM CONSTANT OF REVERSE REACTION. 
@@ -339,11 +350,11 @@ REACTION_LOOP: DO I=1,N_REACTIONS
       ELSEIF(RN%REACTYPE==FALLOFF_LINDEMANN_TYPE .OR. RN%REACTYPE==FALLOFF_TROE_TYPE) THEN
          K_0 = RN%A_LOW_PR*TMP**(RN%N_T_LOW_PR)*EXP(-RN%E_LOW_PR*RRTMP)
          P_RI = K_0/K_INF*THIRD_BODY_ENHANCEMENT
-         FCENT = CALCFCENT(TMP,P_RI, RN)
+         FCENT = CALCFCENT(TMP,P_RI, I)
          B_I = P_RI/(1._EB+P_RI)*FCENT
          R_F = R_F * B_I
          IF (THIRD_BODY_ENHANCEMENT > TWO_EPSILON_EB) THEN
-            CALL CALC_FALLOFF_DBIDC_AND_DBIDT(TMP, RN, K_0, K_INF, P_RI, FCENT, DBIDC, DBIDT)
+            CALL CALC_FALLOFF_DBIDC_AND_DBIDT(TMP, I, K_0, K_INF, P_RI, FCENT, DBIDC, DBIDT)
          ENDIF 
       ENDIF 
    ENDIF
@@ -351,7 +362,7 @@ REACTION_LOOP: DO I=1,N_REACTIONS
    !Contribution of qi
    DO NS1 = 1, RN%N_SPEC
       DO NS=1,RN%N_SMIX_FR
-         DCVEC1 = R_F*RN%NU_NN(RN%NU_INDEX(NS))/CVEC(YP2ZZ(RN%N_S_INDEX(NS1)))
+         DCVEC1 = R_F*RN%NU_NN(RN%NU_INDEX(NS))*RN%N_S(NS1)/CVEC(YP2ZZ(RN%N_S_INDEX(NS1)))
          JMAT((YP2ZZ(RN%N_S_INDEX(NS1))),RN%NU_INDEX(NS)) = &
          JMAT((YP2ZZ(RN%N_S_INDEX(NS1))),RN%NU_INDEX(NS))+ DCVEC1 
       ENDDO   
@@ -428,6 +439,7 @@ END SUBROUTINE JACOBIAN
 
 
 !> \brief Print the component of jacobian matrix
+!> \param JMAT is the Jacobian matrix.
 SUBROUTINE PRINT_JMAT(JMAT)
 REAL(EB), INTENT(IN) :: JMAT(N_TRACKED_SPECIES+2, N_TRACKED_SPECIES+2)
 INTEGER :: NS, NS2
@@ -476,26 +488,31 @@ END SUBROUTINE PRINT_JMAT
 
 !> \brief Calculate DBIDC of reactions 
 !> \param TMP is the current temperature.
-!> \param RN is the reaction
-!> \param CVEC is the array of concentrations
-!> \param PR is the PRESSURE RATIO.
-!> \param F is the FALLOFF FUNCTION VALUE.
+!> \param RNI is the reaction index.
+!> \param K0 is the low pressure rate coeff.
+!> \param KINF is the high pressure rate coeff.
+!> \param PR is the pressure ratio.
+!> \param F is the falloff function value.
+!> \param DBIDC is the derivative of modification factor w.r.t concentration (out).
+!> \param DBIDT is the derivative of modification factor w.r.t temperature (out).
 
-SUBROUTINE CALC_FALLOFF_DBIDC_AND_DBIDT(TMP, RN, K0, KINF, PR, F, DBIDC, DBIDT)
+SUBROUTINE CALC_FALLOFF_DBIDC_AND_DBIDT(TMP, RNI, K0, KINF, PR, F, DBIDC, DBIDT)
 REAL(EB), INTENT(IN) :: TMP, PR, K0, KINF, F
-TYPE(REACTION_TYPE), POINTER, INTENT(IN) :: RN
+INTEGER, INTENT(IN) :: RNI
 REAL(EB), INTENT(INOUT) :: DBIDC(N_TRACKED_SPECIES)
 REAL(EB), INTENT(INOUT) :: DBIDT
 REAL(EB) :: DPRDBI, DFDBI, DPRDT, DFDT, RRTMP
 INTEGER :: NS
+TYPE(REACTION_TYPE), POINTER :: RN
 
+RN => REACTION(RNI)
 RRTMP = 1._EB/(R0*TMP)
 
 DO NS=1,N_TRACKED_SPECIES
    DPRDBI = -RN%THIRD_EFF(NS     )*K0/KINF
    DFDBI = 0._EB
    IF (RN%REACTYPE==FALLOFF_TROE_TYPE) THEN
-      DFDBI = DDC_TROE(PR, F, DPRDBI, TMP, RN)
+      DFDBI = DDC_TROE(PR, F, DPRDBI, TMP, RNI)
    ENDIF   
    DBIDC(NS) = (DPRDBI/(PR*(1 + PR)) + DFDBI/F)
 ENDDO
@@ -504,7 +521,7 @@ ENDDO
 DPRDT = PR/TMP*( RN%N_T_LOW_PR + RN%E_LOW_PR*RRTMP - RN%N_T - RN%E*RRTMP - 1)
 DFDT = 0._EB
 IF (RN%REACTYPE==FALLOFF_TROE_TYPE) THEN
-   DFDT = DDTMP_TROE(PR, F, DPRDT, TMP, RN)
+   DFDT = DDTMP_TROE(PR, F, DPRDT, TMP, RNI)
 ENDIF   
 DBIDT = (DPRDT/(PR*(1 + PR)) + DFDT/F)
 
@@ -512,12 +529,19 @@ RETURN
 END SUBROUTINE CALC_FALLOFF_DBIDC_AND_DBIDT
 
 !> \brief Calculate derivative of TROE function w.r.t concentration  
-REAL(EB) FUNCTION DDC_TROE(PR, F, DPRDC, TMP, RN) 
+!> \param PR is the pressure ratio.
+!> \param F is the falloff function value.
+!> \param DPRDC is the derivative of TROE function w.r.t concentration.
+!> \param TMP is the current temperature.
+!> \param RNI is the reaction index
+REAL(EB) FUNCTION DDC_TROE(PR, F, DPRDC, TMP, RNI) 
 REAL(EB), INTENT(IN) :: PR, F, DPRDC, TMP
-TYPE(REACTION_TYPE), POINTER, INTENT(IN) :: RN
+INTEGER, INTENT(IN) :: RNI
 REAL(EB) :: LOGPR, LOGTEN, LOGFCENT, C, N, DLOGPRDC, DPARENTDC
+TYPE(REACTION_TYPE), POINTER :: RN
 REAL(EB), PARAMETER :: D=0.14_EB
 
+RN => REACTION(RNI)
 LOGPR = LOG10(MAX(PR,  TWO_EPSILON_EB))
 LOGTEN = LOG(10.0)
 IF (RN%T2_TROE <-1.E20_EB) THEN
@@ -542,12 +566,19 @@ END FUNCTION DDC_TROE
 
 
 !> \brief Calculate derivative of TROE function w.r.t temperature  
-REAL(EB) FUNCTION DDTMP_TROE(PR, F, DPRDT, TMP, RN) 
+!> \param PR is the pressure ratio.
+!> \param F is the falloff function value.
+!> \param DPRDT is the derivative of TROE function w.r.t temperature.
+!> \param TMP is the current temperature.
+!> \param RNI is the reaction index
+REAL(EB) FUNCTION DDTMP_TROE(PR, F, DPRDT, TMP, RNI) 
 REAL(EB), INTENT(IN) :: PR, F, DPRDT, TMP
-TYPE(REACTION_TYPE), POINTER, INTENT(IN) :: RN
+INTEGER, INTENT(IN) :: RNI
 REAL(EB) :: FCENT, LOGPR, LOGTEN, LOGFCENT, DFCENTDT, C, N, DCDT, DNDT, DPARENTDT, DLOGFCENTDT, DLOGPRDT
+TYPE(REACTION_TYPE), POINTER :: RN
 REAL(EB), PARAMETER :: D=0.14_EB
 
+RN => REACTION(RNI)
 LOGPR = LOG10(MAX(PR, TWO_EPSILON_EB));
 LOGTEN = LOG(10.0);
 IF (RN%T2_TROE <-1.E20_EB) THEN
@@ -579,8 +610,7 @@ END FUNCTION DDTMP_TROE
 
 
 
-!> \cvode interface for ODE integrator 
-!> \Call sundials cvode in serial mode.
+!> \brief cvode interface for ODE integrator. Call sundials cvode in serial mode.
 !> \param ZZ species mass fraction array
 !> \param TMP_IN is the temperature
 !> \param PR_IN is the pressure
@@ -588,9 +618,9 @@ END FUNCTION DDTMP_TROE
 !> \param TEND is the end time in seconds
 !> \param RTOL is the relative error for all the species (REAL_EB)
 !> \param ATOL is the absolute error tolerance array for the species (REAL_EB)
+!> \details This is the interface subroutine to the other modules.
 
 SUBROUTINE CVODE_SERIAL(CC,TMP_IN, PR_IN, TCUR,TEND, RTOL, ATOL)
-USE, INTRINSIC :: ISO_C_BINDING
 USE PHYSICAL_FUNCTIONS, ONLY : MOLAR_CONC_TO_MASS_FRAC, CALC_EQUIV_RATIO
 USE GLOBAL_CONSTANTS
 USE FCVODE_MOD                 ! FORTRAN INTERFACE TO CVODE
@@ -626,7 +656,7 @@ TYPE(N_VECTOR),        POINTER :: SUNATOL      ! SUNDIALS VECTOR FOR ABSOLUTE TO
 
 
 REAL(EB) :: ZZ(N_TRACKED_SPECIES), EQUIV
-INTEGER :: NS
+INTEGER :: NS, NTRY, MAXTRY
 
 !======= INTERNALS ============
 NEQ = INT(N_TRACKED_SPECIES+2, KIND(8))
@@ -707,18 +737,49 @@ IF (IERR_C /= 0) THEN
    STOP 1
 END IF
 
+! SET ERROR HANDLER
+IERR_C = FCVODESETERRHANDLERFN(CVODE_MEM, C_FUNLOC(FDS_CVODE_ERR_HANDLER), C_NULL_PTR)
+IF (IERR_C /= 0) THEN
+   WRITE(LU_ERR,*) 'ERROR IN FCVODESETMAXNUMSTEPS, IERR = ', IERR_C, '; HALTING'
+   STOP 1
+END IF
+
 !CALL CVODE
 IERR_C = FCVODE(CVODE_MEM, TEND, SUNVEC_Y, TCUR_C, CV_NORMAL)
 IF (IERR_C /= 0) THEN
-   WRITE(LU_ERR,*)" WARN: CVODE took all internal substeps. TSTART, TEND, DT=", TCUR, TEND, (TEND-TCUR)
-   IF (DEBUG) THEN
-      CALL MOLAR_CONC_TO_MASS_FRAC(CC(1:N_TRACKED_SPECIES), ZZ(1:N_TRACKED_SPECIES))
-      CALL CALC_EQUIV_RATIO(ZZ(1:N_TRACKED_SPECIES), EQUIV)
-      DO NS = 1, N_TRACKED_SPECIES
-         WRITE(LU_ERR,*)" ID, Y=",SPECIES_MIXTURE(NS)%ID, ZZ(NS)
-      ENDDO 
-      WRITE(LU_ERR,*)" EQUIVALENCE RATIO, TMP=", EQUIV,TMP_IN
-      CALL CVODESTATS(CVODE_MEM) ! DIAGNOSTICS OUTPUT
+   MAXTRY = 2
+   ! If all internal substeps are taken try two more times. This will allow larger CFD timestep.
+   IF (IERR_C == CV_TOO_MUCH_WORK) THEN !CV_TOO_MUCH_WORK == all internal substeps are taken
+      NTRY = 0
+      DO WHILE (NTRY < MAXTRY)
+         IERR_C = FCVODE(CVODE_MEM, TEND, SUNVEC_Y, TCUR_C, CV_NORMAL)
+         IF (IERR_C == CV_TOO_MUCH_WORK) THEN
+            NTRY = NTRY +1
+            CYCLE
+         ELSE
+            EXIT
+         ENDIF
+      ENDDO
+   ENDIF
+
+   IF (IERR_C .NE. CV_SUCCESS) THEN
+      IF (IERR_C == CV_TOO_MUCH_WORK) THEN
+         WRITE(LU_ERR,'(A, 2E18.8, A)')" WARN: CVODE took all internal substeps. CUR_CFD_TIME, DT=", CUR_CFD_TIME, (TEND-TCUR), &
+                     ". If the warning persists, reduce the timestep."
+      ELSE
+         WRITE(LU_ERR,'(A, I4, A, 2E18.8, A)')" WARN: CVODE didn't finish ODE solution with message code:", IERR_C, &
+                        " and CUR_CFD_TIME, DT=", CUR_CFD_TIME, (TEND-TCUR), ". If the warning persists, reduce the timestep."
+      ENDIF   
+
+      IF (DEBUG) THEN
+         CALL MOLAR_CONC_TO_MASS_FRAC(CC(1:N_TRACKED_SPECIES), ZZ(1:N_TRACKED_SPECIES))
+         CALL CALC_EQUIV_RATIO(ZZ(1:N_TRACKED_SPECIES), EQUIV)
+         DO NS = 1, N_TRACKED_SPECIES
+            WRITE(LU_ERR,*)" ID, Y=",SPECIES_MIXTURE(NS)%ID, ZZ(NS)
+         ENDDO 
+         WRITE(LU_ERR,*)" EQUIVALENCE RATIO, TMP=", EQUIV,TMP_IN
+         CALL CVODESTATS(CVODE_MEM) ! DIAGNOSTICS OUTPUT
+      ENDIF   
    ENDIF   
 ENDIF
 
@@ -736,8 +797,78 @@ IERR_C = FSUNCONTEXT_FREE(SUNCTX)
 END SUBROUTINE CVODE_SERIAL
 
 
-!> \brief Print cvode statstics to standard out
+!> \brief CVODE error handler callback function, such that CVODE() doesn't output the error directly to stderr.
+!> \param ERR_CODE The error code send by CVODE
+!> \param MOD_NAME The module name where error occured send by CVODE
+!> \param FUNC_NAME The functio name where error occured send by CVODE
+!> \param MESSAGE The error message
+!> \param USER_DATA User data, not used in FDS.
+SUBROUTINE FDS_CVODE_ERR_HANDLER( ERR_CODE, MOD_NAME, FUNC_NAME, MESSAGE, USER_DATA) &
+   BIND(C,NAME='FDS_CVODE_ERR_HANDLER')
+INTEGER(C_INT), VALUE :: ERR_CODE
+CHARACTER(KIND=C_CHAR),DIMENSION(*),INTENT(IN) :: MOD_NAME
+CHARACTER(KIND=C_CHAR),DIMENSION(*),INTENT(IN) :: FUNC_NAME
+CHARACTER(KIND=C_CHAR),DIMENSION(*),INTENT(IN) :: MESSAGE
+TYPE(C_PTR), VALUE    :: USER_DATA        ! USER-DEFINED DATA
+CHARACTER(LEN=200) :: TEMP_STRING
+LOGICAL :: FOUND_NULL
+INTEGER :: J
 
+
+IF (DEBUG) THEN
+   WRITE(LU_ERR,*) '  CVODE CODE   : ', ERR_CODE
+
+   ! Print Message
+   FOUND_NULL = .FALSE.
+   TEMP_STRING = ''
+   J = 1
+   DO WHILE (.NOT. FOUND_NULL)
+       IF (MESSAGE(J) == C_NULL_CHAR) THEN
+           FOUND_NULL = .TRUE.
+       ELSE
+           TEMP_STRING(J:J) = MESSAGE(J)
+           J = J + 1
+       END IF
+   END DO
+   WRITE(LU_ERR,*) 'CVODE MESSAGE : ', TRIM(TEMP_STRING)
+
+   ! Print MOD_NAME
+   FOUND_NULL = .FALSE.
+   TEMP_STRING = ''
+   J = 1
+   DO WHILE (.NOT. FOUND_NULL)
+       IF (MOD_NAME(J) == C_NULL_CHAR) THEN
+           FOUND_NULL = .TRUE.
+       ELSE
+           TEMP_STRING(J:J) = MOD_NAME(J)
+           J = J + 1
+       END IF
+   END DO
+   WRITE(LU_ERR,*) '  MODULE       : ', TRIM(TEMP_STRING)
+
+   ! Print func name
+   FOUND_NULL = .FALSE.
+   TEMP_STRING = ''
+   J = 1
+   DO WHILE (.NOT. FOUND_NULL)
+       IF (FUNC_NAME(J) == C_NULL_CHAR) THEN
+           FOUND_NULL = .TRUE.
+       ELSE
+           TEMP_STRING(J:J) = FUNC_NAME(J)
+           J = J + 1
+       END IF
+   END DO
+   WRITE(LU_ERR,*) '  FUNCTION     : ', TRIM(TEMP_STRING)
+
+   IF (.NOT. C_ASSOCIATED(USER_DATA)) WRITE(LU_ERR,*)" NO USER_DATA IS PROVIDED"
+ENDIF
+
+END SUBROUTINE FDS_CVODE_ERR_HANDLER
+
+
+
+!> \brief print CVODE statistics from a CVODE memory object.
+!> \param CVODE_MEM CVODE memory object.
 SUBROUTINE CVODESTATS(CVODE_MEM)
 
 !======= INCLUSIONS ===========
@@ -813,4 +944,7 @@ RETURN
 END SUBROUTINE CVODESTATS
 
 END MODULE CVODE_INTERFACE
+!> @cond DOXYGEN_IGNORE
 #endif
+!> @endcond
+
