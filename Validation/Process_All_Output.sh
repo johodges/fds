@@ -74,6 +74,7 @@ FIREMODELS=../..
 # There should exist a line entry for every directory in the Validation directory of the fds repository.
 # If the case is under development, simply comment out the line below.
 
+PROCESS Aalto_Woods
 PROCESS Arup_Tunnel
 PROCESS ATF_Corridors
 PROCESS Atmospheric_Dispersion
@@ -92,6 +93,7 @@ PROCESS CSIRO_Grassland_Fires
 PROCESS CSTB_Tunnel
 PROCESS Cup_Burner
 PROCESS DelCo_Trainers
+PROCESS DoJ_HAI_Pool_Fires
 PROCESS Droplet_Evaporation
 PROCESS Edinburgh_Vegetation_Drag
 PROCESS FAA_Cargo_Compartments
@@ -102,6 +104,7 @@ PROCESS FM_FPRF_Datacenter
 PROCESS FM_Parallel_Panels
 PROCESS FM_SNL
 PROCESS FM_Vertical_Wall_Flames
+PROCESS Frankman_Vegetation
 PROCESS Hamins_Gas_Burners
 PROCESS Harrison_Spill_Plumes
 PROCESS Heated_Channel_Flow
@@ -130,6 +133,7 @@ PROCESS NIST_NRC
 PROCESS NIST_NRC_Corner_Effects
 PROCESS NIST_NRC_OLIVE-Fire
 PROCESS NIST_NRC_Parallel_Panels
+PROCESS NIST_NRC_Transient_Combustibles
 PROCESS NIST_Polymers
 PROCESS NIST_Pool_Fires
 PROCESS NIST_RSE_1994
@@ -157,6 +161,7 @@ PROCESS SP_AST
 PROCESS SP_Wood_Cribs
 PROCESS Steckler_Compartment
 PROCESS SWJTU_Tunnels
+PROCESS Theobald_Hose_Stream
 PROCESS Turbulent_Jet
 PROCESS TUS_Facade
 PROCESS UL_NFPRF

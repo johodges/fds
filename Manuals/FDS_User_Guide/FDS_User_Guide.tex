@@ -2381,7 +2381,7 @@ The solid material can be given an \ct{ABSORPTION_COEFFICIENT} (1/m) that allows
 \subsection{Back Side Boundary Conditions}
 \label{info:BACKING}
 
-There are several options for defining the back surface boundary condition of a thermally-thick obstruction. The default, \ct{BACKING='EXPOSED'} on the \ct{SURF} line, assumes that the back side is exposed to the thermal environment behind the solid\footnote{Prior to FDS, the boundary condition \ct{BACKING='EXPOSED'} was limited to zero or one cell thick solids. This restriction no longer applies.}. FDS calculates the heat transfer through the solid into the space behind the wall and vis versa. This heat conduction calculation in the solid is based on the \ct{THICKNESS} of the material layers specified on the \ct{SURF} line, not the dimension of the \ct{OBST} or other solid that the \ct{SURF} is applied to. For example, when modeling a steel plate that is 5~mm thick, if the \ct{OBST} is approximated as a zero-cell thick sheet because 5~mm is less than half the grid dimension of 5~cm, then FDS will still compute the heat transfer through a 5~mm thick plate of steel. If a \ct{SURF} with \ct{BACKING='EXPOSED'} is applied to a solid with a dimension that is much greater than the specified \ct{THICKNESS}, FDS will then ignore \ct{BACKING='EXPOSED'} and apply \ct{BACKING='VOID'} instead. This latter boundary condition is described below.
+There are several options for defining the back surface boundary condition of a thermally-thick obstruction. The default, \ct{BACKING='EXPOSED'} on the \ct{SURF} line, assumes that the back side is exposed to the thermal environment behind the solid\footnote{Prior to FDS, the boundary condition \ct{BACKING='EXPOSED'} was limited to zero or one cell thick solids. This restriction no longer applies.}. FDS calculates the heat transfer through the solid into the space behind the wall and vis versa. This heat conduction calculation in the solid is based on the \ct{THICKNESS} of the material layers specified on the \ct{SURF} line, not the dimension of the \ct{OBST} or other solid that the \ct{SURF} is applied to. For example, when modeling a steel plate that is 5~mm thick, if the \ct{OBST} is approximated as a zero-cell thick sheet because 5~mm is less than half the grid dimension of 5~cm, then FDS will still compute the heat transfer through a 5~mm thick plate of steel. If a \ct{SURF} with \ct{BACKING='EXPOSED'} is applied to the surface of a solid whose dimension in the normal direction is at least one gas phase grid cell length greater than \ct{THICKNESS}, FDS will then ignore \ct{BACKING='EXPOSED'} and apply \ct{BACKING='VOID'} instead. This latter boundary condition is described below.
 
 An alternative back side boundary condition, \ct{BACKING='INSULATED'}, assumes that the solid backs up to a perfectly insulated material, in which case no heat is lost to the back side. Use of this condition means specifying properties of the inner insulating material is not necessary because it is assumed to be perfectly insulated.
 
@@ -3307,8 +3307,8 @@ The \ct{SURF} and \ct{MATL} lines describing the pyrolysis of real materials con
 
 This section describes how to set up a simple model of the cone calorimeter or similar apparatus. This is not a full 3-D simulation of the apparatus, but rather a 1-D simulation of the solid phase degradation under an imposed external heat flux. While a full 3-D simulation of the cone heater and sample holder can be created in FDS, such a simulation would take some time to complete and would not disentangle issues with the solid phase model from uncertainties in the gas phase. It is worthwhile to perform a quick simulation like the one described here to test the solid phase model only.
 \begin{enumerate}
-\item Create a trivially small mesh, just enough to let FDS run. Since the gas phase calculation is essentially being shut off, you just need nine cells total (\ct{IJK=3,1,3}) for the pressure solver to function properly.
-\item On the \ct{MISC} line, set \ct{SOLID_PHASE_ONLY=T} to turn off all gas phase computation and speed up the simulation.  Note that convective heat transfer to/from the surface is still applied using the ambient temperature.  In this case the heat transfer coefficient is either specified or taken from the gas phase thermal conductivity divided by the wall-normal grid spacing.
+\item Create a trivially small mesh, just enough to allow FDS to run. Since the gas phase calculation is essentially being shut off, you just need nine cells total (\ct{IJK=3,1,3}) for the pressure solver to function properly.
+\item On the \ct{MISC} line, set \ct{SOLID_PHASE_ONLY=T} to turn off the gas phase fluid flow computation. This reduces the CPU time. Note that convective and radiative heat transfer to/from the surface is still applied using the ambient temperature as the assumed gas and far-field temperature. The \ct{HEAT_TRANSFER_COEFFICIENT} is either specified or computed from the gas phase thermal conductivity divided by the wall-normal grid spacing. It is be best to specify it explicitly.
 \item Create \ct{SPEC} lines to list any gas species created in the pyrolysis process. A \ct{REAC} line is not needed, as there is no gas phase combustion allowed.
 \item On the \ct{TIME} line, set \ct{WALL_INCREMENT=1} to force FDS to update the solid phase every time step (normally it does this every other time step), and set \ct{DT} to a value that is appropriate for the solid phase calculation. Since there is no gas phase calculation that will limit the time step, it is best to control this yourself.
 \item Generate \ct{MATL} lines, plus a single \ct{SURF} line, as you normally would, except add \ct{EXTERNAL_FLUX} to the \ct{SURF} line. This is simply a ``virtual'' source that heats the solid. Think of this as a perfect radiant panel or conical heating unit. You can control the \ct{EXTERNAL_FLUX} using either \ct{TAU_EF} or \ct{RAMP_EF}. This is useful if you want to ramp up the heat flux following ignition to account for the additional radiation from the flame. See Sec.~\ref{info:RAMP_Time} for more details about ramps.
@@ -3371,7 +3371,11 @@ The two \ct{TGA} entries will force FDS to perform a numerical version of the TG
 Note: If applying \ct{TGA_ANALYSIS} to a case where the \ct{SURF} is associated with a \ct{PART} class yet to be inserted into the calculation, FDS may not find the \ct{SURF} and hence throw an error. In this case, create a simple case with a single particle that is inserted at the start.
 \end{warning}
 
-The result of the \ct{TGA_ANALYSIS} is a single comma-delimited file called \ct{CHID_tga.csv}. The first and second columns of the file consist of the time and sample temperature. The third column is the normalized sample mass; that is, the sample mass divided by its initial mass. The following columns list the mass fractions of the individual material components. The next column is the total mass loss rate, in units of s$^{-1}$, followed by the mass loss rates of the individual material components. The next column is the heat release rate per unit mass of the sample in units of W/g, typical of an MCC measurement. The final column is the rate of heat absorbed by the sample normalized by its {\it original} mass, also in units of W/g, typical of a DSC measurement. 
+The result of the \ct{TGA_ANALYSIS} is a single comma-delimited file called \ct{CHID_tga.csv}. The first and second columns of the file consist of the time and sample temperature. The third column is the normalized sample mass; that is, the sample mass divided by its initial mass. The following columns list the mass fractions of the individual material components. The next column is the total mass loss rate, in units of s$^{-1}$, followed by the mass loss rates of the individual material components. The next column is the heat release rate per unit mass of the sample in units of W/g, typical of an MCC measurement. The final two columns are the rate of heat absorbed by the sample normalized by its {\it original} mass and by its {\it instantaneous} mass, respectively. The former is labelled \ct{DSC} and the latter \ct{STA}, both in units of W/g. \ct{STA} means Simultaneous Thermal Analysis, where a TGA and DSC measurement are made simultaneously, in which case the instantaneous mass of the sample is available.
+
+The timestep used in the TGA analysis can be controlled with \ct{TGA_DT} on the \ct{SURF} line. The output spacing for temperature can be set with \ct{TGA_DUMP} on the \ct{SURF} line.
+
+The \ct{TGA}, \ct{MCC} or \ct{DSC/STA} output can be multiplied by \ct{X_CONVERSION_FACTOR}, where \ct{X} is \ct{TGA}, \ct{MCC}, or \ct{DSC}, respectively. For example, the \ct{DSC} output assumes that an enthermic reaction is represented by a positive peak, and an exothermic reaction by a negative peak. To flip this around, set \ct{DSC_CONVERSION_FACTOR=-1}.
 
 Details of the output quantities are discussed in Sec.~\ref{info:material_components}. Further details on these measurement techniques and how to interpret them are found in the FDS Verification Guide~\cite{FDS_Verification_Guide}.
 
@@ -3381,13 +3385,16 @@ Results for an analysis (\ct{Pyrolysis/tga_analysis.fds}) of a simplified versio
 
 The upper two plots in Fig.~\ref{tga_results} show the results of the TGA analysis; that is, the decrease in mass as a function of sample temperature. The left plot shows the total sample mass and the right shows the individual components. Below these are two plots that show the mass loss rates of the total sample and its components. These plots are simply the (negative) values of the first derivative of the upper plots.
 
-The lower left plot in Fig.~\ref{tga_analysis} shows the results of the MCC analysis; that is, the gas phase combustion heat release rate per unit mass of the original sample. Note that this MCC plot does not include evidence of the evaporation of water because water vapor does not combust. The integral (with respect to time) under the MCC curve yields $Q=12\,680$~J/g. The heat of combustion of the ``cellulose,'' which is the assumed gas phase fuel resulting from the pyrolysis of dry wood and char, is $h_{\rm c}=14\,988$~J/g. The dry wood and char constitute $Y=0.846$ of the original sample, thus $h_{\rm c} \, Y \approx Q$. 
+The lower left plot in Fig.~\ref{tga_analysis} shows the results of the MCC analysis; that is, the gas phase combustion heat release rate per unit mass of the original sample. Note that this MCC plot does not include evidence of the evaporation of water because water vapor does not combust. The integral (with respect to time) under the MCC curve yields $Q=12\,680$~J/g. The heat of combustion of the ``cellulose,'' which is the assumed gas phase fuel resulting from the pyrolysis of dry wood and char, is $h_{\rm c}=14\,988$~J/g. The dry wood and char constitute $Y=0.846$ of the original sample, thus $h_{\rm c} \, Y \approx Q$.
 
-The lower right plot Fig.~\ref{tga_analysis} shows the results of the DSC analysis. The curve represents the rate of heat absorbed by the sample. The three peaks represent the endothermic reactions where heat from the hot gas is used to evaporate water or pyrolyze the wood and char. The plateaus between the reaction peaks represent the heating of the solid only. For example, at a temperature of 200~$^\circ$C, the value is $\dot{q}(200)=0.075$~W/g which corresponds to the specific heat of the dry wood which has not yet undergone its conversion to char:
+The lower right plot Fig.~\ref{tga_analysis} shows the results of the DSC/STA analysis. The black curve (DSC) represents the rate of heat absorbed per unit mass of the original sample. The red curve represents the rate of heat absorbed per unit mass of the pyrolyzing sample. The three peaks represent the endothermic reactions where heat from the hot gas is used to evaporate water or pyrolyze the wood and char. The plateaus between the reaction peaks represent the heating of the solid only. For example, at a temperature of 500~$^\circ$C, only ash remains and the value of the DSC curve is $\dot{q}_{\rm DSC}(500)\approx0.0045$~W/g from which the value of the specific heat can be computed:
 \be
-   c_p = \frac{\dot{q}(200)}{Y(200) \, \beta} = 1 \; \hbox{kJ/(kg K)}
+   c_p = \frac{\dot{q}_{\rm DSC}(500)}{Y(500) \, \beta} \approx 1 \; \hbox{kJ/(kg K)}
 \ee
-The term $Y(200)=0.9$ in the denominator is the ratio of mass of the sample at 200~$^\circ$C to the original mass.
+The term $Y(500)\approx0.054$ in the denominator is the ratio of mass of the ash at 500~$^\circ$C to the mass of the original wet wood. For the STA curve, the specific heat is obtained simply by dividing the STA value $\dot{q}_{\rm STA}(500)\approx0.0834$~W/g by the heating rate, $\beta$.
+\be
+   c_p = \frac{\dot{q}_{\rm STA}(500)}{\beta} \approx 1 \; \hbox{kJ/(kg K)}
+\ee
 
 
 
@@ -3427,6 +3434,8 @@ The value of $T_{\rm ref}$ used for a reaction is the value specified by the \ct
 This process of adjusting enthalpies can be skipped by setting \ct{ADJUST_H=F} on a \ct{MATL} line. This should be done when material reactions do not represent actual chemical reactions. If no \ct{HEAT_OF_REACTION} is specified for a \ct{MATL} with a reaction then \ct{ADJUST_H=F} will be set. Note that this means if a reaction has \ct{HEAT_OF_REACTION} that is actually zero, and enthalpy adjustment is desired, then set \ct{HEAT_OF_REACTION} to 0 in the input file for that reaction.
 
 If the sum of the yields is less than 1, then for the purpose of solving for the $H_{\rm adj}$ values, FDS will assume that the missing mass is a material with the same specific heat as the original material.
+
+If a material has a reaction where \ct{N_O2} is set and the adjustment process needs to determine the \ct{REFERENCE_TEMPERATURE}, then a value for the oxygen concentration is needed. This value will default to the ambient oxygen concentration for the simulation; however, it can be overridden on a material basis by specifying \ct {X_O2_PYRO} for that material. This may be needed if, for example, the kinetics and heat of reaction(s) for a material were developed using a specific oxygen concentration.
 
 \chapter{Ventilation}
 
@@ -4762,7 +4771,7 @@ You need only specify the chemical formula of the fuel along with the yields of 
 \nu_{\CO}      &=& \frac{W_{\rm F}}{W_{\CO}} \, y_{\CO}  \\
 \nu_{\rm s}    &=& \frac{W_{\rm F}}{W_{\rm S}} \, y_{\rm S}  \\
 \nu_{\HCN}     &=& \frac{W_{\rm F}}{W_{\HCN}} \, y_{\HCN}  \\
-\nu_{\NTWO}    &=& \frac{\rm v}{2} - \nu_{\HCN} \\
+\nu_{\NTWO}    &=& \frac{\rm v}{2} - \frac{\nu_{\HCN}}{2} \\
 W_{\rm s}      &=& X_\Hy \, W_\Hy + (1-X_\Hy) \, W_\C
 \end{eqnarray*}
 The following parameters may be prescribed on the \ct{REAC} line when using the simple chemistry model.
@@ -5756,15 +5765,15 @@ There are some fire scenarios where you might want to set the absorption coeffic
 \subsection[Radiation Option 3. Optically-Thick; Specified Radiative Fraction]{Radiation Option 3. Optically-Thick; Specified Radiative Fraction (LES Default)}
 \label{info:RTE_Source_Correction}
 
-In its normal operation, the RTE transfers energy from hot, emitting gases, like flames, to colder, absorbing gases like water vapor or soot particulate. The absorption coefficient, $\kappa$, computed using RadCal, governs both the emission and absorption of thermal radiation. Because flame temperatures are not well-resolved for typically large-scale fire simulations, the source term in the RTE is adjusted in grid cells for which the radiative fraction, $\chi_{\rm r}$, times the local heat release rate per unit volume, $\dot{q}'''$, is greater than 10~kW/m$^3$
+In its normal operation, the RTE transfers energy from hot, emitting gases, like flames, to colder, absorbing gases like water vapor or soot particulate. The absorption coefficient, $\kappa$, computed using RadCal, governs both the emission and absorption of thermal radiation. Because flame temperatures are not well-resolved for typically large-scale fire simulations, the source term in the RTE is adjusted in grid cells for which the radiative fraction, $\chi_{\rm r}$, times the local heat release rate per unit volume, $\dot{q}'''$, is greater than 1~kW/m$^3$
 \be
-   \chi_{\rm r} \, \dot{q}''' > 10 \; \hbox{kW/m}^3 \label{clip}
+   \chi_{\rm r} \, \dot{q}''' > 1 \; \hbox{kW/m}^3 \label{clip}
 \ee
 The adjustment ensures that the net radiative emission from the combusting region (i.e. the fire) is the specified \ct{RADIATIVE_FRACTION} multiplied by the total combustion energy generated in this region. Elsewhere, hot and cold gases emit and absorb thermal radiation according to their bulk temperature and radiative properties, in particular the absorption coefficient, $\kappa$.
 
 The net radiative loss from the computational domain is reported as a function of time in the column \ct{Q_RADI} in the output file \ct{CHID_hrr.csv}. The absolute value of \ct{Q_RADI} divided by the total heat release rate, \ct{HRR}, is usually not exactly equal to the specified \ct{RADIATIVE_FRACTION}. The reason for this is that the specified radiative fraction of the fire's energy can be reabsorbed by colder combustion products such as smoke and water vapor, thereby decreasing the absolute value of \ct{Q_RADI}. Or, hot layer smoke and combustion products can heat up and emit thermal radiation, adding to the absolute value of \ct{Q_RADI}.
 
-The correction factor that is applied to the RTE source term in the region defined by Eq.~(\ref{clip}) by default is bound between 1 and 100, meaning that the correction factor only increases the net radiative output of the combusting region, if necessary, to achieve the desired \ct{RADIATIVE_FRACTION}. However, you can change the default behavior of the correction as follows. First, you can force the RTE source term to be modified in all grid cells by changing the 10 in Eq.~(\ref{clip}) to -1 via \ct{QR_CLIP} on the \ct{RADI} line, in which case the solver will apply the radiative fraction to the entire domain, not just the cells where combustion occurs. This will essentially force the net radiative loss from the entire domain to obey the \ct{RADIATIVE_FRACTION}. Second, you can allow the RTE source term to increase or decrease in value to achieve the desired \ct{RADIATIVE_FRACTION} by changing the lower limit of the correction factor, \ct{C_MIN}, from its default value of 1 to, say, 0.5 on the \ct{RADI} line. The corresponding parameter, \ct{C_MAX}, limits the correction factor to 100. The time-varying correction factor can be output using a device with quantity \ct{RTE SOURCE CORRECTION FACTOR}. Since \ct{RTE SOURCE CORRECTION FACTOR} is a global value, the position of the device does not matter.
+The correction factor that is applied to the RTE source term in the region defined by Eq.~(\ref{clip}) by default is bound between 1 and 100, meaning that the correction factor only increases the net radiative output of the combusting region, if necessary, to achieve the desired \ct{RADIATIVE_FRACTION}. However, you can change the default behavior of the correction as follows. First, you can force the RTE source term to be modified in all grid cells by changing the 1 in Eq.~(\ref{clip}) to -1 via \ct{QR_CLIP} on the \ct{RADI} line, in which case the solver will apply the radiative fraction to the entire domain, not just the cells where combustion occurs. This will essentially force the net radiative loss from the entire domain to obey the \ct{RADIATIVE_FRACTION}. Second, you can allow the RTE source term to increase or decrease in value to achieve the desired \ct{RADIATIVE_FRACTION} by changing the lower limit of the correction factor, \ct{C_MIN}, from its default value of 1 to, say, 0.5 on the \ct{RADI} line. The corresponding parameter, \ct{C_MAX}, limits the correction factor to 100. The time-varying correction factor can be output using a device with quantity \ct{RTE SOURCE CORRECTION FACTOR}. Since \ct{RTE SOURCE CORRECTION FACTOR} is a global value, the position of the device does not matter.
 
 \subsection[Radiation Option 4. Optically-Thick; Unspecified Radiative Fraction]{Radiation Option 4. Optically-Thick; Unspecified Radiative Fraction (DNS Default)}
 
@@ -6169,7 +6178,7 @@ Note that if the \ct{GEOMETRY} is set to \ct{'SPHERICAL'} and a \ct{BOILING_TEMP
 \subsection{Drag}
 \label{info:particle_drag}
 
-The drag force exerted by moving or stationary particles is detailed in the FDS Technical Reference Guide, chapter ``Lagrangian Particles''~\cite{FDS_Math_Guide}. For solid particles, the default drag law is that of a solitary sphere. To invoke a different drag law, that of a solitary cylinder for example, set \ct{DRAG_LAW = 'CYLINDER'} on the \ct{PART} line. A summary of the available drag laws is given in table~\ref{tbl:draglaws}. If none of these options is applicable, you may specify a constant value of the drag coefficient for a particle class (a specific \ct{PART_ID}) by setting a \ct{DRAG_COEFFICIENT} on the \ct{PART} line. The \ct{DRAG_COEFFICIENT} over-rides the \ct{DRAG_LAW}.
+The drag force exerted by moving or stationary particles is detailed in the FDS Technical Reference Guide, chapter ``Lagrangian Particles''~\cite{FDS_Math_Guide}. For solid particles, the default drag law is that of a solitary sphere. To invoke a different drag law, that of a solitary cylinder for example, set \ct{DRAG_LAW='CYLINDER'} on the \ct{PART} line. A summary of the available drag laws is given in table~\ref{tbl:draglaws}. If none of these options is applicable, you may specify a constant value of the drag coefficient for a particle class (a specific \ct{PART_ID}) by setting a \ct{DRAG_COEFFICIENT} on the \ct{PART} line. The \ct{DRAG_COEFFICIENT} over-rides the \ct{DRAG_LAW}.
 
 \begin{table}[ht]
 \begin{center}
@@ -6188,6 +6197,8 @@ The drag force exerted by moving or stationary particles is detailed in the FDS 
 \end{table}
 
 If you are modeling a relatively dense collection of solid particles, like vegetation, you should set the \ct{DRAG_COEFFICIENT} explicitly and not rely on the correlations for spheres and cylinders which were developed for relatively independent bodies, not clusters.
+
+\paragraph{Near Wall Particle Interpolation} The momentum exchange between a particle and the fluid depends on the local fluid velocity at the particle position.  Normally, the velocity at the particle position is taken from a trilinear interpolation from the staggered velocity components nearest the particle.  Thus, the particle lives in a different staggered cell for each component of velocity.  When the particle position is within half a grid cell from the wall the default behavior is to use fluid velocity component tangential to the wall when computing the drag force in that component direction.  This approximation is justified based on the plug flow profile seen in highly turbulent flows.  However, as the flow becomes more resoled, this approximation may not be appropriate.  If you specify \ct{NEAR_WALL_PARTICLE_INTERPOLTION=T} on \ct{MISC} then the fluid velocity will be linearly interpolated between the staggered component value and the no slip condition at the wall.
 
 
 \subsection{Radiation Absorption and Emission}
@@ -8761,7 +8772,7 @@ In this example, a fire spreads radially from a single point as directed by the 
 
 It is possible to externally control some aspects of an FDS simulation while the simulation is running. Any FDS input that has either a \ct{RAMP_ID} (except for the output time ramps on \ct{DUMP} such as \ct{RAMP_BNDF}) or a \ct{CTRL_ID} as one of its inputs can be externally controlled. A \ct{RAMP} can be externally controlled by setting \ct{EXTERNAL_FILE} on \ct{RAMP}. A \ct{CTRL} can be externally controlled by setting \ct{FUNCTION_TYPE='EXTERNAL'}.
 
-When external control is selected, FDS will set the value of the \ct{RAMP} or the logical state of the \ct{CTRL} based on values contained in a csv file whose name is given by \ct{EXTERNAL_FILENAME} on \ct{MISC}. This file will be checked for new values every \ct{DT_EXTERNAL} on \ct{TIME} seconds. Only those inputs whose values are being changed need to specified. For inputs not specified or if the file does not exist or cannot be opened (e.g., locked by the operating system during a file write), the current values will be kept. The initial values are defined with either \ct{INITIAL_VALUE} on \ct{RAMP} or \ct{INITIAL_STATE} on \ct{CTRL}.
+When external control is selected, FDS will set the value of the \ct{RAMP} or the logical state of the \ct{CTRL} based on values contained in a csv file whose name is given by \ct{EXTERNAL_FILENAME} on \ct{MISC}. This file will be checked for new values every \ct{DT_EXTERNAL} on \ct{TIME} seconds. Only those inputs whose values are being changed need to specified. For inputs not specified or if the file does not exist or cannot be opened (e.g., locked by the operating system during a file write), the current values will be kept. The initial values are defined with either \ct{INITIAL_VALUE} on \ct{RAMP} or \ct{INITIAL_STATE} on \ct{CTRL}. FDS can be forced to wait if no file is present or use an alternate \ct{EXTERNAL_FILENAME} by specifying \ct{DT_EXTERNAL_HEARTBEAT} and \ct{EXTERNAL_HEARTBEAT_FILENAME} on \ct{TIME}. With this approach FDS looks for \ct{EXTERNAL_HEARTBEAT_FILENAME}. If the file is not found FDS will wait up to \ct{DT_EXTERNAL_HEARTBEAT} seconds. If \ct{EXTERNAL_HEARTBEAT_FILENAME} is still not present, FDS will stop trying to update the external controls.  If \ct{HEARTBEAT_FAIL} on \ct{TIME} is true, FDS will stop the simulation. If \ct{EXTERNAL_HEARTBEAT_FILENAME} is present, FDS will read \ct{EXTERNAL_FILENAME} from it.
 
 The csv file format is:
 \begin{lstlisting}
@@ -10061,7 +10072,6 @@ Past versions of FDS (1-5) output Plot3D files by default. Now, you must specify
 
 \section{SMOKE3D: Realistic Smoke and Fire}
 \label{info:SMOKE3D}
-\label{info:smoke16}
 
 For any simulation involving combustion, FDS automatically creates three output files that are rendered by Smokeview as realistic looking smoke, fire, and/or hot gas. By default, the output quantities are the \ct{'DENSITY'} of \ct{'SOOT'}, the \ct{'HRRPUV'} (Heat Release Rate Per Unit Volume), and the \ct{TEMPERATURE} of the gases. These quantities are rendered as semi-transparent slices that give you the illusion of looking through smoke or fire. The greater the value of the quantity, the darker the slices will appear en masse. For \ct{HRRPUV}, the lowest value rendered is:
 \be
@@ -10076,7 +10086,7 @@ You have the option of rendering the \ct{DENSITY} of any other species besides \
 \end{lstlisting}
 The \ct{MASS_EXTINCTION_COEFFICIENT} is passed to Smokeview to be used for visualization.
 
-FDS outputs 3D smoke quantities as 8 bit integers compressed using run length encoding.  Soot density, HRRPUV or temperatures are first scaled to 8 bit integers (soot density is converted to an opacity first). Repeated integers are replaced by $n$I where $n$ is the number of repeats and I is the value repeated.  When higher resolution is desired, set \ct{SMOKE3D_16=T} on the \ct{MISC} line to output these quantities as 16 bit integers.  For each time frame, FDS then outputs the time, the minimum value, the maximum value, and 16 bit integers scaled between the minimum and maximum value.  This data is then output to a file with extension \ct{.s16} rather than \ct{.s3d} . These 16 bit integer values are not compressed.
+FDS outputs 3D smoke quantities as 8 bit integers compressed using run length encoding.  Soot density, HRRPUV or temperatures are first scaled to 8 bit integers (soot density is converted to an opacity first). Repeated integers are replaced by $n$I where $n$ is the number of repeats and I is the value repeated.
 
 \newpage
 
@@ -11741,10 +11751,11 @@ properties be specified as well. Simply prescribing as many properties as possib
 % ignorenamelistkw: /ISOF/DEBUG
 % ignorenamelistkw: /MISC/PERIODIC_TEST, /MISC/POSITIVE_ERROR_TEST, /MISC/PROFILING, /MISC/RADIATION
 % ignorenamelistkw: /MISC/STRATIFICATION, /MISC/SUPPRESSION, /MISC/UVW_FILE, /MISC/TENSOR_DIFFUSIVITY
-% ignorenamelistkw: /MISC/CC_IBM, /MISC/CCVOL_LINK
-% ignorenamelistkw: /PART/DEBUG
+% ignorenamelistkw: /MISC/CC_IBM, /MISC/CCVOL_LINK, /MISC/TEST_NEW_CHAR_MODEL, /MISC/FLUX_LIMITER_MW_CORRECTION
+% ignorenamelistkw: /PART/DEBUG, /PART/EMBER_SNAG_FACTOR
 % ignorenamelistkw: /REAC/C, /REAC/H, /REAC/O, /REAC/N, /REAC/FORMULA,
 % ignorenamelistkw: /SLCF/DEBUG, /SLCF/RLE_MIN, /SLCF/RLE_MAX, /SLCF/SLICETYPE
+% ignorenamelistkw: /TIME/RAMP_DT
 
 % ignore keywords that appear on any namelist
 % ignoreallkw: FYI
@@ -12512,6 +12523,7 @@ Keyword             & Type     & Description                      & Units       
 \ct{SPECIFIC_HEAT_RAMP}          & Character       & Section~\ref{info:thermal_properties} &                   &               \\ \hline
 \ct{SPEC_ID(:,:)}                 & Char.~Array     & Section~\ref{info:solid_pyrolysis}    &                   &               \\ \hline
 \ct{SURFACE_OXIDATION_MODEL}     & Logical         & Section~\ref{vegetation_model}        &                   & \ct{F}       \\ \hline
+\ct{X_O2_PYRO}                    & Logical         & Section~\ref{solid_phase_energy_conservation}       &                   &        \\ \hline
 \end{longtable}
 
 
@@ -12613,7 +12625,8 @@ Keyword             & Type     & Description                      & Units       
 \ct{MAX_LEAK_PATHS}                              & Integer      & Section~\ref{info:Leaks}                &            &  200              \\ \hline
 \ct{MAX_RAMPS}                                    & Integer      & Section~\ref{info:RAMP}                 &            &  100              \\ \hline
 \ct{MINIMUM_ZONE_VOLUME}                         & Real         & Section~\ref{info:filling_zones}        &  m$^3$     & 0                 \\ \hline
-\ct{MPI_TIMEOUT}                                  & Real         & Section~\ref{info:Errors}               &  s         & 600.              \\ \hline
+\ct{MPI_TIMEOUT}                                 & Real          & Section~\ref{info:Errors}               &  s         & 600.              \\ \hline
+\ct{NEAR_WALL_PARTICLE_INTERPOLATION}            & Logical       & Section~\ref{info:particle_drag}        &            & \ct{F}            \\ \hline
 \ct{NEIGHBOR_SEPARATION_DISTANCE}                & Real         & Section~\ref{info:mesh_separation}      &  m         & 0.                \\ \hline
 \ct{NOISE}                                         & Logical      & Section~\ref{info:NOISE}                &            & \ct{T}           \\ \hline
 \ct{NOISE_VELOCITY}                               & Real         & Section~\ref{info:NOISE}                &  m/s       & 0.005             \\ \hline
@@ -12646,7 +12659,6 @@ Keyword             & Type     & Description                      & Units       
 \ct{RND_SEED}                                     & Integer      & Section~\ref{info:restart}              &            &                   \\ \hline
 \ct{SC}                                            & Real         & Section~\ref{info:NOISE}                &            & 0.5               \\ \hline
 \ct{SIMULATION_MODE}                              & Character    & Section~\ref{Sim_Mode}                  &            & \ct{'VLES'}      \\ \hline
-\ct{SMOKE3D_16}                                   & Logical      & Section~\ref{info:smoke16}              &            & \ct{F}           \\ \hline
 \ct{SMOKE_ALBEDO}                                 & Real         & Reference~\cite{Smokeview_Users_Guide}  &            & 0.3               \\ \hline
 \ct{SOLID_PHASE_ONLY}                            & Logical      & Section~\ref{solid_phase_verification}  &            & \ct{F}           \\ \hline
 \ct{SOOT_DENSITY}                                 & Real         & Section~\ref{info:deposition}           &            & 1800              \\ \hline
@@ -13105,7 +13117,7 @@ Keyword             & Type     & Description                      & Units       
 \ct{NUMBER_RADIATION_ANGLES}      & Integer      & Section~\ref{info:RADI_Resolution}   &            & 100            \\ \hline
 \ct{OPTICALLY_THIN}                & Logical      & Section~\ref{info:CHI_R}             &            & \ct{F}  \\ \hline
 \ct{PATH_LENGTH }                  & Real         & Section~\ref{info:RadCal}            &   m        & 0.1            \\ \hline
-\ct{QR_CLIP}                       & Real         & Section~\ref{info:CHI_R}             & kW/m$^3$   & 10             \\ \hline
+\ct{QR_CLIP}                       & Real         & Section~\ref{info:CHI_R}             & kW/m$^3$   & 1              \\ \hline
 \ct{RADIATION}                      & Logical      & Section~\ref{info:radiation_off}     &            & \ct{T}   \\ \hline
 \ct{RADIATION_ITERATIONS}          & Integer      & Section~\ref{info:RADI_Resolution}   &            & 1              \\ \hline
 \ct{RADTMP}                         & Real         & Section~\ref{info:RADI_Two_Phase}    & $^\circ$C   & 900            \\ \hline
@@ -13394,6 +13406,7 @@ Keyword             & Type     & Description                      & Units       
 \ct{DEFAULT}                                             & Logical         & Section~\ref{info:SURF}                   &                     & \ct{F}                 \\ \hline
 \ct{DELTA_TMP_MAX}                                     & Real            & Section~\ref{info:solid_phase_stability}  & $^\circ$C           & 10                      \\ \hline
 \ct{DRAG_COEFFICIENT}                                   & Real            & Section~\ref{info:boundary_fuel_model}    &                     & 2.8                     \\ \hline
+\ct{DSC_CONVERSION_FACTOR}                              & Real            & Section~\ref{info:TGA_DSC_MCC}            &                     & 1                       \\ \hline
 \ct{DT_INSERT}                                          & Real            & Section~\ref{info:particle_flux}          & s                   & 0.01                    \\ \hline
 \ct{E_COEFFICIENT}                                      & Real            & Section~\ref{info:suppression}            & \si{m^2/(kg.s)}     &                         \\ \hline
 \ct{EMBER_GENERATION_HEIGHT(2)}                        & Real            & Section~\ref{info:ember_generation_surf}  & m                   &                         \\ \hline
@@ -13434,6 +13447,7 @@ Keyword             & Type     & Description                      & Units       
 \ct{MATL_ID(:,:)}                                       & Char.~Array     & Section~\ref{info:solid_pyrolysis}        &                     &                         \\ \hline
 \ct{MATL_MASS_FRACTION(:,:)}                           & Real Array      & Section~\ref{info:solid_pyrolysis}        &                     &                         \\ \hline
 \ct{MAXIMUM_SCALING_HEAT_FLUX}                        & Real            & Section~\ref{info:scaled_burning}         & \si{kW/m^2}         &                         \\ \hline
+\ct{MCC_CONVERSION_FACTOR}                              & Real            & Section~\ref{info:TGA_DSC_MCC}            &                     & 1                       \\ \hline
 \ct{MINIMUM_BURNOUT_TIME}                              & Real            & Section~\ref{veg_burnout_time}            & s                   & 1000000                 \\ \hline
 \ct{MINIMUM_LAYER_THICKNESS}                           & Real            & Section~\ref{info:solid_phase_stability}  & m                   & 1.E-4                   \\ \hline
 \ct{MINIMUM_SCALING_HEAT_FLUX}                        & Real            & Section~\ref{info:scaled_burning}         & \si{kW/m^2}         & 0                       \\ \hline
@@ -13498,7 +13512,10 @@ Keyword             & Type     & Description                      & Units       
 \ct{TEXTURE_HEIGHT}                                     & Real            & Section~\ref{info:texture_map}            & m                   & 1.                      \\ \hline
 \ct{TEXTURE_MAP}                                        & Character       & Section~\ref{info:texture_map}            &                     &                         \\ \hline
 \ct{TEXTURE_WIDTH}                                      & Real            & Section~\ref{info:texture_map}            & m                   & 1.                      \\ \hline
-\ct{TGA_ANALYSIS}                                       & Logical         & Section~\ref{info:TGA_DSC_MCC}            &                     & \ct{F}                 \\ \hline
+\ct{TGA_ANALYSIS}                                       & Logical         & Section~\ref{info:TGA_DSC_MCC}            &                     & \ct{F}                  \\ \hline
+\ct{TGA_CONVERSION_FACTOR}                              & Real            & Section~\ref{info:TGA_DSC_MCC}            &                     & 1                       \\ \hline
+\ct{TGA_DT}                                             & Real            & Section~\ref{info:TGA_DSC_MCC}            & s                   & 0.01                    \\ \hline
+\ct{TGA_DUMP}                                           & Real            & Section~\ref{info:TGA_DSC_MCC}            & K                   & 1                       \\ \hline
 \ct{TGA_FINAL_TEMPERATURE}                             & Real            & Section~\ref{info:TGA_DSC_MCC}            & $^\circ$C           & 800.                    \\ \hline
 \ct{TGA_HEATING_RATE}                                  & Real            & Section~\ref{info:TGA_DSC_MCC}            & $^\circ$C/min       & 5.                      \\ \hline
 \ct{THICKNESS(:)}                                        & Real Array      & Section~\ref{info:SURF_MATL_Basics}       & m                   &                         \\ \hline
@@ -13594,6 +13611,9 @@ Keyword             & Type     & Description                      & Units       
 \ct{DT_END_FILL}             & Real       & Section~\ref{info:TIME_Control}           & s           & $1.0 \times 10^{-6}$  \\ \hline
 \ct{DT_END_MINIMUM}          & Real       & Section~\ref{info:TIME_Control}           & s           &  \ct{2.*EPSILON}  \\ \hline
 \ct{DT_EXTERNAL}              & Real       & Section~\ref{info:external_control}       & s           & 0               \\ \hline
+\ct{DT_EXTERNAL_HEARTBEAT}    & Real       & Section~\ref{info:external_control}       & s           & 0               \\ \hline
+\ct{EXTERNAL_HEARTBEAT_FILENAME}  & Character  & Section~\ref{info:external_control}   &             &                 \\ \hline
+\ct{HEARTBEAT_FAIL}           & Logical    & Section~\ref{info:external_control}   &             & \ct{T}          \\ \hline
 \ct{LIMITING_DT_RATIO}       & Real       & Section~\ref{info:Errors}                 &             &  0.0001         \\ \hline
 \ct{LOCK_TIME_STEP}          & Logical    & Section~\ref{info:TIME_Control}           &             & \ct{F}         \\ \hline
 \ct{RAMP_TIME}                & Character  & Section~\ref{info:simulation_time_ramp}   &             &                 \\ \hline
