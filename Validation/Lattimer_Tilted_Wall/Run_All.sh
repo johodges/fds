@@ -5,9 +5,9 @@
 export SVNROOT=`pwd`/../..
 source $SVNROOT/Validation/Common_Run_All.sh
 
-$QFDS $DEBUG -p 4 $QUEUE -d $INDIR Lattimer_20_kW_0_degree_coarse.fds
-$QFDS $DEBUG -p 4 $QUEUE -d $INDIR Lattimer_20_kW_0_degree.fds
-$QFDS $DEBUG -p 16 $QUEUE -d $INDIR Lattimer_20_kW_0_degree_fine.fds
+$QFDS $DEBUG -p 4 $QUEUE -d $INDIR Lattimer_20_kW_00_degree_coarse.fds
+$QFDS $DEBUG -p 4 $QUEUE -d $INDIR Lattimer_20_kW_00_degree.fds
+$QFDS $DEBUG -p 16 $QUEUE -d $INDIR Lattimer_20_kW_00_degree_fine.fds
 
 $QFDS $DEBUG -p 4 $QUEUE -d $INDIR Lattimer_35_kW_00_degree.fds
 $QFDS $DEBUG -p 4 $QUEUE -d $INDIR Lattimer_35_kW_67_degree.fds
