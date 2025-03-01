@@ -18,9 +18,9 @@ def generate_device_lines(theta, hght_list):
         lines.append(line)
         xs.append(x_value)
         zs.append(z_value)
-    line="&DEVC XBP=%0.4f,%0.4f,0.0,0.0,%0.4f,%0.4f, QUANTITY='GAUGE HEAT FLUX', ID='GHF', POINTS=61, IOR=1, STATISTICS_START=50. /"%(np.nanmax(xs),np.nanmin(xs),np.nanmin(zs),np.nanmax(zs))
+    line="&DEVC XBP=0.0,%0.4f,0.0,0.0,0.0,%0.4f, QUANTITY='GAUGE HEAT FLUX', ID='GHF', POINTS=61, IOR=1, STATISTICS_START=50. /"%(np.nanmin(xs),np.nanmax(zs))
     lines.append(line)
-    line="&DEVC XBP=%0.4f,%0.4f,0.0,0.0,%0.4f,%0.4f, QUANTITY='GAS TEMPERATURE', ID='TGAS', POINTS=61, IOR=1, STATISTICS_START=50., HIDE_COORDINATES=T /\n"%(np.nanmax(xs),np.nanmin(xs),np.nanmin(zs),np.nanmax(zs))
+    line="&DEVC XBP=0.0,%0.4f,0.0,0.0,0.0,%0.4f, QUANTITY='GAS TEMPERATURE', ID='TGAS', POINTS=61, IOR=1, STATISTICS_START=50., HIDE_COORDINATES=T /\n"%(np.nanmin(xs),np.nanmax(zs))
     lines.append(line)
     return lines
 
