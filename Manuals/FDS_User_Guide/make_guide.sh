@@ -44,6 +44,17 @@ if [[ `grep -E "undefined|multiply defined|multiply-defined" -I FDS_User_Guide.e
       clean_build=0
 fi
 
+python ../scripts/check_manuals.py --datafile ../scripts/files_to_check.txt --outname FDS_User_Guide_py.err --suppress-console
+
+if [[ `grep -E "Error:|Warning:|Misspelt" -I FDS_User_Guide_py.err` == "" ]]
+   then
+      :
+   else
+      echo "Other errors, warnings, or misspellings identied:"
+      grep -E "Error:|Warning:|Misspelt" -I FDS_User_Guide_py.err
+      clean_build=1
+fi
+
 if [[ $clean_build == 0 ]]
    then
       :
