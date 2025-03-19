@@ -96,7 +96,7 @@ parser.add_argument('--datafile', help='filename containing list of files', defa
 parser.add_argument('--globfile', help='glob search for files', default='')
 parser.add_argument('--outdir', help='directory to store output', default='')
 parser.add_argument('--outname', help='output filename', default='check_output.err')
-parser.add_argument('--suppressconsole', help='boolean flag specifying whether findings are printed to console', default=False)
+parser.add_argument('--suppressconsole', help='boolean flag specifying whether findings are printed to console', action='store_true')
 
 cmdargs = parser.parse_args(args)
 suppressconsole = cmdargs.suppressconsole
