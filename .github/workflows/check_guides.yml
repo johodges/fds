@@ -28,8 +28,8 @@ jobs:
           cd Manuals/scripts 
           python check_manuals.py --datafile files_to_check.txt
           nlines=$(cat check_output.err | wc -l)
-          if [ $nlines -gt 0 ]; then
-            echo "tex manual errorts:"
+          if [ $nlines -gt 1 ]; then
+            echo "tex manual errors:"
             cat check_output.err
             exit 1
           fi
