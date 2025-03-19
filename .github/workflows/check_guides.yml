@@ -25,7 +25,8 @@ jobs:
 
       - name: Run check guides python script
         run: |
-          { cd Manuals/scripts && python check_manuals.py --datafile files_to_check.txt }
+          cd Manuals/scripts 
+          python check_manuals.py --datafile files_to_check.txt
           nlines=$(cat check_output.err | wc -l)
           if [ $nlines -gt 0 ]; then
             echo "tex manual errorts:"
