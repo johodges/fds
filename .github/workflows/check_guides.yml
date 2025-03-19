@@ -27,7 +27,11 @@ jobs:
         run: |
           cd Manuals/scripts 
           python check_manuals.py --datafile files_to_check.txt
+          cat check_output.err
+          echo "contents of check_output.err:"
           nlines=$(cat check_output.err | wc -l)
+          echo "contents of nlines:"
+          echo $nlines
           if [ $nlines -gt 1 ]; then
             echo "tex manual errors:"
             cat check_output.err
