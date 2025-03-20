@@ -40,7 +40,10 @@ def get_manuals_datafile(firemodels, file, repo):
 def delete_files_by_extension(working_dir, guide, ext):
     files = glob.glob(os.path.join(working_dir, guide + '*'+ext))
     for file in files:
-        os.remove(file)
+        try:
+            os.remove(file)
+        except PermissionError:
+            print("Warning: Unable to delete %s during clean"%(file))
     
 if __name__ == "__main__":
 
