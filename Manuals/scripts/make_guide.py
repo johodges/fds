@@ -6,13 +6,20 @@ def run_command(command, working_dir, output_file, mode):
         #working_dir = working_dir.replace('\\','/')
         working_dir = working_dir[0].upper() + working_dir[1:]
         
-    p = subprocess.Popen(command, cwd=working_dir, stdout=subprocess.PIPE, shell=True, close_fds=True, env=os.environ)
-    txt = p.communicate()[0].decode('latin-1')
-    txt = txt.replace('\r\n','\n')
     if 'Windows' in platform.platform():
-        print(command)
-        print(working_dir)
-        print(txt)
+        #command = 'cd %s && %s'%(working_dir, command)
+        #print(command)
+        #os.system(command)
+        #command = command.replace('pdflatex','latex -output-format=pdf')
+        #print(command)
+        #os.system("start /wait cmd %s"%(command))
+        p = subprocess.Popen(command, cwd=working_dir, stdout=subprocess.PIPE, shell=True, close_fds=True, env=os.environ)
+        txt = p.communicate()[0].decode('latin-1')
+        txt = txt.replace('\r\n','\n')
+    else:
+        p = subprocess.Popen(command, cwd=working_dir, stdout=subprocess.PIPE, shell=True, close_fds=True, env=os.environ)
+        txt = p.communicate()[0].decode('latin-1')
+        txt = txt.replace('\r\n','\n')
         
     """Run a shell command and redirect output to a file."""
     if output_file != '':
@@ -30,8 +37,8 @@ def check_errors_in_file(file_path, patterns, ignore_patterns=[]):
                 errors_found.append(line.strip())
     return errors_found
 
-def get_manuals_datafile(firemodels, file):
-    scripts_dir = os.path.join(firemodels, 'fds', 'Manuals', 'scripts')
+def get_manuals_datafile(firemodels, file, repo):
+    scripts_dir = os.path.join(firemodels, repo, 'Manuals', 'scripts')
     check_manuals_datafile = ''
     if file == 'FDS_User_Guide':
         check_manuals_datafile = '--datafile ' + os.path.join(scripts_dir,'files_to_check_usr.txt')
@@ -59,15 +66,18 @@ if __name__ == "__main__":
     parser.add_argument('--file', help='filename to build', required=True)
     parser.add_argument('--dir', help='directory which contains file', default='')
     parser.add_argument('--clean', help='delete latex temporary files at start', action='store_true')
+    parser.add_argument('--repo', help='which firemodels repo is the guide located', default='fds')
+    
     
     cmdargs = parser.parse_args(args)    
     
     # Initialize
     firemodels = os.path.join(os.path.dirname(__file__),'..','..','..')
+    repo = cmdargs.repo
     clean_build = True
     
     # Add LaTeX search path
-    texinputs = os.path.abspath(os.path.join(firemodels, 'fds', 'Manuals', 'LaTeX_Style_Files')) + os.sep
+    texinputs = os.path.abspath(os.path.join(firemodels, repo, 'Manuals', 'LaTeX_Style_Files')) + os.sep
     texinputs = '.:..%sLaTeX_Style_Files:'%(os.sep)
     os.environ["TEXINPUTS"] = texinputs
     
@@ -78,7 +88,7 @@ if __name__ == "__main__":
     if cmdargs.dir != '':
         manual_dir = cmdargs.dir
     else:
-        manual_dir = os.path.join(firemodels,'fds','Manuals',tex_file)
+        manual_dir = os.path.join(firemodels,repo,'Manuals',tex_file)
     os.chdir(manual_dir)
     
     # Clean if requested
@@ -97,13 +107,13 @@ if __name__ == "__main__":
     
     # Get Git revision
     git_revision = subprocess.getoutput("git describe --abbrev=7 --long --dirty")
-    gitfile = os.path.join(firemodels, 'fds', 'Manuals', 'Bibliography','gitrevision.tex')
+    gitfile = os.path.join(firemodels, repo, 'Manuals', 'Bibliography','gitrevision.tex')
     with open(gitfile, "w") as f:
         f.write(f"\\newcommand{{\\gitrevision}}{{{git_revision}}}\n")
     
     # Run LaTeX build process
     mode = 'w'
-    working_dir = os.path.join(firemodels, 'fds', 'Manuals', tex_file)
+    working_dir = os.path.join(firemodels, repo, 'Manuals', tex_file)
     for i in range(0, 4):
         print("pass %d"%(i+1))
         run_command("pdflatex -interaction nonstopmode %s"%(tex_file), working_dir, output_log, mode)
@@ -139,8 +149,8 @@ if __name__ == "__main__":
     
     # Run additional manual checks
     manual_check_log = "%s_py.err"%(tex_file)
-    check_manuals_datafile = get_manuals_datafile(firemodels, tex_file)
-    check_manuals_file = os.path.join(firemodels, 'fds', 'Manuals', 'scripts', 'check_manuals.py')
+    check_manuals_datafile = get_manuals_datafile(firemodels, tex_file, repo)
+    check_manuals_file = os.path.join(firemodels, repo, 'Manuals', 'scripts', 'check_manuals.py')
     
     command = "python %s %s --outname %s --suppressconsole"%(check_manuals_file, check_manuals_datafile, manual_check_log)
     run_command(command, working_dir, '', 'w')
