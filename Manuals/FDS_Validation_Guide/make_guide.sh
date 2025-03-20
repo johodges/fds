@@ -59,12 +59,12 @@ fi
 
 python ../scripts/check_manuals.py --datafile ../scripts/files_to_check_val.txt --outname FDS_Validation_Guide_py.err --suppressconsole
 
-if [[ `grep -E "Error:|Warning:|Misspelt" -I FDS_Validation_Guide_py.err` == "" ]]
+if [[ `grep -E "ERROR:|WARNING:" -I FDS_Validation_Guide_py.err` == "" ]]
    then
       :
    else
       echo "Other errors, warnings, or misspellings identied:"
-      grep -E "Error:|Warning:|Misspelt" -I FDS_Validation_Guide_py.err
+      grep -E "ERROR:|WARNING:" -I FDS_Validation_Guide_py.err
       clean_build=1
 fi
 

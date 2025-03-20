@@ -39,9 +39,8 @@ find "! LaTeX Error:" %paper%.err
 find "Fatal error" %paper%.err
 find "Error:" %paper%.err
 
-find "Error:" %paper%_py.err
-find "Warning:" %paper%_py.err
-find "Misspelt" %paper%_py.err
+find "ERROR:" %paper%_py.err
+find "WARNING:" %paper%_py.err
 
 echo %paper% build complete
 pause
