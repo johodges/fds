@@ -17,7 +17,7 @@ pdflatex -interaction nonstopmode %paper% > %paper%.err
 echo pass 4
 pdflatex -interaction nonstopmode %paper% > %paper%.err
 
-python ..\scripts\check_manuals.py --datafile ..\scripts\files_to_check.txt --outname %paper%_py.err --suppressconsole
+python ..\scripts\check_manuals.py --datafile ..\scripts\files_to_check_usr.txt --outname %paper%_py.err --suppressconsole
 
 find "! LaTeX Error:" %paper%.err
 find "Fatal error" %paper%.err

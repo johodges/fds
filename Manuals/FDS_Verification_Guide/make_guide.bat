@@ -33,9 +33,15 @@ if not exist %PDFUSER% goto endif2
   copy %PDFUSER%
 :endif2
 
+python ..\scripts\check_manuals.py --datafile ..\scripts\files_to_check_ver.txt --outname %paper%_py.err --suppressconsole
+
 find "! LaTeX Error:" %paper%.err
 find "Fatal error" %paper%.err
 find "Error:" %paper%.err
+
+find "Error:" %paper%_py.err
+find "Warning:" %paper%_py.err
+find "Misspelt" %paper%_py.err
 
 echo %paper% build complete
 pause
