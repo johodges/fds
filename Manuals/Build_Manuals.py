@@ -12,7 +12,7 @@ def make_one_guide(firemodels, guide):
     manuals_file = os.path.join(manuals_dir, guide + '.pdf')
     shutil.copy2(manual_file, manuals_file)
     
-firemodels = os.path.join(os.path.dirname(__file__),'..','..','..')
+firemodels = os.path.join(os.path.dirname(__file__),'..','..')
 
 make_one_guide(firemodels, 'FDS_Config_Management_Plan')
 make_one_guide(firemodels, 'FDS_User_Guide')
