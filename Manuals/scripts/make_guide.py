@@ -2,25 +2,10 @@ import os, platform, sys, argparse, subprocess, re, glob
 
 def run_command(command, working_dir, output_file, mode):
     working_dir = os.path.abspath(working_dir)
-    if 'Windows' in platform.platform():
-        #working_dir = working_dir.replace('\\','/')
-        working_dir = working_dir[0].upper() + working_dir[1:]
-        
-    if 'Windows' in platform.platform():
-        #command = 'cd %s && %s'%(working_dir, command)
-        #print(command)
-        #os.system(command)
-        #command = command.replace('pdflatex','latex -output-format=pdf')
-        #print(command)
-        #os.system("start /wait cmd %s"%(command))
-        p = subprocess.Popen(command, cwd=working_dir, stdout=subprocess.PIPE, shell=True, close_fds=True, env=os.environ)
-        txt = p.communicate()[0].decode('latin-1')
-        txt = txt.replace('\r\n','\n')
-    else:
-        p = subprocess.Popen(command, cwd=working_dir, stdout=subprocess.PIPE, shell=True, close_fds=True, env=os.environ)
-        txt = p.communicate()[0].decode('latin-1')
-        txt = txt.replace('\r\n','\n')
-        
+    p = subprocess.Popen(command, cwd=working_dir, stdout=subprocess.PIPE, shell=True, close_fds=True, env=os.environ)
+    txt = p.communicate()[0].decode('latin-1')
+    txt = txt.replace('\r\n','\n')
+    
     """Run a shell command and redirect output to a file."""
     if output_file != '':
         with open(output_file, mode) as f:
@@ -77,9 +62,10 @@ if __name__ == "__main__":
     clean_build = True
     
     # Add LaTeX search path
-    texinputs = os.path.abspath(os.path.join(firemodels, repo, 'Manuals', 'LaTeX_Style_Files')) + os.sep
-    texinputs = '.:..%sLaTeX_Style_Files:'%(os.sep)
-    os.environ["TEXINPUTS"] = texinputs
+    if 'Windows' not in platform.platform():
+        texinputs = os.path.abspath(os.path.join(firemodels, repo, 'Manuals', 'LaTeX_Style_Files')) + os.sep
+        texinputs = '.:..%sLaTeX_Style_Files:'%(os.sep)
+        os.environ["TEXINPUTS"] = texinputs
     
     # Set directory information
     tex_file = cmdargs.file
