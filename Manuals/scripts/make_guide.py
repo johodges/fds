@@ -45,8 +45,8 @@ def get_manuals_datafile(firemodels, file):
         check_manuals_datafile = '--datafile ' + os.path.join(scripts_dir,'files_to_check_cfg.txt')
     return check_manuals_datafile
 
-def delete_files_by_extension(working_dir, ext):
-    files = glob.glob(os.path.join(working_dir,'*'+ext))
+def delete_files_by_extension(working_dir, guide, ext):
+    files = glob.glob(os.path.join(working_dir, guide + '*'+ext))
     for file in files:
         os.remove(file)
     
@@ -83,17 +83,17 @@ if __name__ == "__main__":
     
     # Clean if requested
     if cmdargs.clean:
-        delete_files_by_extension(manual_dir, '.aux')
-        delete_files_by_extension(manual_dir, '.lof')
-        delete_files_by_extension(manual_dir, '.log')
-        delete_files_by_extension(manual_dir, '.lot')
-        delete_files_by_extension(manual_dir, '.out')
-        delete_files_by_extension(manual_dir, '.pdf')
-        delete_files_by_extension(manual_dir, '.toc')
-        delete_files_by_extension(manual_dir, '.err')
-        delete_files_by_extension(manual_dir, '.bbl')
-        delete_files_by_extension(manual_dir, '.blg')
-        delete_files_by_extension(manual_dir, '.brf')
+        delete_files_by_extension(manual_dir, tex_file, '.aux')
+        delete_files_by_extension(manual_dir, tex_file, '.lof')
+        delete_files_by_extension(manual_dir, tex_file, '.log')
+        delete_files_by_extension(manual_dir, tex_file, '.lot')
+        delete_files_by_extension(manual_dir, tex_file, '.out')
+        delete_files_by_extension(manual_dir, tex_file, '.pdf')
+        delete_files_by_extension(manual_dir, tex_file, '.toc')
+        delete_files_by_extension(manual_dir, tex_file, '.err')
+        delete_files_by_extension(manual_dir, tex_file, '.bbl')
+        delete_files_by_extension(manual_dir, tex_file, '.blg')
+        delete_files_by_extension(manual_dir, tex_file, '.brf')
     
     # Get Git revision
     git_revision = subprocess.getoutput("git describe --abbrev=7 --long --dirty")
