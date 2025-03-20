@@ -40,7 +40,8 @@ jobs:
       - name: Breakpoint
         uses: namespacelabs/breakpoint-action@v0
         with:
-          duration: 30m          
+          duration: 30m
+          authorized-users: johodges          
 
 
 
