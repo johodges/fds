@@ -7,7 +7,7 @@ def run_command(command, working_dir, output_file, mode):
         working_dir = working_dir[0].upper() + working_dir[1:]
         
     p = subprocess.Popen(command, cwd=working_dir, stdout=subprocess.PIPE, shell=True, close_fds=True, env=os.environ)
-    txt = p.communicate()[0].decode('utf-8')
+    txt = p.communicate()[0].decode('latin-1')
     txt = txt.replace('\r\n','\n')
     if 'Windows' in platform.platform():
         print(command)
