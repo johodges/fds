@@ -60,19 +60,19 @@ def checkCaption(caption):
         short_name = caption.split('[')[1].split(']')[0]
     
     if notoc_name and missing_toc_name_style == 1:
-        outtxt = outtxt + "WARNING, %s caption, %s does not have a TOC name"%(file,caption) + "\n"
+        outtxt = outtxt + "WARNING: %s caption, %s does not have a TOC name"%(file,caption) + "\n"
     elif notoc_name and missing_toc_name_style == 2:
-        outtxt = outtxt + "ERROR, %s caption, %s does not have a TOC name"%(file,caption) + "\n"
+        outtxt = outtxt + "ERROR: %s caption, %s does not have a TOC name"%(file,caption) + "\n"
     
     # Check if short name ends in disallowed puncuation
     if short_name[-1] in captionTocDisallowedPunctuation:
-        outtxt = outtxt + "WARNING, %s caption, %s TOC name ends in '%s'"%(file,caption, short_name[-1]) + "\n"
+        outtxt = outtxt + "WARNING: %s caption, %s TOC name ends in '%s'"%(file,caption, short_name[-1]) + "\n"
     
     # Check if citation is included in the name used in TOC
     if notoc_name and '\\cite' in caption:
-        outtxt = outtxt + "ERROR, %s citation in caption, %s"%(file,caption) + "\n"
+        outtxt = outtxt + "ERROR: %s citation in caption, %s"%(file,caption) + "\n"
     elif '\\cite' in short_name:
-        outtxt = outtxt + "ERROR, %s citation in caption, %s"%(file,caption) + "\n"
+        outtxt = outtxt + "ERROR: %s citation in caption, %s"%(file,caption) + "\n"
         
     return outtxt
 
@@ -84,7 +84,7 @@ def check_disallowed_commands(txt, file):
         if len(split) > 1:
             for j in range(1, len(split)):
                 line_count = len(split[j-1].split('\n'))+1
-                outtxt = outtxt + "ERROR, %s %s located at line %d\n"%(file, cmd, line_count)
+                outtxt = outtxt + "ERROR: %s %s located at line %d\n"%(file, cmd, line_count)
     return outtxt
 
 args = sys.argv
@@ -163,7 +163,7 @@ for i in range(0, len(texfiles)):
         #    txt = txt.replace('\n\n','\n')
         #outtxt = outtxt + '\n\nMisspelt Words in %s:\n'%(file) + '\n'.join(txt_list) + '\n\n'
         for j in range(0, len(txt_list)):
-            outtxt = outtxt + '\nMisspelt Words in %s: %s'%(file,txt_list[j])
+            outtxt = outtxt + '\nWARNING: misspelt word %s in %s'%(txt_list[j],file)
 
 if len(outtxt) > 1 and not suppressconsole:
     print("Warnings identified in the manual check:")
