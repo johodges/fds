@@ -103,7 +103,7 @@ if __name__ == "__main__":
     
     # Run LaTeX build process
     mode = 'w'
-    working_dir = os.path.join(firemodels, 'fds', 'Manuals', 'FDS_User_Guide')
+    working_dir = os.path.join(firemodels, 'fds', 'Manuals', tex_file)
     for i in range(0, 4):
         print("pass %d"%(i+1))
         run_command("pdflatex -interaction nonstopmode %s"%(tex_file), working_dir, output_log, mode)
