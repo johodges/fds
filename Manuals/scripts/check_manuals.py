@@ -34,9 +34,9 @@ def checkSpelling(file, firemodels):
         whitelist = whitelist.replace('\\','/')
         whitelist = whitelist[0].upper() + whitelist[1:]
     cmd = ['aspell','--lang=en','--mode=tex','--add-extra-dicts=%s'%(whitelist), 'list', '<', file]
-    
-    p = subprocess.run(cmd, capture_output=True, shell=True)
-    txt = p.stdout.decode('utf-8')
+    cmd2 = ' '.join(cmd)
+    p = subprocess.Popen(cmd2, stdout=subprocess.PIPE, shell=True, close_fds=True)
+    txt = p.communicate()[0].decode('utf-8')
     txt = txt.replace('\r\n','\n')
     return txt
 
@@ -163,7 +163,7 @@ for i in range(0, len(texfiles)):
         #    txt = txt.replace('\n\n','\n')
         #outtxt = outtxt + '\n\nMisspelt Words in %s:\n'%(file) + '\n'.join(txt_list) + '\n\n'
         for j in range(0, len(txt_list)):
-            outtxt = outtxt + '\n\nMisspelt Words in %s: %s\n'%(file,txt_list[j])
+            outtxt = outtxt + '\nMisspelt Words in %s: %s'%(file,txt_list[j])
 
 if len(outtxt) > 1 and not suppressconsole:
     print("Warnings identified in the manual check:")
