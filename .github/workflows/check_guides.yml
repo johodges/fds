@@ -41,11 +41,11 @@ jobs:
             cat check_output.err
             exit 1
           fi
-      - name: Breakpoint
-        uses: namespacelabs/breakpoint-action@v0
-        with:
-          duration: 30m
-          authorized-users: johodges          
+      #- name: Breakpoint
+      #  uses: namespacelabs/breakpoint-action@v0
+      #  with:
+      #    duration: 30m
+      #    authorized-users: johodges          
 
 
 
