@@ -57,7 +57,7 @@ if [[ `grep -E "undefined|multiply defined" -I FDS_Validation_Guide.err | grep -
       clean_build=0
 fi
 
-python ../scripts/check_manuals.py --datafile ..\scripts\files_to_check_val.txt --outname FDS_Validation_Guide_py.err --suppressconsole
+python ../scripts/check_manuals.py --datafile ../scripts/files_to_check_val.txt --outname FDS_Validation_Guide_py.err --suppressconsole
 
 if [[ `grep -E "Error:|Warning:|Misspelt" -I FDS_Validation_Guide_py.err` == "" ]]
    then
