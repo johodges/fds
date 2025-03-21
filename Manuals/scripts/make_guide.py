@@ -68,7 +68,9 @@ if __name__ == "__main__":
     if 'Windows' not in platform.platform():
         texinputs = os.path.abspath(os.path.join(firemodels, repo, 'Manuals', 'LaTeX_Style_Files')) + os.sep
         texinputs = '.:..%sLaTeX_Style_Files:'%(os.sep)
-        os.environ["TEXINPUTS"] = texinputs
+    else:
+        texinputs = r'.;..\LaTeX_Style_Files;'
+    os.environ["TEXINPUTS"] = texinputs
     
     # Set directory information
     tex_file = cmdargs.file
