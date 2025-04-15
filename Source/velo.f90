@@ -2335,10 +2335,16 @@ EDGE_LOOP: DO IE=1,EDGE_COUNT(NM)
                   ! SLIP_COEF =  0, half slip, VEL_GHOST = VEL_T
                   ! SLIP_COEF =  1, free slip, VEL_GHOST = VEL_GAS
 
-                  IF ((IWM==0.OR.IWP==0) .AND. .NOT.ED%EXTERNAL) SLIP_COEF = 0._EB  ! Corner
-                  VEL_GHOST = VEL_T + SLIP_COEF*(VEL_GAS-VEL_T)
-                  DUIDXJ(ICD_SGN) = I_SGN*(VEL_GAS-VEL_GHOST)/DXX(ICD)
-                  MU_DUIDXJ(ICD_SGN) = RHO_WALL*U_TAU**2 * SIGN(1._EB,DUIDXJ(ICD_SGN))
+                  IF ((IWM==0.OR.IWP==0) .AND. .NOT.ED%EXTERNAL) THEN
+                     ! Corner
+                     VEL_GHOST = 2._EB*VEL_T - VEL_GAS
+                     DUIDXJ(ICD_SGN) = I_SGN*(VEL_GAS-VEL_GHOST)/DXX(ICD)
+                     MU_DUIDXJ(ICD_SGN) = MUA*DUIDXJ(ICD_SGN)
+                  ELSE
+                     VEL_GHOST = VEL_T + SLIP_COEF*(VEL_GAS-VEL_T)
+                     DUIDXJ(ICD_SGN) = I_SGN*(VEL_GAS-VEL_GHOST)/DXX(ICD)
+                     MU_DUIDXJ(ICD_SGN) = RHO_WALL*U_TAU**2 * SIGN(1._EB,DUIDXJ(ICD_SGN))
+                  ENDIF
                   ALTERED_GRADIENT(ICD_SGN) = .TRUE.
 
                CASE (BOUNDARY_FUEL_MODEL_BC) BOUNDARY_CONDITION
