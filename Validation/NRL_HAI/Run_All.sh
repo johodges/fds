@@ -4,6 +4,17 @@
 # See the file Validation/Common_Run_All.sh for more information.
 export SVNROOT=`pwd`/../..
 source $SVNROOT/Validation/Common_Run_All.sh
+export DEBUG="-P"
+
+$QFDS $DEBUG -p 12 $QUEUE -d $INDIR NRL_HAI_1_fine.fds
+$QFDS $DEBUG -p 12 $QUEUE -d $INDIR NRL_HAI_2_fine.fds
+$QFDS $DEBUG -p 12 $QUEUE -d $INDIR NRL_HAI_3_fine.fds 
+$QFDS $DEBUG -p 12 $QUEUE -d $INDIR NRL_HAI_4_fine.fds
+$QFDS $DEBUG -p 12 $QUEUE -d $INDIR NRL_HAI_5_fine.fds 
+$QFDS $DEBUG -p 12 $QUEUE -d $INDIR NRL_HAI_6_fine.fds 
+$QFDS $DEBUG -p 12 $QUEUE -d $INDIR NRL_HAI_7_fine.fds 
+$QFDS $DEBUG -p 12 $QUEUE -d $INDIR NRL_HAI_8_fine.fds 
+$QFDS $DEBUG -p 12 $QUEUE -d $INDIR NRL_HAI_9_fine.fds 
 
 $QFDS $DEBUG $QUEUE -d $INDIR NRL_HAI_1.fds
 $QFDS $DEBUG $QUEUE -d $INDIR NRL_HAI_2.fds
