@@ -2346,12 +2346,14 @@ EDGE_LOOP: DO IE=1,EDGE_COUNT(NM)
                      MU_DUIDXJ(ICD_SGN) = RHO_WALL*U_TAU**2 * SIGN(1._EB,DUIDXJ(ICD_SGN))
                   ENDIF
                   ALTERED_GRADIENT(ICD_SGN) = .TRUE.
+                  ! After stress and velocity gradient have been computed, reset VEL_GHOST to NO_SLIP for visualizaiton
+                  VEL_GHOST = 2._EB*VEL_T - VEL_GAS
 
                CASE (BOUNDARY_FUEL_MODEL_BC) BOUNDARY_CONDITION
 
                   RHO_WALL = 0.5_EB*( RHOP(IIGM,JJGM,KKGM) + RHOP(IIGP,JJGP,KKGP) )
                   VEL_T = SQRT(UU(IIGM,JJGM,KKGM)**2 + VV(IIGM,JJGM,KKGM)**2)
-                  VEL_GHOST = VEL_GAS
+                  VEL_GHOST = 2._EB*VEL_T - VEL_GAS
                   DUIDXJ(ICD_SGN) = 0._EB
                   IF (SF%VEG_LSET_SPREAD) THEN
                      VEG_HT = SF%VEG_LSET_HT
