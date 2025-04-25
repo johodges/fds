@@ -27,7 +27,10 @@ USE VTK_FDS_INTERFACE, ONLY : BUILD_VTK_GAS_PHASE_GEOMETRY,BUILD_VTK_SOLID_PHASE
 USE VTK_FDS_INTERFACE, ONLY : WRITE_VTKHDF_RECT_GAS_FILE,ADD_1F32_DATA_TO_VTKHDF_RECT_GAS_FILE,&
                 ADD_3F32_DATA_TO_VTKHDF_RECT_GAS_FILE,WRITE_VTKHDF_SLICE_DATA_FILE,WRITE_VTKHDF_SLICE_CELL_FILE,&
                 ADD_DATA_TO_SMOKE3D_VTKHDF_FILE,WRITE_VTKHDF_BNDF_CELL_FILE,PARALLEL_INIT_F32,PARALLEL_WRITE_F32,&
-                CLOSE_VTKHDF,OPEN_VTKHDF,CLOSE_PART_VTKHDF,OPEN_PART_VTKHDF,PARALLEL_INIT_I32,PARALLEL_WRITE_I32
+                CLOSE_VTKHDF,OPEN_VTKHDF,CLOSE_PART_VTKHDF,OPEN_PART_VTKHDF,PARALLEL_INIT_I32,PARALLEL_WRITE_I32,&
+                WRITE_VTKHDF_SLICE_CELL_FILE_NOOPEN,WRITE_VTKHDF_SLICE_DATA_FILE_NOOPEN,&
+                INITIALIZE_VTKHDF_SLCF_KEEPOPEN,INITIALIZE_VTKHDF_SMOKE3D_KEEPOPEN,&
+                ADD_DATA_TO_SMOKE3D_VTKHDF_FILE_NOOPEN
 USE HDF5
 #endif
 USE COMP_FUNCTIONS, ONLY : SHUTDOWN
@@ -65,7 +68,8 @@ PUBLIC ASSIGN_FILE_NAMES,INITIALIZE_GLOBAL_DUMPS,INITIALIZE_MESH_DUMPS,WRITE_STA
        TIMINGS,FLUSH_GLOBAL_BUFFERS,READ_RESTART,WRITE_DIAGNOSTICS, &
        WRITE_SMOKEVIEW_FILE,DUMP_MESH_OUTPUTS,UPDATE_GLOBAL_OUTPUTS,DUMP_DEVICES,DUMP_HRR,&
        DUMP_MASS,DUMP_CONTROLS,INITIALIZE_DIAGNOSTIC_FILE,DUMP_RESTART,DUMP_HVAC,&
-       DUMP_GEOM,UPDATE_DEVICES_2,WRITE_DEVC_CTRL_LOG,WRITE_STL_FILE,DUMP_CVODE_SUBSTEPS
+       DUMP_GEOM,UPDATE_DEVICES_2,WRITE_DEVC_CTRL_LOG,WRITE_STL_FILE,DUMP_CVODE_SUBSTEPS,&
+       DUMP_VTK_MESH_OUTPUTS
 
 CONTAINS
 
@@ -184,7 +188,10 @@ IF (WRITE_VTK) THEN
 ENDIF
 #endif
 
-IF (FAKEWRITE) RETURN
+IF (FAKEWRITE) THEN
+   T_USED(7) = T_USED(7) + CURRENT_TIME() - TNOW
+   RETURN
+ENDIF
 
 IF (WRITE_SMV) THEN
    IF (T>=PART_CLOCK(PART_COUNTER(NM)) .AND. PARTICLE_FILE) THEN
@@ -307,6 +314,138 @@ END SELECT PERIODIC_TEST_SELECT
 
 T_USED(7) = T_USED(7) + CURRENT_TIME() - TNOW
 END SUBROUTINE DUMP_MESH_OUTPUTS
+
+
+
+
+
+
+
+!> \brief Call subroutines that output quantities associated with each mesh, like slice, boundary, and particle files
+
+SUBROUTINE DUMP_VTK_MESH_OUTPUTS(T,DT)
+
+USE COMP_FUNCTIONS, ONLY : CURRENT_TIME
+USE TURBULENCE, ONLY: SANDIA_OUT, SPECTRAL_OUTPUT
+REAL(EB) :: TNOW
+REAL(EB), INTENT(IN) :: T,DT
+INTEGER :: NM
+CHARACTER(80) :: FN_UVW,FN_MMS,FN_SPECTRUM,FN_TMP,FN_SPEC
+
+TNOW = CURRENT_TIME()
+
+! VTK 3-D slices
+!WRITE(*,*) MY_RANK, T, SL3D_VTK_COUNTER, SL3D_VTK_COUNTER(LOWER_MESH_INDEX), SL3D_VTK_CLOCK(SL3D_VTK_COUNTER(LOWER_MESH_INDEX))
+IF (T>=SL3D_VTK_CLOCK(SL3D_VTK_COUNTER(LOWER_MESH_INDEX)) .OR. STOP_STATUS==INSTABILITY_STOP) THEN
+   CALL DUMP_SLCF_VTK2(T,DT,0)
+   SL3D_VTK_COUNTER(LOWER_MESH_INDEX) = SL3D_VTK_COUNTER(LOWER_MESH_INDEX) + 1
+ENDIF
+
+! VTK 2-D slices
+IF (T>=SLCF_VTK_CLOCK(SLCF_VTK_COUNTER(LOWER_MESH_INDEX)) .OR. STOP_STATUS==INSTABILITY_STOP) THEN
+   CALL DUMP_SLCF_VTK2(T,DT,1)
+   SLCF_VTK_COUNTER(LOWER_MESH_INDEX) = SLCF_VTK_COUNTER(LOWER_MESH_INDEX) + 1
+ENDIF
+
+! VTK Smoke 3D slices
+IF (T>=SM3D_VTK_CLOCK(SM3D_VTK_COUNTER(LOWER_MESH_INDEX)) .OR. STOP_STATUS==INSTABILITY_STOP) THEN
+   CALL DUMP_SMOKE3D_VTKHDF2(T,DT)
+   SM3D_VTK_COUNTER(LOWER_MESH_INDEX) = SM3D_VTK_COUNTER(LOWER_MESH_INDEX) + 1
+ENDIF
+
+! VTK Boundary data
+IF (T>=BNDF_VTK_CLOCK(BNDF_VTK_COUNTER(LOWER_MESH_INDEX))) THEN
+   !CALL DUMP_BNDF_VTKHDF2(T,DT)
+   BNDF_VTK_COUNTER(LOWER_MESH_INDEX) = BNDF_VTK_COUNTER(LOWER_MESH_INDEX) + 1
+ENDIF
+
+! VTK Particle data
+IF (T>=PART_VTK_CLOCK(PART_VTK_COUNTER(LOWER_MESH_INDEX))) THEN
+   !CALL DUMP_PART_VTKHDF2(T,1)
+   PART_VTK_COUNTER(LOWER_MESH_INDEX) = PART_VTK_COUNTER(LOWER_MESH_INDEX) + 1
+ENDIF
+
+
+! Always output spreadsheet data
+DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
+
+   IF (T>=PROF_CLOCK(PROF_COUNTER(NM))) THEN
+      CALL DUMP_PROF(T,NM)
+      DO WHILE(PROF_COUNTER(NM)<SIZE(PROF_CLOCK)-1)
+         PROF_COUNTER(NM) = PROF_COUNTER(NM) + 1
+         IF (PROF_CLOCK(PROF_COUNTER(NM))>=T) EXIT
+      ENDDO
+   ENDIF
+
+   IF (T>=UVW_CLOCK(UVW_COUNTER(NM))) THEN
+      IF (PERIODIC_TEST==9) THEN
+         WRITE(FN_SPECTRUM,'(A,A,I0,A)') TRIM(CHID),'_spec_',UVW_COUNTER(NM),'.csv'
+         CALL DUMP_UVW(FN_SPECTRUM)
+      ELSE
+         WRITE(FN_UVW,'(A,A,I0,A,I0,A)') TRIM(CHID),'_uvw_t',UVW_COUNTER(NM),'_m',NM,'.csv'
+         CALL DUMP_UVW(FN_UVW)
+      ENDIF
+      DO WHILE(UVW_COUNTER(NM)<SIZE(UVW_CLOCK)-1)
+         UVW_COUNTER(NM) = UVW_COUNTER(NM) + 1
+         IF (UVW_CLOCK(UVW_COUNTER(NM))>=T) EXIT
+      ENDDO
+   ENDIF
+
+   IF (T>=TMP_CLOCK(TMP_COUNTER(NM))) THEN
+      WRITE(FN_TMP,'(A,A,I0,A,I0,A)') TRIM(CHID),'_tmp_t',TMP_COUNTER(NM),'_m',NM,'.csv'
+      CALL DUMP_TMP(FN_TMP)
+      DO WHILE(TMP_COUNTER(NM)<SIZE(TMP_CLOCK)-1)
+         TMP_COUNTER(NM) = TMP_COUNTER(NM) + 1
+         IF (TMP_CLOCK(TMP_COUNTER(NM))>=T) EXIT
+      ENDDO
+   ENDIF
+
+   IF (T>=SPEC_CLOCK(SPEC_COUNTER(NM))) THEN
+      WRITE(FN_SPEC,'(A,A,I0,A,I0,A)') TRIM(CHID),'_spec_t',SPEC_COUNTER(NM),'_m',NM,'.csv'
+      CALL DUMP_SPEC(FN_SPEC)
+      DO WHILE(SPEC_COUNTER(NM)<SIZE(SPEC_CLOCK)-1)
+         SPEC_COUNTER(NM) = SPEC_COUNTER(NM) + 1
+         IF (SPEC_CLOCK(SPEC_COUNTER(NM))>=T) EXIT
+      ENDDO
+   ENDIF
+
+   PERIODIC_TEST_SELECT: SELECT CASE(PERIODIC_TEST)
+      CASE(7,11)
+         IF (T>=MMS_TIMER .AND. NM==1) THEN
+            WRITE(FN_MMS,'(A,A)') TRIM(CHID),'_mms.csv'
+            CALL DUMP_MMS(FN_MMS,T)
+            MMS_TIMER=HUGE_EB
+         ENDIF
+      CASE(21,22,23)
+         IF (T>=MMS_TIMER .AND. NM==1) THEN
+            WRITE(FN_MMS,'(A,A)') TRIM(CHID),'_mms.csv'
+            CALL DUMP_ROTCUBE_MMS(NM,FN_MMS,T)
+            MMS_TIMER=HUGE_EB
+         ENDIF
+      CASE(9)
+         IF (T>=TURB_INIT_CLOCK) THEN
+            TURB_INIT_CLOCK=HUGE_EB ! only write ini_salsa.dat file once
+            CALL SANDIA_OUT(NM)
+         ENDIF
+   END SELECT PERIODIC_TEST_SELECT
+ENDDO
+T_USED(7) = T_USED(7) + CURRENT_TIME() - TNOW
+END SUBROUTINE DUMP_VTK_MESH_OUTPUTS
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 !> \brief Assign names and logical units for all output files
@@ -4663,8 +4802,8 @@ LAGRANGIAN_PARTICLE_CLASS_LOOP: DO N=1,N_LAGRANGIAN_CLASSES
       ENDDO
 
       ! Close VTKHDF interface
-      CALL MPI_BARRIER(MPI_COMM_WORLD, ERROR)
-      CALL H5FFLUSH_F(FILE_ID,H5F_SCOPE_GLOBAL_F,ERROR)
+      !CALL MPI_BARRIER(MPI_COMM_WORLD, ERROR)
+      !CALL H5FFLUSH_F(FILE_ID,H5F_SCOPE_GLOBAL_F,ERROR)
       CALL H5PCLOSE_F(PLIST_ID, ERROR)
       CALL CLOSE_PART_VTKHDF(FILE_ID, GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4)
 
@@ -4771,8 +4910,8 @@ LAGRANGIAN_PARTICLE_CLASS_LOOP: DO N=1,N_LAGRANGIAN_CLASSES
       IF (IFRMT.EQ.1) THEN ; DEALLOCATE(COLORS) ; ENDIF
    ENDDO MESH_LOOP_HDF
    ! Close VTKHDF interface
-   CALL MPI_BARRIER(MPI_COMM_WORLD, ERROR)
-   CALL H5FFLUSH_F(FILE_ID,H5F_SCOPE_GLOBAL_F,ERROR)
+   !CALL MPI_BARRIER(MPI_COMM_WORLD, ERROR)
+   !CALL H5FFLUSH_F(FILE_ID,H5F_SCOPE_GLOBAL_F,ERROR)
    CALL H5PCLOSE_F(PLIST_ID, ERROR)
    CALL CLOSE_PART_VTKHDF(FILE_ID, GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4)
 ENDDO LAGRANGIAN_PARTICLE_CLASS_LOOP
@@ -5158,9 +5297,9 @@ DATA_FILE_LOOP: DO N=1,N_SMOKE3D
    IF (S3%QUANTITY_INDEX==0) CYCLE
    ! If parallel write called with empty data, write empty
    IF(FAKEWRITE) THEN
-      ALLOCATE(QQ_PACK(0))
-      CALL ADD_DATA_TO_SMOKE3D_VTKHDF_FILE(FILENAME, S3%SMOKEVIEW_LABEL(1:30), QQ_PACK, NM, .TRUE.) !REAL(QQ_PACK, FB))
-      DEALLOCATE(QQ_PACK)
+      ALLOCATE(QQ_PACK_INT(0))
+      CALL ADD_DATA_TO_SMOKE3D_VTKHDF_FILE(FILENAME, S3%SMOKEVIEW_LABEL(1:30), QQ_PACK_INT, NM, .TRUE.) !REAL(QQ_PACK, FB))
+      DEALLOCATE(QQ_PACK_INT)
       CYCLE DATA_FILE_LOOP
    ENDIF
 
@@ -5196,7 +5335,7 @@ DATA_FILE_LOOP: DO N=1,N_SMOKE3D
       FACTOR=-REAL(S3%MASS_EXTINCTION_COEFFICIENT,FB)*DXX
       DO I=1,NP
          VAL_FDS = MAX(0.0_FB,QQ_PACK(I))
-         VAL_SMV = 254*(1.0_FB-EXP(FACTOR*VAL_FDS))-127
+         VAL_SMV = 254*(1.0_FB-EXP(FACTOR*VAL_FDS)) !-127
          QQ_PACK_INT(I) = INT(NINT(VAL_SMV),IB8) !NINT(VAL_SMV)
          QQ_PACK(I) = VAL_SMV
       ENDDO
@@ -5206,7 +5345,7 @@ DATA_FILE_LOOP: DO N=1,N_SMOKE3D
 
       DO I=1,NP
          VAL_FDS = MIN(HRRPUV_MAX_SMV,MAX(0._FB,QQ_PACK(I)))
-         VAL_SMV = 254*(VAL_FDS/HRRPUV_MAX_SMV)-127
+         VAL_SMV = 254*(VAL_FDS/HRRPUV_MAX_SMV) !-127
          !QQ_PACK_INT(I) = VAL_SMV !NINT(VAL_SMV)
          QQ_PACK_INT(I) = INT(NINT(VAL_SMV),IB8)
          QQ_PACK(I) = VAL_SMV
@@ -5217,7 +5356,7 @@ DATA_FILE_LOOP: DO N=1,N_SMOKE3D
       TEMP_MIN = REAL(TMPA-TMPM,FB)
       DO I=1,NP
          VAL_FDS = MIN(TEMP_MAX_SMV,MAX(TEMP_MIN,QQ_PACK(I)))
-         VAL_SMV = 254*((VAL_FDS-TEMP_MIN)/(TEMP_MAX_SMV-TEMP_MIN))-127
+         VAL_SMV = 254*((VAL_FDS-TEMP_MIN)/(TEMP_MAX_SMV-TEMP_MIN)) !-127
          !QQ_PACK_INT(I) = VAL_SMV
          QQ_PACK_INT(I) = INT(NINT(VAL_SMV),IB8)
          QQ_PACK(I) = VAL_SMV
@@ -5231,7 +5370,7 @@ DATA_FILE_LOOP: DO N=1,N_SMOKE3D
       ENDDO
    ENDIF
 
-   CALL ADD_DATA_TO_SMOKE3D_VTKHDF_FILE(FILENAME, S3%SMOKEVIEW_LABEL(1:30), QQ_PACK, NM,.FALSE.) !REAL(QQ_PACK, FB))
+   CALL ADD_DATA_TO_SMOKE3D_VTKHDF_FILE(FILENAME, S3%SMOKEVIEW_LABEL(1:30), QQ_PACK_INT, NM,.FALSE.) !REAL(QQ_PACK, FB))
    DEALLOCATE(QQ_PACK_INT)
    DEALLOCATE(QQ_PACK)
 
@@ -5239,6 +5378,182 @@ ENDDO DATA_FILE_LOOP
 
 END SUBROUTINE DUMP_SMOKE3D_VTKHDF
 #endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#ifdef WITH_HDF5
+!> \brief Write out the SMOKE3D data to files
+!>
+!> \param T Current simulation time (s)
+!> \param DT Current time step size (s)
+!> \param NM Mesh number
+!> \param IFRMT SMV (IFRMT=0) or VTK (IFRMT=1)
+
+SUBROUTINE DUMP_SMOKE3D_VTKHDF2(T,DT)
+
+USE ISOSMOKE, ONLY: SMOKE3D_TO_FILE
+REAL(EB), INTENT(IN) :: T,DT
+INTEGER :: NM
+INTEGER  :: I,J,K,N,IFACT,ITM,ITM1,NC,NP,I1=0,J1=0,K1=0,I2,J2,K2,NX,NY,NZ
+REAL(FB) :: DXX,STIME
+REAL(EB), POINTER, DIMENSION(:,:,:) :: FF
+REAL(FB), ALLOCATABLE, DIMENSION(:) :: QQ_PACK
+INTEGER(IB8), ALLOCATABLE, DIMENSION(:) :: QQ_PACK_INT
+REAL(EB) :: TT
+TYPE(SMOKE3D_TYPE), POINTER :: S3
+REAL(FB) :: FACTOR,VAL_FDS,VAL_SMV,TEMP_MIN
+CHARACTER(FN_LENGTH) :: FILENAME
+INTEGER(HID_T) :: FILE_ID,PLIST_ID,GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4  ! Identifiers
+
+
+
+
+
+! Miscellaneous settings
+
+DRY   = .FALSE.
+STIME = REAL(T_BEGIN + (T-T_BEGIN)*TIME_SHRINK_FACTOR,FB)
+DXX   = REAL(DX(1),FB)
+
+TT   = T_BEGIN + (T-T_BEGIN)*TIME_SHRINK_FACTOR
+ITM  = INT(TT)
+ITM1 = NINT(ABS(TT-ITM)*100)
+IF (ITM1==100) THEN
+   ITM = ITM+1
+   ITM1 = 0
+ENDIF
+WRITE(FILENAME,'(A,A,A,I8.8,I2.2,A)') "",TRIM(VTK_DIR)//TRIM(CHID),'_SM3D_',ITM,ITM1,'.vtkhdf'
+
+
+IF (N_SMOKE3D > 0) THEN
+   CALL INITIALIZE_VTKHDF_SMOKE3D_KEEPOPEN(T,&
+      FILE_ID, PLIST_ID,GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4)
+ELSE
+   RETURN
+ENDIF
+
+DATA_FILE_LOOP: DO N=1,N_SMOKE3D
+   CALL POINT_TO_MESH(LOWER_MESH_INDEX)
+   S3 => SMOKE3D_FILE(N)
+   IF (S3%QUANTITY_INDEX==0) CYCLE
+   
+   ! Loop through meshes
+   ALL_MESH_LOOP: DO NM=1,NMESHES
+      IF (PROCESS(NM)/=MY_RANK) THEN
+         ! Current mesh is not owned by this rank, dump empty data
+         ALLOCATE(QQ_PACK_INT(0))
+         CALL POINT_TO_MESH(LOWER_MESH_INDEX)
+         S3 => SMOKE3D_FILE(N)
+         CALL ADD_DATA_TO_SMOKE3D_VTKHDF_FILE_NOOPEN(S3%SMOKEVIEW_LABEL(1:30),&
+            QQ_PACK_INT, LOWER_MESH_INDEX, PLIST_ID,GROUP_ID4,.TRUE.) !REAL(QQ_PACK, FB))
+         DEALLOCATE(QQ_PACK_INT)
+         CYCLE ALL_MESH_LOOP
+      ENDIF
+      CALL POINT_TO_MESH(NM)
+      S3 => SMOKE3D_FILE(N)
+      FF   => WORK3
+      ! Current mesh is owned by this rank, and is contained in this mesh, dump real data
+      ! Obtain Smoke3D output at cell centers
+      CALL GET_SMOKE3D_QQ(S3,T,DT,NM,FF,QQ)
+
+      ! Pack the data into a 1-D array and send to the routine that writes the file for Smokeview
+
+      WRITE(FN_SMOKE3D_VTK(NM),'(A,A,A,I0,A,I8.8,I2.2,A)') "",TRIM(VTK_DIR)//TRIM(CHID),'_SM3D_',NM,'_',ITM,ITM1,'.vtu'
+      I2 = MESHES(NM)%IBAR
+      J2 = MESHES(NM)%JBAR
+      K2 = MESHES(NM)%KBAR
+      NX = I2 + 1 - I1
+      NY = J2 + 1 - J1
+      NZ = K2 + 1 - K1
+      ALLOCATE(QQ_PACK(MESHES(NM)%NP))
+
+      IFACT = 1
+      DO K=0,KBP1-1
+         DO J=0,JBP1-1
+            DO I=0,IBP1-1
+               QQ_PACK(IFACT) = REAL(QQ(I,J,K,1))
+               IFACT = IFACT + 1
+            ENDDO
+         ENDDO
+      ENDDO
+      NP = MESHES(NM)%NP
+      NC = MESHES(NM)%NC
+
+      ALLOCATE(QQ_PACK_INT(NX*NY*NZ))
+      IF (S3%DISPLAY_TYPE=='GAS') THEN
+
+         FACTOR=-REAL(S3%MASS_EXTINCTION_COEFFICIENT,FB)*DXX
+         DO I=1,NP
+            VAL_FDS = MAX(0.0_FB,QQ_PACK(I))
+            VAL_SMV = 254*(1.0_FB-EXP(FACTOR*VAL_FDS)) !-127
+            QQ_PACK_INT(I) = INT(NINT(VAL_SMV),IB8) !NINT(VAL_SMV)
+            QQ_PACK(I) = VAL_SMV
+         ENDDO
+
+
+      ELSEIF (S3%DISPLAY_TYPE=='FIRE') THEN
+
+         DO I=1,NP
+            VAL_FDS = MIN(HRRPUV_MAX_SMV,MAX(0._FB,QQ_PACK(I)))
+            VAL_SMV = 254*(VAL_FDS/HRRPUV_MAX_SMV) !-127
+            !QQ_PACK_INT(I) = VAL_SMV !NINT(VAL_SMV)
+            QQ_PACK_INT(I) = INT(NINT(VAL_SMV),IB8)
+            QQ_PACK(I) = VAL_SMV
+         ENDDO
+
+      ELSEIF (S3%DISPLAY_TYPE=='TEMPERATURE') THEN
+
+         TEMP_MIN = REAL(TMPA-TMPM,FB)
+         DO I=1,NP
+            VAL_FDS = MIN(TEMP_MAX_SMV,MAX(TEMP_MIN,QQ_PACK(I)))
+            VAL_SMV = 254*((VAL_FDS-TEMP_MIN)/(TEMP_MAX_SMV-TEMP_MIN)) !-127
+            !QQ_PACK_INT(I) = VAL_SMV
+            QQ_PACK_INT(I) = INT(NINT(VAL_SMV),IB8)
+            QQ_PACK(I) = VAL_SMV
+         ENDDO
+
+      ELSE
+         DO I=1,NP
+            !QQ_PACK_INT(I) = QQ_PACK(I)
+            QQ_PACK_INT(I) = INT(NINT(QQ_PACK(I)),IB8)
+            QQ_PACK(I) = VAL_SMV
+         ENDDO
+      ENDIF
+      CALL ADD_DATA_TO_SMOKE3D_VTKHDF_FILE_NOOPEN(S3%SMOKEVIEW_LABEL(1:30),&
+         QQ_PACK_INT, NM, PLIST_ID,GROUP_ID4,.FALSE.) !REAL(QQ_PACK, FB))
+      DEALLOCATE(QQ_PACK_INT)
+      DEALLOCATE(QQ_PACK)
+   ENDDO ALL_MESH_LOOP
+ENDDO DATA_FILE_LOOP
+
+END SUBROUTINE DUMP_SMOKE3D_VTKHDF2
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -7324,7 +7639,6 @@ IF(FAKEWRITE) THEN
       SLCFNAME = MESHES(1)%UNIQUE_SLICE_NAMES(IQ)
       WRITE(FILENAME,'(A,A,A,A,I8.8,I2.2,A)') TRIM(VTK_DIR)//TRIM(CHID),'_',&
          TRIM(SLCFNAME),'_',ITM,ITM1,'.vtkhdf'
-      CALL WRITE_VTKHDF_SLICE_CELL_FILE(FILENAME,SLCFNAME,SL3D,NM,NCELLS,NPOINTS,NCONNECTIONS,NTSL)
       NPOINTS=0
       NCELLS=0
       NCONNECTIONS=0
@@ -7669,6 +7983,445 @@ END FUNCTION EDGE_VALUE
 
 END SUBROUTINE DUMP_SLCF_VTK
 #endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#ifdef WITH_HDF5
+! \brief Write contour slices, Plot3D data, or 3d slices to a file
+!>
+!> \param T Current simulation time (s)
+!> \param DT Current time step size (s)
+!> \param NM Mesh number
+!> \param IFRMT VTK 3D slice (IFRMT=0) VTK 2D slice (IFRMT=1)
+
+SUBROUTINE DUMP_SLCF_VTK2(T,DT,IFRMT)
+
+USE MEMORY_FUNCTIONS, ONLY: RE_ALLOCATE_STRINGS
+USE GEOMETRY_FUNCTIONS, ONLY: SEARCH_OTHER_MESHES
+USE TRAN, ONLY : GET_IJK
+USE ISOSMOKE, ONLY: SLICE_TO_RLEFILE
+INTEGER :: NM,IFRMT
+REAL(EB), INTENT(IN) :: T,DT
+REAL(EB) :: BSUM,TT
+INTEGER :: NCONNECTIONS
+INTEGER :: I,J,K,I1,I2,J1,J2,K1,K2,ITM,ITM1,IQ,IQQ,IND,IND2,II,II1,II2,JJ1,JJ2,KK1,KK2, &
+           IC,Y_INDEX,Z_INDEX,PART_INDEX,VELO_INDEX,PROP_INDEX,REAC_INDEX,MATL_INDEX,NOM,IIO,JJO,KKO,I_INC,J_INC,&
+           IFACT,JFACT,KFACT,NX,NY,NZ,KTS,NTSL,ICO,SIQ,SLICEIND
+REAL(EB), POINTER, DIMENSION(:,:,:) :: B,S,QUANTITY
+REAL(FB) :: STIME
+LOGICAL :: VTK3D,SL3D
+LOGICAL :: AGL_TERRAIN_SLICE,CC_CELL_CENTERED,CC_INTERP2FACES
+REAL(FB), ALLOCATABLE, DIMENSION(:) :: QQ_PACK
+TYPE (MESH_TYPE), POINTER :: M2
+CHARACTER(200) :: FILENAME,SLCFNAME,QTY
+INTEGER(IB32), DIMENSION(1:NMESHES) :: NCELLS, NPOINTS
+INTEGER(HID_T) :: FILE_ID,PLIST_ID,GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4  ! Identifiers
+!CHARACTER(200), DIMENSION(1:MESHES(1)%N_SLCF_VTK) :: SLCF_QUANTITIES
+
+! Return if there are no slices to process and this is not a Plot3D dump
+DRY=.FALSE.
+
+SELECT CASE(IFRMT)
+   CASE(0) ; VTK3D=.TRUE.
+   CASE(1) ; VTK3D=.FALSE.
+END SELECT
+
+! Get time string for filename
+
+STIME = REAL(T_BEGIN + (T-T_BEGIN)*TIME_SHRINK_FACTOR,FB)
+TT   = T_BEGIN + (T-T_BEGIN)*TIME_SHRINK_FACTOR
+ITM  = INT(TT)
+ITM1 = NINT(ABS(TT-ITM)*100)
+IF (ITM1==100) THEN
+   ITM = ITM+1
+   ITM1 = 0
+ENDIF
+
+NTSL = 0
+UNIQUE_LOOPF: DO IQ=1,MESHES(1)%N_UNIQUE_SLCF
+   SL3D = MESHES(1)%UNIQUE_SLICE_IS_SL3D(IQ)
+   !WRITE(*,*) SL3D, VTK3D, (SL3D.AND..NOT.VTK3D), (.NOT.SL3D.AND.VTK3D)
+   IF (SL3D.AND..NOT.VTK3D) CYCLE UNIQUE_LOOPF
+   IF (.NOT.SL3D.AND.VTK3D) CYCLE UNIQUE_LOOPF
+   SLCFNAME = MESHES(1)%UNIQUE_SLICE_NAMES(IQ)
+   IF (MESHES(1)%UNIQUE_SLCF_AGL(IQ) > 0) NTSL = NTSL + 1
+   
+   ! Initialize VTKHDF file
+   WRITE(FILENAME,'(A,A,A,A,I8.8,I2.2,A)') TRIM(VTK_DIR)//TRIM(CHID),'_',&
+      TRIM(SLCFNAME),'_',ITM,ITM1,'.vtkhdf'
+      
+   CALL INITIALIZE_VTKHDF_SLCF_KEEPOPEN(T,IQ,&
+         FILE_ID, PLIST_ID, GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4)
+   !CALL OPEN_VTKHDF(FILENAME, FILE_ID, PLIST_ID, GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4)
+   
+   ALL_SLCF_LOOP: DO II=1,MESHES(1)%N_SLCF_VTK
+      ! If this slice is not part of this unique location, cycle
+      !SL => SLICE(II)
+      !IF (TRIM(SL%SLCF_NAME)/=TRIM(SLCFNAME)) CYCLE ALL_SLCF_LOOP
+      IF(TRIM(MESHES(1)%ALL_SLICE_NAMES(II))/=TRIM(MESHES(1)%UNIQUE_SLICE_NAMES(IQ))) CYCLE ALL_SLCF_LOOP
+      QTY = MESHES(1)%ALL_SLICE_QUANTITIES(II)
+      
+      ! Loop through meshes
+      ALL_MESH_LOOP: DO NM=1,NMESHES
+         CALL POINT_TO_MESH(NM)
+         ! This first call for all meshes whether or not the slice is contained in the mesh
+         CALL WRITE_VTKHDF_SLICE_CELL_FILE_NOOPEN(SLCFNAME,SL3D,NM,NCELLS,NPOINTS,NCONNECTIONS,NTSL,&
+            PLIST_ID,GROUP_ID1)
+            
+
+            
+            
+            
+            
+            
+            
+         IF (PROCESS(NM)/=MY_RANK) THEN
+            ! Current mesh is not owned by this rank, dump empty data
+            ALLOCATE(QQ_PACK(0))
+            CALL WRITE_VTKHDF_SLICE_DATA_FILE_NOOPEN(QTY,NM,NCELLS,NPOINTS,QQ_PACK,&
+               PLIST_ID,GROUP_ID4,.TRUE.)
+            DEALLOCATE(QQ_PACK)
+            CYCLE ALL_MESH_LOOP
+         ELSEIF (MESHES(NM)%EMPTY_UNIQUE_SLICE(IQ)) THEN
+            ! Current mesh is owned by this rank, but slice is not contained in this mesh, dump empty data
+            ALLOCATE(QQ_PACK(0))
+            CALL WRITE_VTKHDF_SLICE_DATA_FILE_NOOPEN(QTY,NM,NCELLS,NPOINTS,QQ_PACK,&
+               PLIST_ID,GROUP_ID4,.TRUE.)
+            DEALLOCATE(QQ_PACK)
+            CYCLE ALL_MESH_LOOP
+         ENDIF
+         
+         ! Current mesh is owned by this rank, and is contained in this mesh, dump real data
+         
+         ! Create an array, B, that is 1 in any cell that is to be included in the 8-cell corner average, 0 otherwise.
+
+         B => WORK1
+         B = 1._EB
+
+         DO IC=1,CELL_COUNT(NM)
+            IF (CELL(IC)%SOLID) B(CELL(IC)%I,CELL(IC)%J,CELL(IC)%K) = 0._EB
+            IF (CELL(IC)%EXTERIOR) THEN
+               IF (CELL(IC)%EXTERIOR_EDGE) THEN
+                  B(CELL(IC)%I,CELL(IC)%J,CELL(IC)%K) = 0._EB
+               ELSE
+                  CALL SEARCH_OTHER_MESHES(XC(CELL(IC)%I),YC(CELL(IC)%J),ZC(CELL(IC)%K),NOM,IIO,JJO,KKO)
+                  IF (NOM==0) THEN
+                     B(CELL(IC)%I,CELL(IC)%J,CELL(IC)%K) = 0._EB
+                  ELSE
+                     M2 => MESHES(NOM)
+                     ICO = M2%CELL_INDEX(IIO,JJO,KKO)
+                     IF (M2%CELL(ICO)%SOLID) B(CELL(IC)%I,CELL(IC)%J,CELL(IC)%K) = 0._EB
+                  ENDIF
+               ENDIF
+            ENDIF
+         ENDDO
+
+         ! Create an array, S, that is the reciprocal of the sum of the B values at cell corner (I,J,K).
+
+         S => WORK2
+         S = 0._EB
+
+         DO K=0,KBAR
+            DO J=0,JBAR
+               DO I=0,IBAR
+                  BSUM = B(I,J,K)+B(I+1,J+1,K+1)+B(I+1,J,K)+B(I,J+1,K)+B(I,J,K+1)+B(I+1,J+1,K)+B(I+1,J,K+1)+B(I,J+1,K+1)
+                  IF (BSUM>0._EB) S(I,J,K) = 1._EB/BSUM
+               ENDDO
+            ENDDO
+         ENDDO
+
+         ! If sprinkler diagnostic on, pre-compute various PARTICLE flux output
+
+         IF (SLCF_PARTICLE_FLUX) CALL COMPUTE_PARTICLE_FLUXES ! TODO Not sure what we need for VTK here
+
+         ! Determine slice or Plot3D indicies
+
+         QUANTITY=>WORK7
+         
+         ! If this unique slice is present in this mesh, find slice id for parallel write data
+         SLICEIND = -1
+         SLICE_INDEX_LOOP: DO SIQ=1,MESHES(1)%N_SLCF_VTK
+            SL => SLICE(SIQ)
+            IF (TRIM(SL%SLCF_NAME)/=TRIM(SLCFNAME)) CYCLE SLICE_INDEX_LOOP
+            IF (TRIM(SL%SMOKEVIEW_LABEL(1:30))/=TRIM(MESHES(1)%ALL_SLICE_QUANTITIES(II))) CYCLE SLICE_INDEX_LOOP
+            SLICEIND = SIQ
+            EXIT
+         ENDDO SLICE_INDEX_LOOP
+         ! If this slice and quantity combo not found, parallel write no data
+         IF (SLICEIND < 0) THEN
+            ALLOCATE(QQ_PACK(0))
+            CALL WRITE_VTKHDF_SLICE_DATA_FILE_NOOPEN(QTY,NM,NCELLS,NPOINTS,QQ_PACK,&
+               PLIST_ID,GROUP_ID4,.TRUE.)
+            DEALLOCATE(QQ_PACK)
+            CYCLE ALL_MESH_LOOP
+         ENDIF
+         
+         ! Pack data for parallel write
+         SL => SLICE(SLICEIND)
+         IND  = SL%INDEX
+         IND2 = SL%INDEX2
+         Y_INDEX = SL%Y_INDEX
+         Z_INDEX = SL%Z_INDEX
+         PART_INDEX = SL%PART_INDEX
+         VELO_INDEX = SL%VELO_INDEX
+         PROP_INDEX = SL%PROP_INDEX
+         REAC_INDEX = SL%REAC_INDEX
+         MATL_INDEX = SL%MATL_INDEX
+         I1  = SL%I1
+         I2  = SL%I2
+         J1  = SL%J1
+         J2  = SL%J2
+         K1  = SL%K1
+         K2  = SL%K2
+         AGL_TERRAIN_SLICE = SL%TERRAIN_SLICE
+         CC_CELL_CENTERED  = SL%CELL_CENTERED
+         CC_INTERP2FACES   = .FALSE.
+         IF(.NOT.CC_CELL_CENTERED .AND. TRIM(SL%SLICETYPE)/='STRUCTURED') CC_INTERP2FACES = .TRUE.
+
+         ! Determine what cells need to be evaluated to form cell-corner averages
+
+         II1 = I1
+         II2 = I2+1
+         JJ1 = J1
+         JJ2 = J2+1
+         KK1 = K1
+         KK2 = K2+1
+
+         SELECT CASE(OUTPUT_QUANTITY(IND)%CELL_POSITION)
+            CASE(CELL_FACE)
+               IF (OUTPUT_QUANTITY(IND)%IOR==1) II2 = I2
+               IF (OUTPUT_QUANTITY(IND)%IOR==2) JJ2 = J2
+               IF (OUTPUT_QUANTITY(IND)%IOR==3) KK2 = K2
+            CASE(CELL_EDGE)
+               II2 = I2
+               JJ2 = J2
+               KK2 = K2
+         END SELECT
+
+         ! Loop through the necessary cells, storing the desired output QUANTITY
+
+         IF (.NOT.AGL_TERRAIN_SLICE) THEN
+            DO K=KK1,KK2
+               DO J=JJ1,JJ2
+                  DO I=II1,II2
+                     QUANTITY(I,J,K) = GAS_PHASE_OUTPUT(T,DT,NM,I,J,K,IND,IND2,Y_INDEX,Z_INDEX,0,PART_INDEX,VELO_INDEX,0,&
+                                                        PROP_INDEX,REAC_INDEX,MATL_INDEX)
+                  ENDDO
+               ENDDO
+            ENDDO
+         ELSE
+            !NTSL = NTSL + 1
+            DO I=II1,II2
+               DO J=JJ1,JJ2
+                  KTS = K_AGL_SLICE(I,J,NTSL)
+                  QUANTITY(I,J,K1) = GAS_PHASE_OUTPUT(T,DT,NM,I,J,KTS,IND,IND2,Y_INDEX,Z_INDEX,0,PART_INDEX,VELO_INDEX,0,0,0,0)
+               ENDDO
+            ENDDO
+         ENDIF
+
+         ! Average the QUANTITY at cell nodes, faces, or edges, as appropriate
+         IQQ = 1
+
+         IF (AGL_TERRAIN_SLICE) THEN
+
+            I_INC = 1
+            J_INC = 1
+            IF (OUTPUT_QUANTITY(IND)%CELL_POSITION==CELL_FACE .AND. OUTPUT_QUANTITY(IND)%IOR==1) I_INC = 0
+            IF (OUTPUT_QUANTITY(IND)%CELL_POSITION==CELL_FACE .AND. OUTPUT_QUANTITY(IND)%IOR==2) J_INC = 0
+
+            DO J=J1,J2
+               DO I=I1,I2
+                  QQ(I,J,K1,IQQ) = REAL(0.25_EB*(QUANTITY(I,J      ,K1)+QUANTITY(I+I_INC,J      ,K1)+&
+                                                 QUANTITY(I,J+J_INC,K1)+QUANTITY(I+I_INC,J+J_INC,K1)),FB)
+               ENDDO
+            ENDDO
+
+         ELSEIF (CC_CELL_CENTERED) THEN
+
+            DO K=KK1,KK2
+               DO J=JJ1,JJ2
+                  DO I=II1,II2
+                     QQ(I,J,K,IQQ) = REAL(QUANTITY(I,J,K),FB)
+                  ENDDO
+               ENDDO
+            ENDDO
+
+         ELSEIF (CC_INTERP2FACES) THEN
+
+            DO K=KK1,KK2
+               DO J=JJ1,JJ2
+                  DO I=II1,II2
+                  !xxx need to change the following code to use face centered interpolation
+                  ! (perhaps copy some variant of node centered interpolation code above)
+                     QQ(I,J,K,IQQ) = REAL(QUANTITY(I,J,K),FB)
+                  ENDDO
+               ENDDO
+            ENDDO
+
+         ELSE  ! Node interpolated slice
+
+            DO K=K1,K2
+               DO J=J1,J2
+                  DO I=I1,I2
+                     SELECT CASE(OUTPUT_QUANTITY(IND)%CELL_POSITION)
+                        CASE(CELL_CENTER)
+                           QQ(I,J,K,IQQ) = REAL(CORNER_VALUE(QUANTITY,B,S,IND),FB)
+                        CASE(CELL_FACE)
+                           QQ(I,J,K,IQQ) = REAL(FACE_VALUE(),FB)
+                        CASE(CELL_EDGE)
+                           QQ(I,J,K,IQQ) = REAL(EDGE_VALUE(QUANTITY,S,IND),FB)
+                     END SELECT
+                  ENDDO
+               ENDDO
+            ENDDO
+
+         ENDIF
+
+         NX = I2 + 1 - I1
+         NY = J2 + 1 - J1
+         NZ = K2 + 1 - K1
+
+         IF (SL%SLICETYPE=='STRUCTURED') THEN ! write out slice file using original slice file format
+            IF (NX*NY*NZ>0) THEN
+               ALLOCATE(QQ_PACK(NX*NY*NZ))
+               DO I = I1, I2
+                  IFACT = (I-I1)
+                  DO J = J1, J2
+                     JFACT = (J-J1)*NX
+                     DO K = K1, K2
+                        KFACT = (K - K1)*NY*NX
+                        QQ_PACK(1+IFACT+JFACT+KFACT) = QQ(I,J,K,1)
+                     ENDDO
+                  ENDDO
+               ENDDO
+            ELSE
+               ALLOCATE(QQ_PACK(0))
+            ENDIF
+            CALL WRITE_VTKHDF_SLICE_DATA_FILE_NOOPEN(SL%SMOKEVIEW_LABEL(1:30),NM,NCELLS,NPOINTS,QQ_PACK,&
+               PLIST_ID,GROUP_ID4,.FALSE.)
+            DEALLOCATE(QQ_PACK)
+         ENDIF
+      ENDDO ALL_MESH_LOOP
+   ENDDO ALL_SLCF_LOOP
+   
+   ! Close VTKHDF interface
+   CALL CLOSE_VTKHDF(FILE_ID, GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4)
+ENDDO UNIQUE_LOOPF
+
+CONTAINS
+
+
+REAL(EB) FUNCTION CORNER_VALUE(A,B,S,INDX)
+
+REAL(EB), INTENT(IN), DIMENSION(0:,0:,0:) :: A,B,S
+INTEGER, INTENT(IN) :: INDX
+
+IF (ABS(S(I,J,K))<=TWO_EPSILON_EB) THEN
+   CORNER_VALUE = OUTPUT_QUANTITY(INDX)%AMBIENT_VALUE
+ELSE
+   CORNER_VALUE = S(I,J,K)*(A(I,J,K)    *B(I,J,K)     + A(I+1,J,K)    *B(I+1,J,K)   + &
+                            A(I,J,K+1)  *B(I,J,K+1)   + A(I+1,J,K+1)  *B(I+1,J,K+1) + &
+                            A(I,J+1,K)  *B(I,J+1,K)   + A(I+1,J+1,K)  *B(I+1,J+1,K) + &
+                            A(I,J+1,K+1)*B(I,J+1,K+1) + A(I+1,J+1,K+1)*B(I+1,J+1,K+1))
+ENDIF
+
+END FUNCTION CORNER_VALUE
+
+
+REAL(EB) FUNCTION FACE_VALUE()
+
+REAL(EB) :: AA(0:1,0:1)
+INTEGER :: IE,ICMM,ICMP,ICPM,COUNTER
+
+SELECT CASE(OUTPUT_QUANTITY(IND)%IOR)
+   CASE(1) ; AA(0:1,0:1) = QUANTITY(I,J:J+1,K:K+1)
+   CASE(2) ; AA(0:1,0:1) = QUANTITY(I:I+1,J,K:K+1)
+   CASE(3) ; AA(0:1,0:1) = QUANTITY(I:I+1,J:J+1,K)
+END SELECT
+ICMM = CELL_INDEX(I,J,K)
+IF (ICMM>0) THEN
+   SELECT CASE(IND)
+      CASE(6)
+         ICPM = CELL_INDEX(I,J+1,K)
+         ICMP = CELL_INDEX(I,J,K+1)
+         IE = CELL(ICMM)%EDGE_INDEX(8)
+         IF (EDGE(IE)%U_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%U_AVG ; AA(0,1)=EDGE(IE)%U_AVG ; ENDIF
+         IE = CELL(ICMM)%EDGE_INDEX(12)
+         IF (EDGE(IE)%U_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%U_AVG ; AA(1,0)=EDGE(IE)%U_AVG ; ENDIF
+         IE = CELL(ICPM)%EDGE_INDEX(8)
+         IF (EDGE(IE)%U_AVG>-1.E5_EB) THEN ; AA(1,0)=EDGE(IE)%U_AVG ; AA(1,1)=EDGE(IE)%U_AVG ; ENDIF
+         IE = CELL(ICMP)%EDGE_INDEX(12)
+         IF (EDGE(IE)%U_AVG>-1.E5_EB) THEN ; AA(0,1)=EDGE(IE)%U_AVG ; AA(1,1)=EDGE(IE)%U_AVG ; ENDIF
+      CASE(7)
+         ICPM = CELL_INDEX(I+1,J,K)
+         ICMP = CELL_INDEX(I,J,K+1)
+         IE = CELL(ICMM)%EDGE_INDEX(4)
+         IF (EDGE(IE)%V_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%V_AVG ; AA(0,1)=EDGE(IE)%V_AVG ; ENDIF
+         IE = CELL(ICMM)%EDGE_INDEX(12)
+         IF (EDGE(IE)%V_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%V_AVG ; AA(1,0)=EDGE(IE)%V_AVG ; ENDIF
+         IE = CELL(ICPM)%EDGE_INDEX(4)
+         IF (EDGE(IE)%V_AVG>-1.E5_EB) THEN ; AA(1,0)=EDGE(IE)%V_AVG ; AA(1,1)=EDGE(IE)%V_AVG ; ENDIF
+         IE = CELL(ICMP)%EDGE_INDEX(12)
+         IF (EDGE(IE)%V_AVG>-1.E5_EB) THEN ; AA(0,1)=EDGE(IE)%V_AVG ; AA(1,1)=EDGE(IE)%V_AVG ; ENDIF
+      CASE(8)
+         ICPM = CELL_INDEX(I+1,J,K)
+         ICMP = CELL_INDEX(I,J+1,K)
+         IE = CELL(ICMM)%EDGE_INDEX(4)
+         IF (EDGE(IE)%W_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%W_AVG ; AA(0,1)=EDGE(IE)%W_AVG ; ENDIF
+         IE = CELL(ICMM)%EDGE_INDEX(8)
+         IF (EDGE(IE)%W_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%W_AVG ; AA(1,0)=EDGE(IE)%W_AVG ; ENDIF
+         IE = CELL(ICPM)%EDGE_INDEX(4)
+         IF (EDGE(IE)%W_AVG>-1.E5_EB) THEN ; AA(1,0)=EDGE(IE)%W_AVG ; AA(1,1)=EDGE(IE)%W_AVG ; ENDIF
+         IE = CELL(ICMP)%EDGE_INDEX(8)
+         IF (EDGE(IE)%W_AVG>-1.E5_EB) THEN ; AA(0,1)=EDGE(IE)%W_AVG ; AA(1,1)=EDGE(IE)%W_AVG ; ENDIF
+   END SELECT
+ENDIF
+
+COUNTER = COUNT(AA/=0._EB)
+
+FACE_VALUE = SUM(AA)/REAL(MAX(1,COUNTER),EB)
+
+END FUNCTION FACE_VALUE
+
+
+REAL(EB) FUNCTION EDGE_VALUE(A,S,INDX)
+
+REAL(EB), INTENT(IN), DIMENSION(0:,0:,0:) :: A,S
+INTEGER, INTENT(IN) :: INDX
+
+IF (ABS(S(I,J,K))<=TWO_EPSILON_EB) THEN
+   EDGE_VALUE = OUTPUT_QUANTITY(INDX)%AMBIENT_VALUE
+ELSE
+   EDGE_VALUE = A(I,J,K)
+ENDIF
+
+END FUNCTION EDGE_VALUE
+
+END SUBROUTINE DUMP_SLCF_VTK2
+#endif
+
+
+
+
+
+
+
+
 
 
 
@@ -12058,7 +12811,7 @@ MESH_LOOP_HDF: DO NMNM=1,NMESHES
 ENDDO MESH_LOOP_HDF
 
 ! Close VTKHDF interface
-CALL MPI_BARRIER(MPI_COMM_WORLD, ERROR)
+!CALL MPI_BARRIER(MPI_COMM_WORLD, ERROR)
 CALL CLOSE_VTKHDF(FILE_ID, GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4)
 
 CONTAINS
