@@ -237,7 +237,7 @@ END SUBROUTINE DUMP_MESH_OUTPUTS
 
 
 
-
+#ifdef WITH_HDF5
 !> \brief Call subroutines that output quantities associated with each mesh, like slice, boundary, and particle files
 
 SUBROUTINE DUMP_VTK_MESH_OUTPUTS(T,DT)
@@ -348,19 +348,7 @@ DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
 ENDDO
 T_USED(7) = T_USED(7) + CURRENT_TIME() - TNOW
 END SUBROUTINE DUMP_VTK_MESH_OUTPUTS
-
-
-
-
-
-
-
-
-
-
-
-
-
+#endif
 
 
 
