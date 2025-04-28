@@ -2,7 +2,7 @@
 
 &TIME T_END=90. /
 
-&MISC LEVEL_SET_MODE=4/
+&MISC LEVEL_SET_MODE=4, NEAR_WALL_PARTICLE_INTERPOLATION=T/
 
 &REAC FUEL='WOOD FUEL VAPOR'
       FYI='Ritchie, et al., 5th IAFSS, C_3.4 H_6.2 O_2.5'
@@ -85,7 +85,6 @@
 &INIT PART_ID              = 'Blade of Grass'
       XB                   = 1.0,5.0,-0.5,0.5,1.0,1.025
       N_PARTICLES_PER_CELL = 1
-      CELL_CENTERED        = .TRUE.
       MASS_PER_VOLUME      = 4.
       DRY                  = T /
 
@@ -96,7 +95,7 @@
       CONDUCTIVITY       = 0.1
       SPECIFIC_HEAT      = 1.5 /
 
-&DUMP FLUSH_FILE_BUFFERS=T, DT_DEVC=1. /
+&DUMP DT_DEVC=1. /
 
 &DEVC ID='pres 1',  XYZ=0.3,0.0,0.2, QUANTITY='PRESSURE' /
 &DEVC ID='pres 2',  XYZ=0.3,0.0,1.2, QUANTITY='PRESSURE' /

@@ -37,11 +37,11 @@ REAL(EB) :: NU_EDDY,DELTA,KSGS,U2,V2,W2,AA,A_IJ(3,3),BB,B_IJ(3,3),&
             DUDX,DUDY,DUDZ,DVDX,DVDY,DVDZ,DWDX,DWDY,DWDZ,VDF,WGT,T_NOW
 REAL(EB), PARAMETER :: RAPLUS=1._EB/26._EB
 INTEGER :: I,J,K,IIG,JJG,KKG,II,JJ,KK,IW,IOR,IC
-REAL(EB), POINTER, DIMENSION(:,:,:) :: RHOP=>NULL(),UP=>NULL(),VP=>NULL(),WP=>NULL(), &
-                                       UP_HAT=>NULL(),VP_HAT=>NULL(),WP_HAT=>NULL(), &
-                                       UU=>NULL(),VV=>NULL(),WW=>NULL()
-REAL(EB), POINTER, DIMENSION(:,:,:,:) :: ZZP=>NULL()
-INTEGER, POINTER, DIMENSION(:,:,:) :: CELL_COUNTER=>NULL()
+REAL(EB), POINTER, DIMENSION(:,:,:) :: RHOP,UP,VP,WP, &
+                                       UP_HAT,VP_HAT,WP_HAT, &
+                                       UU,VV,WW
+REAL(EB), POINTER, DIMENSION(:,:,:,:) :: ZZP
+INTEGER, POINTER, DIMENSION(:,:,:) :: CELL_COUNTER
 TYPE(WALL_TYPE), POINTER :: WC
 TYPE(BOUNDARY_COORD_TYPE), POINTER :: BC
 TYPE(BOUNDARY_PROP1_TYPE), POINTER :: B1
@@ -1223,7 +1223,7 @@ INTEGER, INTENT(IN) :: NM
 REAL(EB) :: MUY,UP,UM,WP,WM,VTRM,DTXZDZ,DTXZDX,DUDX,DWDZ,DUDZ,DWDX,WOMY,UOMY,OMYP,OMYM,TXZP,TXZM, &
             AH,RRHO,GX,GZ,TXXP,TXXM,TZZP,TZZM,DTXXDX,DTZZDZ,T_NOW
 INTEGER :: I,J,K,IEYP,IEYM,IC
-REAL(EB), POINTER, DIMENSION(:,:,:) :: TXZ=>NULL(),OMY=>NULL(),UU=>NULL(),WW=>NULL(),RHOP=>NULL(),DP=>NULL()
+REAL(EB), POINTER, DIMENSION(:,:,:) :: TXZ,OMY,UU,WW,RHOP,DP
 
 T_NOW = CURRENT_TIME()
 
@@ -1814,7 +1814,8 @@ INTEGER, INTENT(IN) :: NM
 LOGICAL, INTENT(IN) :: APPLY_TO_ESTIMATED_VARIABLES
 REAL(EB) :: MUA,TSI,WGT,T_NOW,RAMP_T,OMW,MU_WALL,RHO_WALL,SLIP_COEF,VEL_T, &
             UUP(2),UUM(2),DXX(2),MU_DUIDXJ(-2:2),DUIDXJ(-2:2),PROFILE_FACTOR,VEL_GAS,VEL_GHOST, &
-            MU_DUIDXJ_USE(2),DUIDXJ_USE(2),VEL_EDDY,U_TAU,Y_PLUS,U_NORM,U_WIND_LOC,V_WIND_LOC,W_WIND_LOC
+            MU_DUIDXJ_USE(2),DUIDXJ_USE(2),VEL_EDDY,U_TAU,Y_PLUS,U_NORM,U_WIND_LOC,V_WIND_LOC,W_WIND_LOC,&
+            DRAG_FACTOR,HT_SCALE_FACTOR,VEG_HT
 INTEGER :: NOM(2),IIO(2),JJO(2),KKO(2),IE,II,JJ,KK,IEC,IOR,IWM,IWP,ICMM,ICMP,ICPM,ICPP,ICD,ICDO,IVL,I_SGN, &
            VELOCITY_BC_INDEX,IIGM,JJGM,KKGM,IIGP,JJGP,KKGP,SURF_INDEXM,SURF_INDEXP,ITMP,ICD_SGN,ICDO_SGN, &
            BOUNDARY_TYPE_M,BOUNDARY_TYPE_P,IS,IS2,IWPI,IWMI,VENT_INDEX
@@ -1854,6 +1855,8 @@ ELSE
    RHOP => RHO
    ZZP => ZZ
 ENDIF
+
+DRAG_UVWMAX = 0._EB
 
 ! Loop over all cell edges and determine the appropriate velocity BCs
 
@@ -2337,20 +2340,25 @@ EDGE_LOOP: DO IE=1,EDGE_COUNT(NM)
                   DUIDXJ(ICD_SGN) = I_SGN*(VEL_GAS-VEL_GHOST)/DXX(ICD)
                   MU_DUIDXJ(ICD_SGN) = RHO_WALL*U_TAU**2 * SIGN(1._EB,DUIDXJ(ICD_SGN))
                   ALTERED_GRADIENT(ICD_SGN) = .TRUE.
+                  ! After stress and velocity gradient have been computed, reset VEL_GHOST to NO_SLIP for visualizaiton
+                  ! VEL_GHOST = 2._EB*VEL_T - VEL_GAS
 
                CASE (BOUNDARY_FUEL_MODEL_BC) BOUNDARY_CONDITION
 
                   RHO_WALL = 0.5_EB*( RHOP(IIGM,JJGM,KKGM) + RHOP(IIGP,JJGP,KKGP) )
                   VEL_T = SQRT(UU(IIGM,JJGM,KKGM)**2 + VV(IIGM,JJGM,KKGM)**2)
-                  VEL_GHOST = VEL_GAS
+                  VEL_GHOST = 2._EB*VEL_T - VEL_GAS
                   DUIDXJ(ICD_SGN) = 0._EB
                   IF (SF%VEG_LSET_SPREAD) THEN
-                     MU_DUIDXJ(ICD_SGN) = I_SGN*0.5_EB*RHO_WALL*SF%DRAG_COEFFICIENT*SF%SHAPE_FACTOR*SF%VEG_LSET_HT*&
-                                             SF%VEG_LSET_BETA*(SF%VEG_LSET_SIGMA*100._EB)*VEL_GAS*VEL_T
+                     VEG_HT = SF%VEG_LSET_HT
+                     DRAG_FACTOR = 0.5_EB*SF%DRAG_COEFFICIENT*SF%SHAPE_FACTOR*SF%VEG_LSET_BETA*(SF%VEG_LSET_SIGMA*100._EB)
                   ELSE
-                     MU_DUIDXJ(ICD_SGN) = I_SGN*0.5_EB*RHO_WALL*SF%DRAG_COEFFICIENT*SF%SHAPE_FACTOR*SF%LAYER_THICKNESS(1)*&
-                                          SF%PACKING_RATIO(1)*SF%SURFACE_VOLUME_RATIO(1)*VEL_GAS*VEL_T
+                     VEG_HT = SF%LAYER_THICKNESS(1)
+                     DRAG_FACTOR = 0.5_EB*SF%DRAG_COEFFICIENT*SF%SHAPE_FACTOR*SF%PACKING_RATIO(1)*SF%SURFACE_VOLUME_RATIO(1)
                   ENDIF
+                  HT_SCALE_FACTOR = MIN(1._EB,0.5_EB*(WCM_B1%RDN+WCP_B1%RDN)*VEG_HT)
+                  MU_DUIDXJ(ICD_SGN) = I_SGN*RHO_WALL*DRAG_FACTOR*VEG_HT*HT_SCALE_FACTOR**2*VEL_GAS*VEL_T
+                  DRAG_UVWMAX = MAX(DRAG_UVWMAX,DRAG_FACTOR*HT_SCALE_FACTOR**2*VEL_T)
                   ALTERED_GRADIENT(ICD_SGN) = .TRUE.
 
             END SELECT BOUNDARY_CONDITION
@@ -3024,6 +3032,8 @@ HEAT_TRANSFER_IF: IF (CHECK_HT) THEN
 ENDIF HEAT_TRANSFER_IF
 
 CFL = DT*UVWMAX
+! Include surface vegetation drag if necessary
+IF (DRAG_UVWMAX>0._EB) PART_UVWMAX = MAX(PART_UVWMAX,DRAG_UVWMAX)
 PART_CFL = DT*PART_UVWMAX
 
 ! Determine max Von Neumann Number for fine grid calcs
@@ -3229,7 +3239,6 @@ END SUBROUTINE BAROCLINIC_CORRECTION
 
 
 !> \brief Recompute velocities on wall cells
-!> \param NM Mesh index
 !> \param DT Time step (s)
 !> \param STORE_UN Flag indicating whether normal velocity component is to be saved
 !> \details Ensure that the correct normal derivative of H is used on the projection. It is only used when the Poisson equation
