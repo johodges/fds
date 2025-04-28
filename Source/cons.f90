@@ -587,7 +587,8 @@ REAL(EB) :: ALIGNMENT_TOLERANCE=0.001_EB      !< Maximum ratio of sizes of abutt
 ! Logical units and output file names
 
 INTEGER                              :: LU_ERR=ERROR_UNIT,LU_END=2,LU_GIT=3,LU_SMV=4,LU_INPUT=5,LU_OUTPUT=6,LU_STOP=7,LU_CPU=8,&
-                                        LU_CATF=9,LU_RDIR=10,LU_GDIR=11,LU_SETCC=12,LU_BINGEOM=13,LU_PARAVIEW=14,LU_STL=15
+                                        LU_CATF=9,LU_RDIR=10,LU_GDIR=11,LU_SETCC=12,LU_BINGEOM=13,LU_PARAVIEW=14,LU_STL=15,&
+                                        LU_VRDIR=16,LU_WDIR=17
 INTEGER                              :: LU_MASS,LU_HRR,LU_STEPS,LU_NOTREADY,LU_VELOCITY_ERROR,LU_CFL,LU_LINE=-1,LU_CUTCELL, &
                                         LU_CVODE_SUBSTEPS
 INTEGER                              :: LU_HISTOGRAM,LU_HVAC
