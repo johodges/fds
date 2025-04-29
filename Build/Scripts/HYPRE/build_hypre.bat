@@ -123,7 +123,6 @@ if "%BUILD_WITH_GPU%" EQU "ON" (
     set cmake_args=-DHYPRE_ENABLE_CUDA="ON"
   )
 )
-
 set BUILDDIR=%LIB_REPO%\build
 cd %BUILDDIR%
 cmake ..\src  ^
