@@ -2347,7 +2347,7 @@ EDGE_LOOP: DO IE=1,EDGE_COUNT(NM)
                   ENDIF
                   ALTERED_GRADIENT(ICD_SGN) = .TRUE.
                   ! After stress and velocity gradient have been computed, reset VEL_GHOST to NO_SLIP for visualizaiton
-                  VEL_GHOST = 2._EB*VEL_T - VEL_GAS
+                  ! VEL_GHOST = 2._EB*VEL_T - VEL_GAS
 
                CASE (BOUNDARY_FUEL_MODEL_BC) BOUNDARY_CONDITION
 
