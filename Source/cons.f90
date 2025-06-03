@@ -182,6 +182,7 @@ INTEGER :: RND_SEED=0                      !< User RANDOM_SEED
 
 LOGICAL :: HVAC_DEBUG=.FALSE.               !< Output known hvac values to smokeview
 LOGICAL :: RADIATION=.TRUE.                 !< Perform radiation transport
+LOGICAL :: UPDATE_ALL_ANGLES=.FALSE.        !< Update all radiation angles the next time the solver is called
 LOGICAL :: INCLUDE_PYROLYSIS=.FALSE.        !< Solid phase pyrolysis is included in the simulation
 LOGICAL :: EXCHANGE_RADIATION=.FALSE.       !< Do an MPI radiation exchange at this time step
 LOGICAL :: EXCHANGE_OBST_MASS=.FALSE.       !< Exchange mass loss information for obstructions bordering interpolated meshes
@@ -954,5 +955,8 @@ INTEGER  :: CVODE_MAX_TRY=4
 LOGICAL  :: WRITE_CVODE_SUBSTEPS = .FALSE.
 REAL(EB), ALLOCATABLE, DIMENSION(:,:) :: CVODE_SUBSTEP_DATA
 INTEGER :: TOTAL_SUBSTEPS_TAKEN
+
+! FOR THICKENED FLAME MODEL
+REAL(EB) :: FLAME_THICK_FACTOR=1.0_EB
 
 END MODULE CHEMCONS
