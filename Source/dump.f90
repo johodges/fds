@@ -5170,7 +5170,6 @@ INTEGER(HID_T) :: FILE_ID,PLIST_ID,GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4  ! Id
 
 DRY   = .FALSE.
 STIME = REAL(T_BEGIN + (T-T_BEGIN)*TIME_SHRINK_FACTOR,FB)
-DXX   = REAL(DX(1),FB)
 
 TT   = T_BEGIN + (T-T_BEGIN)*TIME_SHRINK_FACTOR
 ITM  = INT(TT)
@@ -5208,6 +5207,7 @@ DATA_FILE_LOOP: DO N=1,N_SMOKE3D
          CYCLE ALL_MESH_LOOP
       ENDIF
       CALL POINT_TO_MESH(NM)
+      DXX   = REAL(DX(1),FB)
       S3 => SMOKE3D_FILE(N)
       FF   => WORK3
       ! Current mesh is owned by this rank, and is contained in this mesh, dump real data
