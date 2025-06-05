@@ -206,6 +206,8 @@ DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
 ENDDO
 IF (MY_RANK==0 .AND. VERBOSE) CALL VERBOSE_PRINTOUT('Completed INITIALIZE_WALL_ARRAY')
 
+CALL PROC_HVAC
+
 ! Write the Smokeview (.smv) file using parallel MPI writes
 
 IF (WRITE_SMV) THEN
@@ -573,6 +575,7 @@ IF (WRITE_VTK_GEOM) THEN
 #ifdef WITH_HDF5
    CALL WRITE_VTKHDF_GEOM_FILE
 #endif
+IF (MY_RANK==0 .AND. VERBOSE) CALL VERBOSE_PRINTOUT('Completed VTK Geometry initialization')
 ENDIF
 
 ! Make an initial dump of ambient values
