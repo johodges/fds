@@ -1644,6 +1644,7 @@ SUBROUTINE WRITE_STL_FILE
    ! Original question: https://stackoverflow.com/questions/34144786
    ! User whos answer is integrated: https://stackoverflow.com/users/4621823/chw21
    !character(len=*), parameter :: fname = 'fds.stl'
+   USE COMP_FUNCTIONS, ONLY: CURRENT_TIME
    INTEGER :: I,IOS,N,NM,FACES(12, 3),GEOM_VERTICES_IDS(1,3)
    CHARACTER(LEN=80) :: TITLE
    REAL(FB) :: VERTICES(8,3), XB(6)
