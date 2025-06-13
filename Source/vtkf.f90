@@ -3411,7 +3411,7 @@ SUBROUTINE TEST_VTKHDF_EXTEND(SNAME,G5,DSET_ID,PLIST_ID)
   !Fill data array with 1's 
   !
   DO i = 1, CDIM(1)
-     data1(i) = 1+i
+     data1(i) = 1+REAL(i)
   END DO
 
   WRITE(*,'(A)') "Dataset before writing:" 
@@ -3535,7 +3535,7 @@ SUBROUTINE TEST_VTKHDF_EXTEND_OLD()
   !Fill data array with 1's 
   !
   DO i = 1, CDIM(1)
-     data1(i) = 1+i
+     data1(i) = 1+REAL(i)
   END DO
 
   WRITE(*,'(A)') "Dataset before writing:" 
