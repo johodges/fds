@@ -13,6 +13,9 @@ USE MPI
 USE MPI_F08
 #endif
 USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
+#ifdef WITH_HDF5
+USE HDF5
+#endif
 IMPLICIT NONE (TYPE,EXTERNAL)
 
 ! constants used by smokeview for drawing surfaces
@@ -283,6 +286,7 @@ LOGICAL :: PARAVIEW_PROJECT=.FALSE.                 !< Flag that indicates if a 
 LOGICAL :: WRITE_VTK_GEOM=.FALSE.                   !< Flag that indicates if a vtk geometry file should be generated
 LOGICAL :: WRITE_VTK=.FALSE.                        !< Flag that indicates if vtk files should be generated
 LOGICAL :: WRITE_VTK_GEOM_PER_TIMESTEP=.TRUE.       !< Flag that indicates if vtk files should contain geometry every timestep
+LOGICAL :: WRITE_VTK_SERIES_FORMAT=.TRUE.           !< Flag that indicates if vtk files should use the VTKHDF time series format
 LOGICAL :: WRITE_SMV=.TRUE.                         !< Flag that indicates if smv files should be generated
 LOGICAL :: OXPYRO_MODEL=.FALSE.                     !< Flag to use oxidative pyrolysis mass transfer model
 LOGICAL :: OUTPUT_WALL_QUANTITIES=.FALSE.           !< Flag to force call to WALL_MODEL
@@ -617,6 +621,10 @@ LOGICAL :: OUT_FILE_OPENED=.FALSE.
 ! Total number of obst and geom patches in each mesh
 ! 2*NMESHES arrays. odds include OBST patches, evens include GEOM patches
 INTEGER(IB32), ALLOCATABLE, DIMENSION(:) :: NCELLS_VTK, NPOINTS_VTK, NCONNECTIONS_VTK
+
+INTEGER(HID_T) :: HDF_SM3D_FILE_ID, HDF_SM3D_PLIST_ID, HDF_SM3D_CRP_LIST
+INTEGER(HID_T) :: HDF_SM3D_G1,HDF_SM3D_G2,HDF_SM3D_G3,HDF_SM3D_G4,HDF_SM3D_G5,HDF_SM3D_G6,HDF_SM3D_G7 ! Group identifier
+INTEGER(HID_T) :: HDF_SM3D_COUNTER=0
 #endif
 
 ! Boundary condition arrays
