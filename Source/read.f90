@@ -2628,13 +2628,13 @@ IF (MY_RANK==0) THEN
 #else
    CALL EXECUTE_COMMAND_LINE('pwd > workingdir.txt')
 #endif
-   OPEN(LU_WDIR, FILE="workingdir.txt", STATUS="OLD", ACTION="READ")
-   READ(LU_WDIR, '(A)') WORKING_DIR
-   CLOSE(LU_WDIR)
    INQUIRE(FILE='workingdir.txt',EXIST=EX)
    IF (.NOT.EX) THEN
       CALL SHUTDOWN('FAILED TO IDENTIFY WORKING DIRECTORY.')
    ENDIF
+   OPEN(LU_WDIR, FILE="workingdir.txt", STATUS="OLD", ACTION="READ")
+   READ(LU_WDIR, '(A)') WORKING_DIR
+   CLOSE(LU_WDIR)
 #ifdef _WIN32
    CALL EXECUTE_COMMAND_LINE('del workingdir.txt')
 #else
