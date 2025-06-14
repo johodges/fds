@@ -1126,8 +1126,10 @@ SUBROUTINE CLOSE_VTKHDF_BNDF()
 END SUBROUTINE CLOSE_VTKHDF_BNDF
 
 SUBROUTINE CLOSE_VTKHDF_SMOKE3D()
-   CALL CLOSE_VTKHDF_SERIES(HDF_SM3D_FILE_ID,&
-      HDF_SM3D_G1,HDF_SM3D_G2,HDF_SM3D_G3,HDF_SM3D_G4,HDF_SM3D_G5,HDF_SM3D_G6,HDF_SM3D_G7)
+   IF (N_SMOKE3D > 0) THEN
+      CALL CLOSE_VTKHDF_SERIES(HDF_SM3D_FILE_ID,&
+         HDF_SM3D_G1,HDF_SM3D_G2,HDF_SM3D_G3,HDF_SM3D_G4,HDF_SM3D_G5,HDF_SM3D_G6,HDF_SM3D_G7)
+   ENDIF
 END SUBROUTINE CLOSE_VTKHDF_SMOKE3D
 
 SUBROUTINE CLOSE_VTKHDF_SLICE()
@@ -3598,6 +3600,7 @@ WRITE(LU_PARAVIEW,'(A)') "# Load data files"
 !WRITE(LU_PARAVIEW,'(A,A)') "sm3dFiles = [indir+sep+rdir+sep+x for x in fileList ",&
 !                            "if ('_SM3D_' in x) and ('.vtkhdf' in x)]"
 WRITE(LU_PARAVIEW,'(A)') "sm3dFiles = [indir+sep+rdir+sep+chid+'_SM3D.vtkhdf']"
+WRITE(LU_PARAVIEW,'(A)') "if ~os.path.exists(sm3dFiles[0]): sm3dFiles = []"
 WRITE(LU_PARAVIEW,'(A,A)') "sl2dxFiles = [indir+sep+rdir+sep+x for x in fileList ",&
                             "if ('_X_' in x) and ('.vtkhdf' in x)]"
 WRITE(LU_PARAVIEW,'(A,A)') "sl2dyFiles = [indir+sep+rdir+sep+x for x in fileList ",&
