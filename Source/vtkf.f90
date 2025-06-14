@@ -3478,6 +3478,11 @@ ENDIF
 
 WRITE(LU_PARAVIEW,'(A,F15.3,A,F15.3,A,F15.3,A)') 'CenterOfRotation = [',CX,',',CY,',',CZ,']'
 WRITE(LU_PARAVIEW,'(A,F15.3,A,F15.3,A,F15.3,A)') 'CameraFocalPoint = [',CX,',',CY,',',CZ,']'
+WRITE(LU_PARAVIEW,'(A)') 'diff = [abs(x-y) for x,y in zip(CenterOfRotation,CameraFocalPoint)]'
+WRITE(LU_PARAVIEW,'(A)') 'if max(diff) < 0.1:'
+WRITE(LU_PARAVIEW,'(A)') '    CameraFocalPoint[0] = CameraFocalPoint[0] + 0.1'
+WRITE(LU_PARAVIEW,'(A)') '    CameraFocalPoint[1] = CameraFocalPoint[1] + 0.1'
+WRITE(LU_PARAVIEW,'(A)') '    CameraFocalPoint[2] = CameraFocalPoint[2] + 0.1'
 WRITE(LU_PARAVIEW,'(A)') 'CameraFocalPoint = [x+0.01 if (abs(x) < 0.01) else x for x in CameraFocalPoint]'
 WRITE(LU_PARAVIEW,'(A)') 'import paraview'
 WRITE(LU_PARAVIEW,'(A)') 'from paraview.simple import *'
