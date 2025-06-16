@@ -128,6 +128,7 @@ $QFDS -d Complex_Geometry shunn3_64_cc_exp_gdv.fds
 $QFDS -d Complex_Geometry shunn3_128_cc_exp_gdv.fds
 $QFDS -d Complex_Geometry shunn3_256_cc_exp_gdv.fds
 $QFDS -o 2 -d Complex_Geometry shunn3_320_cc_exp_gdv.fds
+$QFDS -d Complex_Geometry t34_scaling.fds
 
 $QFDS -d Complex_Geometry geom_poiseuille_N10a_theta0_stm.fds
 $QFDS -d Complex_Geometry geom_poiseuille_N20a_theta0_stm.fds
@@ -323,6 +324,14 @@ $QFDS -p 4 -d Heat_Transfer ht3d_sphere_48.fds
 $QFDS -p 64 -d Heat_Transfer ht3d_sphere_96.fds
 $QFDS -p 4 -d Heat_Transfer back_wall_test.fds
 $QFDS -p 3 -d Heat_Transfer back_wall_test_2.fds
+$QFDS -d Heat_Transfer SFPE_Case_1.fds
+$QFDS -d Heat_Transfer SFPE_Case_2.fds
+$QFDS -d Heat_Transfer SFPE_Case_6.fds
+$QFDS -d Heat_Transfer SFPE_Case_7.fds
+$QFDS -d Heat_Transfer SFPE_Case_8.fds
+$QFDS -d Heat_Transfer SFPE_Case_9.fds
+$QFDS -d Heat_Transfer SFPE_Case_13.fds
+$QFDS -p 8 -d Heat_Transfer SFPE_Case_16.fds
 $QFDS -d Heat_Transfer thermocouple_time_constant.fds
 
 $QFDS -d HVAC ashrae7_fixed_flow.fds
@@ -337,6 +346,7 @@ $QFDS -d HVAC HVAC_damper.fds
 $QFDS -d HVAC HVAC_energy_pressure.fds
 $QFDS -d HVAC HVAC_filter.fds
 $QFDS -d HVAC HVAC_flow_loss.fds
+$QFDS -d HVAC HVAC_geom.fds
 $QFDS -d HVAC HVAC_mass_conservation.fds
 $QFDS -d HVAC HVAC_mass_transport.fds
 $QFDS -d HVAC HVAC_mass_transport_1.fds
@@ -361,6 +371,7 @@ $QFDS -d HVAC leak_test_2.fds
 $QFDS -d HVAC leak_enthalpy.fds
 $QFDS -p 2 -d HVAC leak_test_3.fds
 $QFDS -d HVAC leak_test_4.fds
+$QFDS -d HVAC leak_geom.fds
 $QFDS -d HVAC HVAC_leak_exponent.fds
 $QFDS -p 8 -d HVAC HVAC_leak_exponent_2.fds
 
@@ -871,6 +882,8 @@ $QFDS -d WUI LS_ellipse_0ms_00deg.fds
 $QFDS -d WUI LS_ellipse_5ms_00deg.fds
 $QFDS -d WUI LS_ellipse_0ms_30deg.fds
 $QFDS -d WUI LS_ellipse_5ms_30deg.fds
+$QFDS -d WUI LS_wind_ramp_lin.fds
+$QFDS -d WUI LS_wind_ramp_quad.fds
 $QFDS -d WUI LS4_ember_ignition.fds
 $QFDS -d WUI LS4_ember_yield.fds
 $QFDS -d WUI Morvan_TGA.fds
