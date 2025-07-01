@@ -7534,22 +7534,34 @@ PROC_MATL_LOOP: DO N=1,N_MATL
       ENDDO
    ENDIF
    
-   IF (ML%I_RAMP_K_S_X > 0) THEN
-      DO I=0,I_MAX_TEMP
-         ML%K_S_X(I)=EVALUATE_RAMP(REAL(I,EB),ML%I_RAMP_K_S_X)
-      ENDDO
+   IF (ML%K_S_X(1) > 0._EB .OR. ML%I_RAMP_K_S_X > 0) THEN
+      IF (ML%I_RAMP_K_S_X > 0) THEN
+         DO I=0,I_MAX_TEMP
+            ML%K_S_X(I)=EVALUATE_RAMP(REAL(I,EB),ML%I_RAMP_K_S_X)
+         ENDDO
+      ENDIF
+   ELSE
+      ML%K_S_X = ML%K_S
    ENDIF
 
-   IF (ML%I_RAMP_K_S_Y > 0) THEN
-      DO I=0,I_MAX_TEMP
-         ML%K_S_Y(I)=EVALUATE_RAMP(REAL(I,EB),ML%I_RAMP_K_S_Y)
-      ENDDO
+   IF (ML%K_S_Y(1) > 0._EB .OR. ML%I_RAMP_K_S_Y > 0) THEN
+      IF (ML%I_RAMP_K_S_Y > 0) THEN
+         DO I=0,I_MAX_TEMP
+            ML%K_S_Y(I)=EVALUATE_RAMP(REAL(I,EB),ML%I_RAMP_K_S_Y)
+         ENDDO
+      ENDIF
+   ELSE
+      ML%K_S_Y = ML%K_S
    ENDIF
 
-   IF (ML%I_RAMP_K_S_Z > 0) THEN
-      DO I=0,I_MAX_TEMP
-         ML%K_S_Z(I)=EVALUATE_RAMP(REAL(I,EB),ML%I_RAMP_K_S_Z)
-      ENDDO
+   IF (ML%K_S_Z(1) > 0._EB .OR. ML%I_RAMP_K_S_Z > 0) THEN
+      IF (ML%I_RAMP_K_S_Z > 0) THEN
+         DO I=0,I_MAX_TEMP
+            ML%K_S_Z(I)=EVALUATE_RAMP(REAL(I,EB),ML%I_RAMP_K_S_Z)
+         ENDDO
+      ENDIF
+   ELSE
+      ML%K_S_Z = ML%K_S
    ENDIF
    
    ! Check units of specific heat
