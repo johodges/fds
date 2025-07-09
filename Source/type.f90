@@ -28,6 +28,7 @@ TYPE STORAGE_TYPE
    INTEGER :: N_ITEMS_DIM=0                          !< Dimension of 1-D arrays ITEM_INDEX and SURF_INDEX
    INTEGER, ALLOCATABLE, DIMENSION(:) :: ITEM_INDEX  !< Array of indices of the WALL cells, CFACEs, or PARTICLEs
    INTEGER, ALLOCATABLE, DIMENSION(:) :: SURF_INDEX  !< Array of SURF indices of the WALL cells, CFACEs, or PARTICLEs
+   LOGICAL, ALLOCATABLE, DIMENSION(:) :: SAVE_FLAG   !< Array of logical parameters to indicate whether the entry is needed
    INTEGER :: N_REALS_DIM=0                          !< Dimension of the array REALS
    INTEGER :: N_INTEGERS_DIM=0                       !< Dimension of the array INTEGERS
    INTEGER :: N_LOGICALS_DIM=0                       !< Dimension of the array LOGICALS
@@ -963,7 +964,8 @@ TYPE SURFACE_TYPE
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: CELL_SIZE           !< Specified constant cell size (m)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: STRETCH_FACTOR
    REAL(EB), DIMENSION(MAX_LAYERS) :: LAYER_DENSITY,&
-                                      MOISTURE_CONTENT,SURFACE_VOLUME_RATIO,PACKING_RATIO,KAPPA_S=-1._EB,RENODE_DELTA_T
+        MOISTURE_CONTENT,SURFACE_VOLUME_RATIO,PACKING_RATIO,KAPPA_S=-1._EB,RENODE_DELTA_T
+   REAL(EB), DIMENSION(MAX_LAYERS) :: DELAMINATION_TMP,DELAMINATION_DENSITY !< Temp. and density criteria for layer delam.
    REAL(EB), DIMENSION(MAX_LAYERS,MAX_MATERIALS) :: DENSITY_ADJUST_FACTOR=1._EB,RHO_S
    CHARACTER(LABEL_LENGTH), ALLOCATABLE, DIMENSION(:) :: MATL_NAME
    CHARACTER(LABEL_LENGTH), DIMENSION(MAX_LAYERS,MAX_MATERIALS) :: MATL_ID
