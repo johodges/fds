@@ -5081,13 +5081,16 @@ ENDDO
 QUANTITY => WORK3
 
 ISOF_LOOP: DO N=1,N_ISOF
+
    IS => ISOSURFACE_FILE(N)
    ERROR = 0
    ISOOFFSET = 1
    HAVE_ISO2 = 0
 
    ! Fill up the dummy array QUANTITY with the appropriate gas phase output
+
    IF (IS%DEBUG) THEN
+
       ISO_CENX = REAL((XS_MIN + XF_MAX)/2.0_EB, FB)
       ISO_CENY = REAL((YS_MIN + YF_MAX)/2.0_EB, FB)
       ISO_CENZ = REAL((ZS_MIN + ZF_MAX)/2.0_EB, FB)
@@ -5098,7 +5101,9 @@ ISOF_LOOP: DO N=1,N_ISOF
             ENDDO
          ENDDO
       ENDDO
+
    ELSE
+
       DO K=0,KBP1
          DO J=0,JBP1
             DO I=0,IBP1
@@ -5107,39 +5112,34 @@ ISOF_LOOP: DO N=1,N_ISOF
          ENDDO
       ENDDO
 
-   ! Mirror QUANTITY into ghost cells
-
-      QUANTITY(0   ,0:JBP1,0:KBP1) = QUANTITY(1   ,0:JBP1,0:KBP1)
-      QUANTITY(IBP1,0:JBP1,0:KBP1) = QUANTITY(IBAR,0:JBP1,0:KBP1)
-      QUANTITY(0:IBP1,0   ,0:KBP1) = QUANTITY(0:IBP1,1   ,0:KBP1)
-      QUANTITY(0:IBP1,JBP1,0:KBP1) = QUANTITY(0:IBP1,JBAR,0:KBP1)
-      QUANTITY(0:IBP1,0:JBP1,0   ) = QUANTITY(0:IBP1,0:JBP1,1   )
-      QUANTITY(0:IBP1,0:JBP1,KBP1) = QUANTITY(0:IBP1,0:JBP1,KBAR)
       CALL FILL_EDGES(QUANTITY)
 
-   ! Average the data (which is assumed to be cell-centered) at cell corners
+      ! Average the data (which is assumed to be cell-centered) at cell corners
 
       DO K=0,KBAR
          DO J=0,JBAR
             DO I=0,IBAR
                QQ(I,J,K,1) = REAL(S(I,J,K)*(QUANTITY(I,J,K)*B(I,J,K)        + QUANTITY(I+1,J,K)*B(I+1,J,K)+ &
-                                                  QUANTITY(I,J,K+1)*B(I,J,K+1)    + QUANTITY(I+1,J,K+1)*B(I+1,J,K+1)+ &
-                                                  QUANTITY(I,J+1,K)*B(I,J+1,K)    + QUANTITY(I+1,J+1,K)*B(I+1,J+1,K)+ &
-                                                  QUANTITY(I,J+1,K+1)*B(I,J+1,K+1)+ QUANTITY(I+1,J+1,K+1)*B(I+1,J+1,K+1)),FB)
+                                            QUANTITY(I,J,K+1)*B(I,J,K+1)    + QUANTITY(I+1,J,K+1)*B(I+1,J,K+1)+ &
+                                            QUANTITY(I,J+1,K)*B(I,J+1,K)    + QUANTITY(I+1,J+1,K)*B(I+1,J+1,K)+ &
+                                            QUANTITY(I,J+1,K+1)*B(I,J+1,K+1)+ QUANTITY(I+1,J+1,K+1)*B(I+1,J+1,K+1)),FB)
             ENDDO
          ENDDO
       ENDDO
+
    ENDIF
 
    ! Fill up QUANTITY2 and QQ2 arrays if the isosurface is colored with a second quantity
 
    INDEX2_IF: IF ( IS%INDEX2 /= -1 ) THEN
+
       HAVE_ISO2 = 1
       QUANTITY2 => WORK4
 
       ! Fill up the dummy array QUANTITY2 with the appropriate gas phase output
 
       IF (IS%DEBUG) THEN
+
          DO K=0,KBAR+1
             IF (K.EQ.KBAR+1) THEN
                ZZ = 2.0_FB*ZPLT(KBAR) - ZPLT(KBAR-1)
@@ -5152,7 +5152,9 @@ ISOF_LOOP: DO N=1,N_ISOF
                ENDDO
             ENDDO
          ENDDO
+
       ELSE
+
          DO K=0,KBP1
             DO J=0,JBP1
                DO I=0,IBP1
@@ -5161,17 +5163,9 @@ ISOF_LOOP: DO N=1,N_ISOF
             ENDDO
          ENDDO
 
-      ! Mirror QUANTITY into ghost cells
-
-         QUANTITY2(0   ,0:JBP1,0:KBP1) = QUANTITY2(1   ,0:JBP1,0:KBP1)
-         QUANTITY2(IBP1,0:JBP1,0:KBP1) = QUANTITY2(IBAR,0:JBP1,0:KBP1)
-         QUANTITY2(0:IBP1,0   ,0:KBP1) = QUANTITY2(0:IBP1,1   ,0:KBP1)
-         QUANTITY2(0:IBP1,JBP1,0:KBP1) = QUANTITY2(0:IBP1,JBAR,0:KBP1)
-         QUANTITY2(0:IBP1,0:JBP1,0   ) = QUANTITY2(0:IBP1,0:JBP1,1   )
-         QUANTITY2(0:IBP1,0:JBP1,KBP1) = QUANTITY2(0:IBP1,0:JBP1,KBAR)
          CALL FILL_EDGES(QUANTITY2)
 
-      ! Average the data (which is assumed to be cell-centered) at cell corners
+         ! Average the data (which is assumed to be cell-centered) at cell corners
 
          DO KK=0,KBAR+1
             K = MIN(KK, KBAR)
@@ -5186,6 +5180,7 @@ ISOF_LOOP: DO N=1,N_ISOF
                ENDDO
             ENDDO
          ENDDO
+
       ENDIF
 
    ENDIF INDEX2_IF
@@ -8135,7 +8130,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
    IF (DV%SUBDEVICE_INDEX(NM)==0) CYCLE DEVICE_LOOP
 
    SDV => DV%SUBDEVICE(DV%SUBDEVICE_INDEX(NM))
-   SDV%N_VALUES = 0  ! Count the number of values for Device N in Mesh NM
 
    ! Check to see if the device is tied to an INIT line, in which case it is tied to a specific particle. Test to see if the
    ! particle is in the current mesh.
@@ -8171,13 +8165,11 @@ DEVICE_LOOP: DO N=1,N_DEVC
       IF (DV%NO_UPDATE_DEVC_INDEX>0) THEN
          IF (DEVICE(DV%NO_UPDATE_DEVC_INDEX)%CURRENT_STATE) THEN
             SDV%VALUE_1 = DV%SMOOTHED_VALUE
-            SDV%N_VALUES = SDV%N_VALUES + 1
             CYCLE DEVICE_LOOP
          ENDIF
       ELSEIF (DV%NO_UPDATE_CTRL_INDEX>0) THEN
          IF (CONTROL(DV%NO_UPDATE_CTRL_INDEX)%CURRENT_STATE) THEN
             SDV%VALUE_1 = DV%SMOOTHED_VALUE
-            SDV%N_VALUES = SDV%N_VALUES + 1
             CYCLE DEVICE_LOOP
          ENDIF
       ENDIF
@@ -8213,7 +8205,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                   SDV%VALUE_1 = SOLID_PHASE_OUTPUT(ABS(DV%QUANTITY_INDEX(1)),DV%Y_INDEX,DV%Z_INDEX,DV%PART_CLASS_INDEX,&
                                                    OPT_CFACE_INDEX=DV%CFACE_INDEX,OPT_DEVC_INDEX=N)
                ENDIF
-               SDV%N_VALUES = SDV%N_VALUES + 1
 
             CASE DEFAULT SOLID_STATS_SELECT
 
@@ -8250,7 +8241,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                   VALUE = SOLID_PHASE_OUTPUT(ABS(DV%QUANTITY_INDEX(1)),DV%Y_INDEX,DV%Z_INDEX,DV%PART_CLASS_INDEX,&
                                              OPT_WALL_INDEX=IW,OPT_DEVC_INDEX=N,OPT_CUT_FACE_INDEX=WC%CUT_FACE_INDEX)
                   CALL SELECT_SPATIAL_STATISTIC(OPT_CUT_FACE_INDEX=WC%CUT_FACE_INDEX)
-                  SDV%N_VALUES = SDV%N_VALUES + 1
                ENDDO WALL_CELL_LOOP
 
                CFACE_LOOP : DO ICF=INTERNAL_CFACE_CELLS_LB+1,INTERNAL_CFACE_CELLS_LB+N_INTERNAL_CFACE_CELLS
@@ -8267,7 +8257,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                   VALUE = SOLID_PHASE_OUTPUT(ABS(DV%QUANTITY_INDEX(1)),DV%Y_INDEX,DV%Z_INDEX,DV%PART_CLASS_INDEX,&
                                              OPT_CFACE_INDEX=ICF,OPT_DEVC_INDEX=N)
                   CALL SELECT_SPATIAL_STATISTIC
-                  SDV%N_VALUES = SDV%N_VALUES + 1
                ENDDO CFACE_LOOP
 
                PARTICLE_LOOP: DO IP=1,NLP
@@ -8284,7 +8273,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                   VALUE = SOLID_PHASE_OUTPUT(ABS(DV%QUANTITY_INDEX(1)),DV%Y_INDEX,DV%Z_INDEX,DV%PART_CLASS_INDEX,&
                                              OPT_LP_INDEX=IP,OPT_DEVC_INDEX=N)
                   CALL SELECT_SPATIAL_STATISTIC(OPT_LP_INDEX=IP)
-                  SDV%N_VALUES = SDV%N_VALUES + 1
                ENDDO PARTICLE_LOOP
 
                ! If no WALL, CFACE, or PARTICLE is found, set the value of the device to 0
@@ -8305,7 +8293,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                SDV%VALUE_1 = GAS_PHASE_OUTPUT(T,DT,NM,I,J,K,DV%QUANTITY_INDEX(1),0,DV%Y_INDEX,DV%Z_INDEX,DV%ELEM_INDEX,&
                                               DV%PART_CLASS_INDEX,DV%VELO_INDEX,DV%PIPE_INDEX,DV%PROP_INDEX,DV%REAC_INDEX,&
                                               DV%MATL_INDEX)
-               SDV%N_VALUES = SDV%N_VALUES + 1
 
                IF (DV%N_QUANTITY>1) &
                   SDV%VALUE_2 = GAS_PHASE_OUTPUT(T,DT,NM,DV%I(2),DV%J(2),DV%K(2),DV%QUANTITY_INDEX(2),0,DV%Y_INDEX,DV%Z_INDEX,&
@@ -8350,7 +8337,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                         VALUE = GAS_PHASE_OUTPUT(T,DT,NM,I,J,K,DV%QUANTITY_INDEX(1),0,DV%Y_INDEX,DV%Z_INDEX,DV%ELEM_INDEX,&
                                                  DV%PART_CLASS_INDEX,DV%VELO_INDEX,DV%PIPE_INDEX,DV%PROP_INDEX,DV%REAC_INDEX,&
                                                  DV%MATL_INDEX)
-                        SDV%N_VALUES = SDV%N_VALUES + 1
                         STATISTICS_SELECT: SELECT CASE(DV%SPATIAL_STATISTIC)
                            CASE('MAX','MAXLOC X','MAXLOC Y','MAXLOC Z')
                               IF (VALUE>SDV%VALUE_1) THEN
@@ -8432,7 +8418,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
       CASE(300:350) OUTPUT_INDEX_SELECT  ! HVAC output
 
          SDV%VALUE_1 = HVAC_OUTPUT(DV%QUANTITY_INDEX(1),DV%Y_INDEX,DV%Z_INDEX,DV%DUCT_INDEX,DV%NODE_INDEX,DV%DUCT_CELL_INDEX)
-         SDV%N_VALUES = SDV%N_VALUES + 1
 
       CASE(400:454) OUTPUT_INDEX_SELECT  ! Particle-specific output
 
@@ -8442,7 +8427,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
 
                IF (LP_INDEX>0) THEN
                   SDV%VALUE_1 = PARTICLE_OUTPUT(T,ABS(DV%QUANTITY_INDEX(1)),LP_INDEX)
-                  SDV%N_VALUES = SDV%N_VALUES + 1
                ENDIF
 
             CASE DEFAULT
@@ -8460,7 +8444,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                   VALUE = PARTICLE_OUTPUT(T,ABS(DV%QUANTITY_INDEX(1)),IP)
                   B1 => BOUNDARY_PROP1(LP%B1_INDEX)
                   CALL SELECT_SPATIAL_STATISTIC(OPT_LP_INDEX=IP)
-                  SDV%N_VALUES = SDV%N_VALUES + 1
                ENDDO PARTICLE_LOOP2
 
                ! If no appropriate particles are found, set the value of the device to 0
