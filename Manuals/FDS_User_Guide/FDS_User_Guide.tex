@@ -1029,7 +1029,6 @@ The parameter \ct{MPI_PROCESS} instructs FDS to assign that particular mesh to t
 
 For cases involving many meshes, you might want to assign them colors using either the character string \ct{COLOR} or the integer triplet \ct{RGB}. You may also want to consider using the multiplying feature to easily create a 3-D array of meshes. See Sec.~\ref{info:MULT} for details.
 
-One other useful parameter for larger MPI jobs is called \ct{VERBOSE} on the \ct{MISC} line. This logical parameter suppresses information related to MPI process and OpenMP thread assignments that is printed to the diagnostic output files. By default, its value is \ct{T} for MPI jobs involving 50 or less processes, and \ct{F} for larger jobs.
 
 
 \subsection{Mesh Alignment}
@@ -1677,7 +1676,6 @@ One current limitation of the unstructured geometry algorithm is that a Cartesia
 \item Thin geometries and corners cannot split cells, one side must be blocked. See Sec.~\ref{info:thin_geom}.
 \item Backing external is allowed only on a single mesh.  If the back surface is on another mesh the backing will be set to \ct{VOID} (quietly).
 \item A \ct{VENT} cannot be applied to a \ct{GEOM}.  Surface properties must be applied face by face via \ct{SURF_ID}.
-\item No \ct{VENT} implies \ct{HVAC} cannot be applied to a \ct{GEOM} surface.  This is on our priority list and will be available in the future.
 \item Imposing a tangential velocity in geometries cannot be done. \ct{NO_SLIP} conditions assume a zero tangential velocity. Allowing this capability is also a development priority.
 \item Neither 3D heat transfer nor \ct{BURN_AWAY} are available in \ct{GEOM}.
 \item The \ct{HOLE} namelist does not apply to \ct{GEOM}.
@@ -1805,24 +1803,9 @@ See Sec.~\ref{info:activate_deactivate} for details.
 \subsection{Trouble-Shooting Vents}
 \label{info:VENT_Trouble}
 
-Unlike most of the entries in the input file, the order that you specify \ct{VENT}s can be important. There might be
-situations where it is convenient to position one \ct{VENT} atop another. For example, suppose you want to designate the
-ceiling of a compartment to have a particular set of surface properties, and you designate the entire ceiling to have the
-appropriate \ct{SURF_ID}. Then, you want to designate a smaller patch on the ceiling to have another set of surface
-properties, like an air supply. In this case, you must designate the supply \ct{VENT} {\em first} because for that area
-of the ceiling, FDS will ignore the ceiling properties and apply the supply properties. FDS processes the first \ct{VENT}, not
-the second as it did in versions prior to FDS 5. Now, the rule for \ct{VENT}s is ``first come, first served.''
-Keep in mind, however, that the
-second \ct{VENT} is not rejected entirely -- only where there is overlap. FDS will also print out a warning to the screen (or to
-standard error) saying which \ct{VENT} has priority.  Also, be careful if any of the \ct{VENT}s are applying \ct{OPEN} boundary conditions -- \ct{OPEN} boundaries disable pressure \ct{ZONE}s, which will change the solution of the problem.
+Unlike most of the entries in the input file, the order that you specify \ct{VENT}s can be important. There might be situations where it is convenient to position one \ct{VENT} atop another. For example, suppose you want to designate the ceiling of a compartment to have a particular set of surface properties, and you designate the entire ceiling to have the appropriate \ct{SURF_ID}. Then, you want to designate a smaller patch on the ceiling to have another set of surface properties, like an air supply. In this case, you must designate the supply \ct{VENT} {\em first} because for that area of the ceiling, FDS will ignore the ceiling properties and apply the supply properties. FDS processes the first \ct{VENT}, not the second as it did in versions prior to FDS 5. Now, the rule for \ct{VENT}s is ``first come, first served.'' Keep in mind, however, that the second \ct{VENT} is not rejected entirely -- only where there is overlap. FDS will also print out a warning to the screen (or to standard error) saying which \ct{VENT} has priority.  Also, be careful if any of the \ct{VENT}s are applying \ct{OPEN} boundary conditions -- \ct{OPEN} boundaries disable pressure \ct{ZONE}s, which will change the solution of the problem.
 
-Smokeview can help identify where two \ct{VENT}s overlap, assuming each has a unique \ct{COLOR}. Because Smokeview draws \ct{VENT}s
-on top of each other, areas of overlap will have a grainy, awkward appearance that changes pattern as you move the scene. In situations
-where you desire the overlap for the sake of convenience, you might want to slightly adjust the coordinates of the preferred \ct{VENT}
-so that it is slightly offset from the solid surface. Make the offset less than about a tenth of a cell dimension so that FDS snaps it
-to its desired location. Then, by toggling the ``q'' key in Smokeview, you can eliminate the grainy color overlap by showing the
-\ct{VENT} exactly where you specified it, as opposed to where FDS repositioned it. This trick also works where the faces of two
-obstructions overlap.
+Smokeview can help identify where two \ct{VENT}s overlap, assuming each has a unique \ct{COLOR}. Because Smokeview draws \ct{VENT}s on top of each other, areas of overlap will have a grainy, awkward appearance that changes pattern as you move the scene. In situations where you desire the overlap for the sake of convenience, you might want to slightly adjust the coordinates of the preferred \ct{VENT} so that it is slightly offset from the solid surface. Make the offset less than about a tenth of a cell dimension so that FDS snaps it to its desired location. Then, by toggling the ``q'' key in Smokeview, you can eliminate the grainy color overlap by showing the \ct{VENT} exactly where you specified it, as opposed to where FDS repositioned it. This trick also works where the faces of two obstructions overlap.
 
 If an error message appears requesting that
 the orientation of a vent be specified, first check to make sure that the vent is a plane.
@@ -2610,7 +2593,6 @@ The volume enclosed by \ct{XB} encompasses the entire assembly. The integral on 
       SPATIAL_STATISTIC='SURFACE INTEGRAL', RELATIVE=T, CONVERSION_FACTOR=10000,  /
 \end{lstlisting}
 The quantity \ct{'WALL ENTHALPY'} is the total energy within the volume carved out by a wall cell from front to back. This is why the \ct{IOR} is included because the integration need only be carried out for upward facing wall cells. Also, because the unit associated with this quantity is kJ rather than kJ/m$^2$, the \ct{CONVERSION_FACTOR} is needed to cancel out the area of each wall cell (0.01~m by 0.01~m) after the summation. The parameter \ct{RELATIVE=T} means that only the change in enthalpy is desired.
-.
 
 \subsubsection{Example: Unprotected Structural Steel}
 
@@ -3341,7 +3323,9 @@ Note that the 3-D heat conduction equation is solved via 1-D segments in all thr
 \label{box_burn_away_2D_fig}
 \end{figure}
 
-
+\subsection{Delamination of layers}
+\label{info:surf_delamination}
+Delamination (fall-off) of material layers can occur e.g. in glued materials, such as Cross-Laminated Timber (CLT). Two different criteria can be used to enforce a delamination of \ct{SURF} layers: \ct{DELAMINATION\_TMP(NL)} sets the temperature criterion; if the last cell of the layer \ct{NL} exceeds this temperature, all layers from the first to \ct{NL}'th (of this particular wall cell) will be removed. Their mass will simply disappear from the computation, and the following layer will befome the surface of the wall. Similarly, specifying \ct{DELAMINATION\_DENSITY(NL)} will remove the layers 1 to \ct{NL} if the density of the \ct{NL}th layer's last cell decreases below the threshold.
 
 \newpage
 
@@ -3468,7 +3452,7 @@ The term $Y(500)\approx0.054$ in the denominator is the ratio of mass of the ash
 \section{Pyrolysis and Energy Conservation}
 \label{solid_phase_energy_conservation}
 
-The \ct{HEAT_OF_REACTION} is the energy gained or lost in converting the material to residue(s) and/or gas(es). In other words the \ct{HEAT_OF_REACTION} is the enthalpy of the products at the current solid temperature minus the enthalpy of the initial material at the current solid temperature. For total internal energy to be conserved, this must hold true. A challenge is that while the heat of reaction may be known for a solid material, detailed knowledge of the material enthalpy or the enthalpy of any residue or gaseous products is often not known. In cases where a reference enthalpy for a material is known, you can input on the \ct{MATL} line the \ct{REFERENCE_ENTHALPY} in kJ/kg and the \ct{REFERENCE_ENTHALPY_TEMPERATURE} in $^\circ$C.
+The \ct{HEAT_OF_REACTION} is the energy gained or lost in converting the material to residue(s) and/or gas(es). In other words the \ct{HEAT_OF_REACTION} is the enthalpy of the products at the current solid temperature minus the enthalpy of the initial material at the current solid temperature. For total internal energy to be conserved, this must hold true. A challenge is that while the heat of reaction may be known for a solid material, detailed knowledge of the material enthalpy or the enthalpy of any residue or gaseous products is often not known. In cases where a reference enthalpy for a material is known, you can input on the \ct{MATL} line the \ct{REFERENCE_ENTHALPY} in kJ/kg and the \ct{REFERENCE_ENTHALPY_TEMPERATURE} in $^\circ$C. All reactions require a \ct{HEAT_OF_REACTION} even if it is zero.
 
 FDS will attempt to adjust all material enthalpies so that internal energy is conserved. For each material reaction a linear equation is defined:
 \be
@@ -3483,7 +3467,7 @@ In the case of a singular matrix, a warning is written that no adjustment is don
 
 The value of $T_{\rm ref}$ used for a reaction is the value specified by the \ct{REFERENCE_TEMPERATURE} for that reaction. If no value is given (when the reaction is defined using \ct{A} and \ct{E}), then FDS will do a virtual TGA using just the single reaction for the single material. The temperature where the peak reaction rate occurs is used for $T_{\rm ref}$. Since in most cases the specific heat of a material and the specific heats of its residues and product gases are not the same, the heat of reaction is temperature dependent. FDS will create a temperature dependent array for the heat of reaction that accounts for this where the value at $T_{\rm ref}$ is fixed to the value specified with \ct{HEAT_OF_REACTION}.
 
-This process of adjusting enthalpies can be skipped by setting \ct{ADJUST_H=F} on a \ct{MATL} line. This should be done when material reactions do not represent actual chemical reactions. If no \ct{HEAT_OF_REACTION} is specified for a \ct{MATL} with a reaction then \ct{ADJUST_H=F} will be set. Note that this means if a reaction has \ct{HEAT_OF_REACTION} that is actually zero, and enthalpy adjustment is desired, then set \ct{HEAT_OF_REACTION} to 0 in the input file for that reaction.
+This process of adjusting enthalpies can be skipped by setting \ct{ADJUST_H=F} on a \ct{MATL} line. This should be done when material reactions do not represent actual chemical reactions. 
 
 If the sum of the yields is less than 1, then for the purpose of solving for the $H_{\rm adj}$ values, FDS will assume that the missing mass is a material with the same specific heat as the original material.
 
@@ -3712,7 +3696,7 @@ Additionally you must define the locations where the HVAC network joins the comp
 \end{lstlisting}
 where:
 \begin{itemize}
-\item \ct{TYPE_ID} is a character string that indicates the type of component that the namelist group is defining.   \ct{TYPE_ID} can be \ct{DUCT}, \ct{NODE}, \ct{FAN}, \ct{FILTER}, \ct{AIRCOIL}, or \ct{LEAK} (see ~Sec.~\ref{info:local_leakage}).
+\item \ct{TYPE_ID} is a character string that indicates the type of component that the namelist group is defining.   \ct{TYPE_ID} can be \ct{DUCT}, \ct{NODE}, \ct{FAN}, \ct{FILTER}, \ct{AIRCOIL}, or \ct{LEAK} (see ~Sec.~\ref{info:local_leakage}). 
 \item \ct{ID} is a character string giving a name to the component.  The name must be unique amongst all other components of that type; however, the same name can be given to components of different types (i.e., a duct and a node can have the same name but two ducts cannot).
 \end{itemize}
 A number of examples of simple HVAC systems are given in the HVAC folder of the sample cases and are discussed in the FDS Verification Guide.
@@ -3823,6 +3807,7 @@ where:
 \item \ct{AMBIENT} is a logical value.  If \ct{T}, then the node is connected to the ambient (i.e., it is equivalent to the \ct{OPEN} boundary condition on a \ct{SURF} line).
 \item \ct{DUCT_ID} gives the \ct{ID}s of the ducts connected to the node. Only one duct is allowed if the node is \ct{AMBIENT} or has a \ct{VENT_ID}.  Up to 10 ducts can be connected to a node.
 \item \ct{FILTER_ID} gives the \ct{ID} a filter located at the node.  A node with a filter must have two connected ducts. This means a filter cannot be located at an ambient node, a node that is attached to a \ct{VENT}, or node with three or more ducts.
+\item \ct{GEOM} Indicates the node is attached to an unstructured geometry object (Section~\ref{info:hvac_geom}).
 \item \ct{LOSS} is an $n$ by $n$ array of real numbers giving the dimensionless loss coefficients for the node.  \ct{LOSS(I,J)} is the loss coefficient for flow from duct \ct{I} to duct \ct{J} expressed in terms of the downstream duct area (see discussion in ~\ref{info:HVACduct} on how to adjust losses for area changes).  For a terminal node (e.g., a node connected to the ambient or to a \ct{VENT}) the \ct{LOSS} is entered as a pair of numbers representing loss coefficient for flow entering the HVAC system and for flow exiting the HVAC system.
 \item \ct{NETWORK_ID} Used for Smokeview visualization. All ducts and nodes with a common \ct{NETWORK_ID} can be selected or deselected as a group in Smokeview. If no value is given, the node will be placed in the Unassigned network.
 \item \ct{VENT_ID} is the name of the \ct{VENT} where the node connects to the FDS computational domain.  No two \ct{VENTs} should be defined with the same \ct{VENT_ID}.
@@ -3833,6 +3818,8 @@ A duct node must either have two or more ducts attached to it or it must have ei
 It is permissible to have individual \ct{VENT} lines for an HVAC system span multiple meshes; however, the entire \ct{VENT} must lie within a single pressure zone.
 
 Note that a \ct{VENT} being used for an HVAC system must be present throughout the simulation. The \ct{VENT} should not have a \ct{CTRL_ID} or \ct{DEVC_ID}. This also includes the solid surface it is attached; i.e., any \ct{OBST} the \ct{VENT} is attached to also needs to be present throughout the simulation. Turning on or off a \ct{VENT} connected to an HVAC system, requires a damper in the duct connected to \ct{VENT}.
+
+The pressure zone and physical presence restrictions also apply to \ct{GEOM} being used for an HVAC system.
 
 \subsection{HVAC Fan Parameters}
 \label{info:HVACfan}
@@ -4013,6 +4000,46 @@ In the first approach, one can specify enough \ct{VOLUME_FLOW} and \ct{MASS_FLOW
 
 In the second approach, one or more ducts have flows that are not specified, in this case FDS must solve for the pressures at either end of the duct to determine the flow through the duct. As one example, if a tee has three ducts and only one of the ducts has a specified flow, then FDS will use the relative pressure drops along the two other ducts to determine the flow. If no \ct{LOSS} inputs are given, then FDS may not correctly solve for the flow. As another example, losses in the HVAC network limit how quickly flow in the ducts can change over time. If there is a single duct connecting two rooms with no \ct{LOSS} inputs given, then small pressure changes can lead to large changes in duct velocity and increase the risk of a numerical instability. If you specify an HVAC network where flow is being solved for by FDS, then you must provided \ct{LOSS} inputs for each possible flow path. FDS will perform a check at startup and return an error message if it finds insufficient losses have been specified; however, this check may not discover all cases.
 
+\subsection{HVAC and Unstructured Geometry}
+\label{info:hvac_geom}
+
+Assigning either a normal HVAC node or a localized leakage HVAC to a GEOM is done using \ct{SURF}. Using the simple example from Section~\ref{info:GEOM_Basics}, an HVAC node named \ct{'MY NODE'} is assigned to the first face by defining a \ct{SURF} with \ct{NODE_ID='MY NODE'}. No other boundary conditions should be set on the \ct{SURF} other than a color or texture. On the node \ct{HVAC} input set \ct{GEOM=T} to indicate FDS needs to look for a \ct{GEOM} and not a \ct{VENT} for the node:
+
+\begin{lstlisting}
+	&SURF ID='NODE SURF',NODE_ID='MY NODE'/
+	&GEOM ID='My Solid'
+	SURF_ID='NODE SURF','INERT'
+	VERTS= -1.0, -1.0,  0.0,
+	1.0, -1.0,  0.0,
+	0.0,  1.0,  0.0,
+	0.0,  0.0,  1.0,
+	FACES= 1,3,2, 2,
+	1,4,3, 1,
+	3,4,2, 1,
+	2,4,1, 0 /
+	&HVAC ID='MY NODE',TYPE_ID='NODE',GEOM=T,..../
+\end{lstlisting}
+
+The \ct{SURF} input \ct{NODE_ID} can only be applied to complex geometry. It cannot be used for \ct{OBST} or \ct{VENT}. While more than one \ct{GEOM} and more than one face of a \ct{GEOM} can use the same node, the same node cannot be shared by both a \ct{VENT} and a \ct{GEOM}.
+
+To apply localized leakage to \ct{GEOM}, the process is similar. \ct{NODE_ID} on \ct{SURF} is still used to link faces of \ct{GEOM} to the localized leakage. The input for the localized leakage changes slightly. The inputs \ct{VENT_ID} and \ct{VENT2_ID} use \ct{GEOM} and \ct{GEOM2} to determine if the respective \ct{ID} is attached to a \ct{VENT} or a \ct{GEOM}.  For example, to attach the second vent for a localized leakage path:
+
+\begin{lstlisting}
+	&SURF ID='LEAK SURF',NODE_ID='LEAK OUT'/
+	&GEOM ID='My Solid'
+	SURF_ID='LEAK SURF','INERT'
+	VERTS= -1.0, -1.0,  0.0,
+	1.0, -1.0,  0.0,
+	0.0,  1.0,  0.0,
+	0.0,  0.0,  1.0,
+	FACES= 1,3,2, 2,
+	1,4,3, 1,
+	3,4,2, 1,
+	2,4,1, 0 /
+	&HVAC ID='MY LEAK',TYPE_ID='LEAK',VENT_ID='LEAK IN',VENT2_ID='LEAK OUT',GEOM2=T,AREA=0.01/
+\end{lstlisting}
+
+Here the use of \ct{GEOM2=T} indicates that \ct{VENT2_ID} is a \ct{NODE_ID} on \ct{SURF}.
 
 \newpage
 
@@ -4024,6 +4051,8 @@ All buildings have spaces that are relatively sealed off from the larger interio
 These spaces are important because FDS assumes pressure to be composed of a ``background'' component, $\bp(z,t)$, plus a perturbation pressure, $\tp(\bx,t)$. Most often, $\bp$ is just the hydrostatic pressure, and $\tp$ is the flow-induced spatially-resolved perturbation. If the computational domain has no sealed void spaces and there is at least one \ct{OPEN} boundary, FDS can assume that the background pressure is simply atmospheric pressure and that it is the same throughout the entire domain. However, if void spaces exist, their background pressures will be different. For example, if a fire starts in a sealed compartment, the background pressure must rise above atmospheric.
 
 FDS has an algorithm that identifies regions within the computational domain that are sealed; that is, are not connected to an \ct{OPEN} boundary. Thus, it is not necessary for you to explicitly declare these regions, or ``pressure zones.'' However, if you desire that a pressure zone be connected to another via a leak path, you need to explicitly declare it. The next section discusses how to do that.
+
+Depending on how the geometry is created, there might be an excessive amount of pressure zones in the model, some of which might only be a few grid cells sealed off from the rest of the domain. If these void spaces are not necessary, try to eliminate them. Otherwise, an excessive amount of CPU time or random access memory (RAM) will be necessary to include them. See Section~\ref{info:filling_zones} for hints on how to reduce the number of unwanted cavity spaces.
 
 \subsection{Specifying Pressure Zones}
 \label{info:ZONE_Basics}
@@ -4204,10 +4233,10 @@ interior of a tunnel, and a wind is blowing at one of the portals that affects t
             .
 \end{lstlisting}
 The use of a {\em dynamic pressure} boundary affects the FDS algorithm as follows.  At \ct{OPEN} boundaries, the hydrodynamic pressure (head) $\cH$ is specified as
-\begin{eqnarray}
-\cH &=& \mbox{\ct{DYNAMIC_PRESSURE}}/\rho_\infty + {|\mathbf{u}|^2}/2 \quad  \mbox{(outgoing)}  \nonumber \\
-\cH &=& \mbox{\ct{DYNAMIC_PRESSURE}}/\rho_\infty \quad                       \mbox{(incoming)}
-\end{eqnarray}
+\begin{align}
+\cH &= \text{\tt{DYNAMIC\_PRESSURE}}/\rho_\infty + {|\mathbf{u}|^2}/2 && \text{(outgoing)} & \nonumber \\
+\cH &= \text{\tt{DYNAMIC\_PRESSURE}}/\rho_\infty                      && \text{(incoming)} &
+\end{align}
 where $\rho_\infty$ is the ambient density and $\mathbf{u}$ is the most recent value of the velocity on the boundary.
 The \ct{PRESSURE_RAMP} allows for alteration of the pressure as a function of time. Note that you do not
 need to ramp the pressure up or down starting at zero, like you do for various other ramps.
@@ -5650,7 +5679,7 @@ Note that the stoichiometric coefficient for soot ensures that the mass of soot 
 &SPEC ID = 'NITROGEN',          LUMPED_COMPONENT_ONLY = T /
 &SPEC ID = 'WATER VAPOR',       LUMPED_COMPONENT_ONLY = T /
 &SPEC ID = 'CARBON DIOXIDE',    LUMPED_COMPONENT_ONLY = T /
-&SPEC ID = 'SOOT',              AEROSOL = T /
+&SPEC ID = 'SOOT',              AEROSOL = T, MEAN_DIAMETER=1.E-6 /
 \end{lstlisting}
 If Eq.~(\ref{eq:PROPANE_depo}) is properly balanced, you can directly use the stoichiometric coefficients of the primitive species to define the lumped species:
 
@@ -7151,7 +7180,7 @@ The solid-phase thermal degradation process for generic vegetation are typically
  \label{char_reaction}
  {\rm Char} + \nu_{\rm O_2, char} \, {\rm O_2} \rightarrow (1+ \nu_{\rm O_2,char} - \nu_{\rm ash}) \, {\rm CO_2} + \nu_{\rm ash} \, {\rm Ash}
 \ee
-$M$ is the vegetation {\em moisture content} or {\em moisture fraction} determined on a dry weight basis, specified with \ct{MOISTURE_FRACTION} on the \ct{SURF} line. $\nu_{\rm char}$ is the mass fraction of Dry Vegetation that is converted to char during pyrolysis, specified with the parameter \ct{NU_MATL} on the \ct{MATL} line that describes the Dry Vegetation. The character string \ct{MATL_ID} on the same \ct{MATL} line indicates the name of the char.  $\nu_{\rm O_2,char}$ is the mass of oxygen consumed per unit mass of char oxidized. $\nu_{\rm ash}$ is the mass fraction of char that is converted to ash during char oxidation, specified by \ct{NU_MATL} on the \ct{MATL} line describing the char.
+$M$ is the vegetation {\em moisture content} or {\em moisture fraction} determined on a dry weight basis, specified with \ct{MOISTURE_CONTENT} on the \ct{SURF} line. $\nu_{\rm char}$ is the mass fraction of Dry Vegetation that is converted to char during pyrolysis, specified with the parameter \ct{NU_MATL} on the \ct{MATL} line that describes the Dry Vegetation. The character string \ct{MATL_ID} on the same \ct{MATL} line indicates the name of the char.  $\nu_{\rm O_2,char}$ is the mass of oxygen consumed per unit mass of char oxidized. $\nu_{\rm ash}$ is the mass fraction of char that is converted to ash during char oxidation, specified by \ct{NU_MATL} on the \ct{MATL} line describing the char.
 
 It is assumed that the Dry Vegetation in Eq.~(\ref{pyr_reac}) is 47~\% (by mass) carbon~\cite{Ma:BGS2018} with an effective organic component C$_{3.4}$H$_{6.2}$O$_{2.5}$~\cite{Ritchie:1}. In general, it is assumed that char may be comprised of more than pure carbon and is defined as $\mathrm{C_{x'}O_{z'}A}$ in Eq.~\ref{char_chemistry}. In the specific case where char is composed of pure carbon which reacts completely with O$_2$ to form CO$_2$ then $\nu_{\rm O_2,char}=2.67$ and $\nu_{\rm ash}=0$. A full discussion of the composition of the Char and Fuel Gas is given in Sec.~\ref{veg_pyrolysis_gas_phase}.
 
@@ -7410,12 +7439,12 @@ The geometry and composition of the needle is described on the \ct{SURF} line th
 \begin{lstlisting}
 &SURF ID = 'wet vegetation'
       MATL_ID  = 'dry pine'
-      MOISTURE_FRACTION = 0.25
+      MOISTURE_CONTENT = 0.25
       SURFACE_VOLUME_RATIO = 8000.
       LENGTH = 0.1
       GEOMETRY = 'CYLINDRICAL' /
 \end{lstlisting}
-The needle is composed of two materials---\ct{'dry pine'} and \ct{'MOISTURE'}. Following the convention used in forestry, the moisture content is expressed via the \ct{MOISTURE_FRACTION}, which is the mass of moisture divided by the mass of {\em dry} vegetation. Do not confuse this with the mass fraction of moisture, $Y_{\rm m}$, which is related to the moisture fraction, $M$, via
+The needle is composed of two materials---\ct{'dry pine'} and \ct{'MOISTURE'}. Following the convention used in forestry, the moisture content is expressed via the \ct{MOISTURE_CONTENT}, which is the mass of moisture divided by the mass of {\em dry} vegetation. Do not confuse this with the mass fraction of moisture, $Y_{\rm m}$, which is related to the moisture fraction, $M$, via
 \be
    Y_{\rm m} = \frac{M}{1+M}
 \ee
@@ -7437,7 +7466,7 @@ The length of each needle is specified directly, but its diameter is specified v
       CONDUCTIVITY = 1.0
       SPECIFIC_HEAT = 1.6 /
 \end{lstlisting}
-Note that if you specify a \ct{MOISTURE_FRACTION} on the \ct{SURF} line, FDS will automatically add a \ct{MATL} line for \ct{'MOISTURE'} as it is written in Fig.~\ref{vege_inputs}. FDS will also alter the \ct{DENSITY} of the dry vegetation, in this case \ct{'dry pine'}, so that the size and wood content of the particle do not change when moisture is added. The modified density of the ``dry'' vegetation, $\tilde{\rho}_{\rm d}$, is given by:
+Note that if you specify a \ct{MOISTURE_CONTENT} on the \ct{SURF} line, FDS will automatically add a \ct{MATL} line for \ct{'MOISTURE'} as it is written in Fig.~\ref{vege_inputs}. FDS will also alter the \ct{DENSITY} of the dry vegetation, in this case \ct{'dry pine'}, so that the size and wood content of the particle do not change when moisture is added. The modified density of the ``dry'' vegetation, $\tilde{\rho}_{\rm d}$, is given by:
 \be
    \tilde{\rho}_{\rm d} = \frac{\rho_{\rm d}} {1-\frac{\rho_{\rm d}}{\rho_{\rm m}} M }
 \ee
@@ -7450,7 +7479,7 @@ Finally, the pine needles are introduced into the simulation via the \ct{INIT} l
 &INIT PART_ID='pine needles', XB=0.,1.,0.,1.,0.,1., N_PARTICLES=1000,
       MASS_PER_VOLUME=0.8, DRY=T /
 \end{lstlisting}
-This line inserts 1000 Lagrangian particles representing pine needles randomly within a unit cube. The \ct{MASS_PER_VOLUME} is the mass (kg) of solid needles divided by the volume (m$^3$) they occupy, sometimes called the ``bulk density.'' The parameter \ct{DRY=T} means that if you have specified a \ct{MOISTURE_FRACTION} on the \ct{SURF} line that describes the vegetation, then the actual mass per volume of wet vegetation is
+This line inserts 1000 Lagrangian particles representing pine needles randomly within a unit cube. The \ct{MASS_PER_VOLUME} is the mass (kg) of solid needles divided by the volume (m$^3$) they occupy, sometimes called the ``bulk density.'' The parameter \ct{DRY=T} means that if you have specified a \ct{MOISTURE_CONTENT} on the \ct{SURF} line that describes the vegetation, then the actual mass per volume of wet vegetation is
 \be
   m_{\rm w}''' = m_{\rm d}''' \, (1+M)
 \ee
@@ -7559,12 +7588,12 @@ To invoke this {\em Boundary Fuel Model}, create a \ct{SURF} line similar to the
 &SURF ID = 'Ground Vegetation'
       MATL_ID(1,1) = 'Dry Vegetation'
       MATL_ID(2,1) = 'Soil'
-      MOISTURE_FRACTION(1) = 0.218
+      MOISTURE_CONTENT(1) = 0.218
       SURFACE_VOLUME_RATIO(1) = 3092.
       MASS_PER_VOLUME(1) = 5.
       THICKNESS(1:2) = 0.076,0.1 /
 \end{lstlisting}
-The presence of the parameter \ct{MASS_PER_VOLUME} automatically triggers the Boundary Fuel Model. Note that its argument of 1 refers to the first layer; the second layer being \ct{Soil}. If you specify \ct{MOISTURE_FRACTION}, FDS will automatically add a \ct{MATL} line for \ct{'MOISTURE'}.
+The presence of the parameter \ct{MASS_PER_VOLUME} automatically triggers the Boundary Fuel Model. Note that its argument of 1 refers to the first layer; the second layer being \ct{Soil}. If you specify \ct{MOISTURE_CONTENT}, FDS will automatically add a \ct{MATL} line for \ct{'MOISTURE'}.
 
 The drag exerted on the wind flowing through the vegetation is imposed as a force term in the gas phase grid cell adjacent to the boundary:
 \be
@@ -7753,6 +7782,26 @@ It is possible to set a custom fuel for which the spread rate does not vary with
 \flushleft
 For all models, the total mineral content $S_{\rm t}=0.056$, the effective mineral content $S_{\rm e}=0.01$, the heat of combustion $\Delta H=18600$~kW/kg, density $\rho_{\rm p}=510$~kg/m$^3$, moisture content of fine, medium, and large dead vegetation, $M_{\rm d,1}=0.03$, $M_{\rm d,2}=0.04$, $M_{\rm d,3}=0.05$, moisture content of live woody and herbaceous vegetation $M_{\rm l,w}=M_{\rm l,h}= 0.70$.
 \end{sidewaystable}
+
+\subsection{Custom Wind Speed Function}
+The default Rothermel-Albini formulation~\cite{Rothermel:1972,Albini:1976} represents the influence of wind on the head fire spread rate as
+\be
+   R = R_{\rm 0} \, (1+\phi_{\rm W})
+\ee
+where the no-wind, no-slope spread rate, $R_{\rm 0}$, is increased by a factor $\phi_W$, which is a function of the wind speed. In the default model the wind speed is taken as the value at mid-flame height, $U_{\rm mf}$.
+
+This introduces two complications. The first is determining the functional form of $\phi_W$. The default formulation is an empirical function which depends on fuel bed properties. However, this has not been rigorously validated for all possible fuel configurations - the original fit was determined with just three fuel bed types~\cite{Rothermel:1972}. In addition, the relationship assumes a reference wind which is unaffected by the fire, which can be contradictory to the approach of \ct{LEVEL_SET_MODE=4}. Therefore, it may be preferable to specify a custom function $\phi_W$ to better match observational data for a given fuel type. This can be done by specifying a \ct{RAMP} using \ct{VEG_LSET_WIND_RAMP}:
+\begin{lstlisting}
+&SURF ..., VEG_LSET_WIND_RAMP='WR' /
+
+&RAMP ID='WR', Z =  0, F=0 /
+&RAMP ID='WR', Z = 10, F=4 /
+\end{lstlisting}
+Here, the variable \ct{Z} represents the reference wind speed in m/s and \ct{F} is the value of $\phi_W$. In this example the spread rate increases linearly with wind speed between 0~m/s and 10~m/s, but any functional form can be represented in a piecwise manner using the \ct{RAMP}.
+
+The second complication is determining the appropriate mid-flame wind speed. In the default formulation the wind is taken from a reference height of 6.1~m (based on a standard weather station measurement height of 20~ft). This is then re-scaled to an assumed mid-flame height (one fuel-bed height above the fuel) using an assumed logarithmic profile of the wind. This is the so-called wind adjustment factor~\cite{Andrews:2012,Bova:IJWF2015}. However, these assumptions may begin to break down, for example, when the wind profile is not logarithmic. Therefore, it is possible to specify a reference wind height via \ct{VEG_LSET_WIND_HEIGHT} on the \ct{SURF} line. The wind sampled at this height will be directly used in the $\phi_{\rm W}$ function, without any adjustment, whether using the default model or a custom \ct{RAMP}. Note that it is possible to include an adjustment factor when using \ct{VEG_LSET_WIND_HEIGHT} by implicitly including this factor when specifying a \ct{VEG_LSET_WIND_RAMP}.
+
+
 
 \subsection{Level Set Vegetation Drag}
 When a surface is defined using level set fuel parameters, a drag force is applied in the gas phase grid cell adjacent to the boundary following the same approach described for the Boundary Fuel Model in Section~\ref{info:boundary_fuel_model}. In this case, the fuel surface-area to volume ratio (\ct{VEG_LSET_SIGMA}), packing ratio (\ct{VEG_LSET_BETA}), and depth (\ct{VEG_LSET_HT}) are either obtained from the default fuel models or specified by the user for a custom fuel. The shape factor (\ct{SHAPE_FACTOR}) and drag coefficient (\ct{DRAG_COEFFICIENT}) can also be modified from their default values of 0.25 and 2.8, respectively. A comparison of the consistency of the level set drag with the particle and boundary models is included in Figure~\ref{ground_vegetation_drag_fig}.
@@ -9259,11 +9308,18 @@ If multiple meshes are involved, enter the name of the first \ct{.csv} file only
 \end{lstlisting}
 and FDS will read, for example, \ct{CHID_uvw_t1_m1.csv} through \ct{CHID_uvw_t1_m16.csv} in the order of the \ct{MESH} lines (note that a \ct{MULT} line for the meshes may also be used).
 
-\section{Unfreezing the Initial Flow Field}
+\subsection{Unfreezing the Initial Flow Field}
 \label{info:FREZ}
 
-It may be useful to allow the solid phase to respond to an established flow field at the start of a simulation.  This could be accomplished with the normal restart functionality; however, this limits the number of changes that can be made to the model before a restart is made.  The \ct{UNFREEZE_TIME} parameter on the \ct{MISC} line can be used for this purpose. When set, the initial flow field is frozen with the options \ct{FREEZE_VELOCITY} and \ct{SOLID_PHASE_ONLY} set until the simulation time exceeds \ct{UNFREEZE_TIME}.
-
+It may be useful to allow the solid phase to respond to an established flow field at the start of a simulation.  This could be accomplished with the normal restart functionality; however, this limits the number of changes that can be made to the model before a restart is made.  The \ct{UNFREEZE_TIME} parameter on the \ct{MISC} line can be used for this purpose. When set, the initial flow field is frozen with the options \ct{FREEZE_VELOCITY}, \ct{SOLID_PHASE_ONLY}, and \ct{LOCK_TIME_STEP} set until the simulation time exceeds \ct{UNFREEZE_TIME}. It may also be useful to set the initial time step \ct{DT} to a larger value. It may be necessary to set \ct{LIMITING_DT_RATIO} to a lower value than the default if the fixed \ct{DT} while the flow field is frozen is much larger than that calculated by the stability conditions. An example configuration with a frozen flow field is shown below.
+\begin{lstlisting}
+&TIME DT=1.0, T_END=120.0, LIMITING_DT_RATIO=1e-6 /
+&MISC UNFREEZE_TIME=90, /
+&CSVF UVWFILE ='CHID_uvw_t1_m1.csv',
+      TMPFILE ='CHID_tmp_t1_m1.csv',
+      SPECFILE='CHID_spec_t1_m1.csv' /
+\end{lstlisting}
+The example will read in an initial flow field using the \ct{CSVF} files, then allow the solids to heat for 90 seconds at a time step of 1 seconds (90 time steps total). The flow field will then be unfrozen for the remaining 30 seconds of simulation time.
 
 \section{Gravity}
 \label{info:GVEC}
@@ -11493,6 +11549,7 @@ The \ct{ID} is just a label in the output file. When an output quantity is relat
 \ct{TOTAL MASS FLUX X}$^1$                     & Section~\ref{info:mass_flow}                      & kg/s/m$^2$        & D,I,P,S      \\ \hline
 \ct{TOTAL MASS FLUX Y}$^1$                     & Section~\ref{info:mass_flow}                      & kg/s/m$^2$        & D,I,P,S      \\ \hline
 \ct{TOTAL MASS FLUX Z}$^1$                     & Section~\ref{info:mass_flow}                      & kg/s/m$^2$        & D,I,P,S      \\ \hline
+\ct{U_LS, V_LS}                                & Velocity for level set spread~\ref{info:level_set}& m/s               & D,I,P,S      \\ \hline
 \ct{U-VELOCITY}                                & Gas velocity component, $u$                       & m/s               & D,I,P,S      \\ \hline
 \ct{V-VELOCITY}                                & Gas velocity component, $v$                       & m/s               & D,I,P,S      \\ \hline
 \ct{W-VELOCITY}                                & Gas velocity component, $w$                       & m/s               & D,I,P,S      \\ \hline
@@ -11820,8 +11877,10 @@ properties be specified as well. Simply prescribing as many properties as possib
 % ignorenamelistkw: /MISC/STRATIFICATION, /MISC/SUPPRESSION, /MISC/UVW_FILE, /MISC/TENSOR_DIFFUSIVITY
 % ignorenamelistkw: /MISC/CC_IBM, /MISC/CCVOL_LINK, /MISC/TEST_NEW_CHAR_MODEL, /MISC/FLUX_LIMITER_MW_CORRECTION
 % ignorenamelistkw: /PART/DEBUG, /PART/EMBER_SNAG_FACTOR
-% ignorenamelistkw: /REAC/C, /REAC/H, /REAC/O, /REAC/N, /REAC/FORMULA,
+% ignorenamelistkw: /PRES/WRITE_PARCSRPCG_MATRIX
+% ignorenamelistkw: /REAC/C, /REAC/H, /REAC/O, /REAC/N, /REAC/FORMULA
 % ignorenamelistkw: /SLCF/DEBUG, /SLCF/RLE_MIN, /SLCF/RLE_MAX, /SLCF/SLICETYPE
+% ignorenamelistkw: /SURF/MOISTURE_FRACTION
 % ignorenamelistkw: /TIME/RAMP_DT
 
 % ignore keywords that appear on any namelist
@@ -12398,6 +12457,8 @@ Keyword             & Type     & Description                      & Units       
 \ct{FAN_ID}                 & Character     & Section~\ref{info:HVACduct}                                              &               &                \\ \hline
 \ct{FILTER_ID}              & Character     & Section~\ref{info:HVACnode}                                              &               &                \\ \hline
 \ct{FIXED_Q}                & Real          & Section~\ref{info:HVACaircoil}                                           & kW            &                \\ \hline
+\ct{GEOM}                   & Logical       & Section~\ref{info:hvac_geom}                                             &               & \ct{F}        \\ \hline
+\ct{GEOM2}                  & Logical       & Section~\ref{info:hvac_geom}                                             &               & \ct{F}        \\ \hline
 \ct{ID}                      & Character     & Section~\ref{info:HVAC}                                                  &               &                \\ \hline
 \ct{LEAK_ENTHALPY}          & Logical       & Section~\ref{info:local_leakage}                                         &               & \ct{F}        \\ \hline
 \ct{LEAK_PRESSURE_EXPONENT}& Real          & Section~\ref{info:Leaks}                                                 &               & 0.5            \\ \hline
@@ -12744,7 +12805,7 @@ Keyword             & Type     & Description                      & Units       
 \ct{TURBULENCE_MODEL}                             & Character    & Section~\ref{info:LES}                  &            & \ct{'DEARDORFF'} \\ \hline
 \ct{TURBULENT_DEPOSITION}                         & Logical      & Section~\ref{info:deposition}           &            & \ct{T}           \\ \hline
 \ct{UNFREEZE_TIME}                               & Real          & Section~\ref{info:FREZ}                 &            &                  \\ \hline
-\ct{VERBOSE}                                       & Logical      & Section~\ref{info:multimesh}            &            &                   \\ \hline
+\ct{VERBOSE}                                       & Logical      & Section~\ref{out:file}                  &            & \ct{F}            \\ \hline
 \ct{VISIBILITY_FACTOR}                            & Real         & Section~\ref{info:visibility}           &            & 3                 \\ \hline
 \ct{VN_MAX}                                       & Real         & Section~\ref{info:VN}                   &            & 1.0               \\ \hline
 \ct{VN_MIN}                                       & Real         & Section~\ref{info:VN}                   &            & 0.8               \\ \hline
@@ -13476,6 +13537,8 @@ Keyword             & Type     & Description                      & Units       
 \ct{CONVECTIVE_HEAT_FLUX}                              & Real            & Section~\ref{info:convection}             & \si{kW/m^2}         &                         \\ \hline
 \ct{CONVERT_VOLUME_TO_MASS}                           & Logical         & Section~\ref{info:MASS_FLUX}              &                     & \ct{F}                 \\ \hline
 \ct{DEFAULT}                                             & Logical         & Section~\ref{info:SURF}                   &                     & \ct{F}                 \\ \hline
+\ct{DELAMINATION_DENSITY(:)}                         & Real Array     & Section~\ref{info:surf_delamination}        & \si{kg/m^3}        &                        \\ \hline
+\ct{DELAMINATION_TMP(:)}                             & Real Array     & Section~\ref{info:surf_delamination}        & $^\circ$C           &                        \\ \hline
 \ct{DELTA_TMP_MAX}                                     & Real            & Section~\ref{info:solid_phase_stability}  & $^\circ$C           & 10                      \\ \hline
 \ct{DRAG_COEFFICIENT}                                   & Real            & Section~\ref{info:boundary_fuel_model}    &                     & 2.8                     \\ \hline
 \ct{DSC_CONVERSION_FACTOR}                              & Real            & Section~\ref{info:TGA_DSC_MCC}            &                     & 1                       \\ \hline
@@ -13525,12 +13588,13 @@ Keyword             & Type     & Description                      & Units       
 \ct{MINIMUM_LAYER_THICKNESS}                           & Real            & Section~\ref{info:solid_phase_stability}  & m                   & 1.E-4                   \\ \hline
 \ct{MINIMUM_SCALING_HEAT_FLUX}                        & Real            & Section~\ref{info:scaled_burning}         & \si{kW/m^2}         & 0                       \\ \hline
 \ct{MLRPUA}                                              & Real            & Section~\ref{info:gas_burner}             & \si{kg/(m^2.s)}     &                         \\ \hline
-\ct{MOISTURE_FRACTION(:)}                               & Real Array      & Section~\ref{info:vegetation}             &                     & 0.                      \\ \hline
+\ct{MOISTURE_CONTENT(:)}                                & Real Array      & Section~\ref{info:vegetation}             &                     & 0.                      \\ \hline
 \ct{N_LAYER_CELLS_MAX(:)}                             & Integer Array   & Section~\ref{info:solid_phase_stability}  &                     & 1000                    \\ \hline
 \ct{NEAR_WALL_EDDY_VISCOSITY}                         & Real            & Section~\ref{info:LES}                    & m$^2$/s             &                         \\ \hline
 \ct{NEAR_WALL_TURBULENCE_MODEL}                       & Character       & Section~\ref{info:LES}                    &                     &                         \\ \hline
 \ct{NET_HEAT_FLUX}                                     & Real            & Section~\ref{info:convection}             & \unit{kW/m^2}            &                         \\ \hline
 \ct{NO_SLIP}                                            & Logical         & Section~\ref{info:WALL_MODEL}             &                     & \ct{F}                 \\ \hline
+\ct{NODE_ID}                                          & Character          & Section~\ref{info:hvac_geom}              &                     &                       \\ \hline
 \ct{NPPC}                                                & Integer         & Section~\ref{info:particle_flux}          &                     & 1                       \\ \hline
 \ct{NUSSELT_C0}                                         & Real            & Section~\ref{info:convection}             &                     &                         \\ \hline
 \ct{NUSSELT_C1}                                         & Real            & Section~\ref{info:convection}             &                     &                         \\ \hline
@@ -13616,6 +13680,8 @@ Keyword             & Type     & Description                      & Units       
 \ct{VEG_LSET_SURF_LOAD}                               & Real            & Section~\ref{info:level_set}              & kg/m$^2$            & 1.0                     \\ \hline
 \ct{VEG_LSET_TAN2}                                     & Real            & Section~\ref{info:level_set}              &                     &                         \\ \hline
 \ct{VEG_LSET_WIND_EXP}                                & Real            & Section~\ref{info:level_set}              &                     & 1.                      \\ \hline
+\ct{VEG_LSET_WIND_HEIGHT}                             & Real            & Section~\ref{info:level_set}              & m                   & 6.1                      \\ \hline
+\ct{VEG_LSET_WIND_RAMP}                               & Character       & Section~\ref{info:level_set}              &                     &                         \\ \hline
 \ct{VEL}                                                 & Real            & Section~\ref{info:Velocity_BC}            & m/s                 &                         \\ \hline
 \ct{VEL_BULK}                                           & Real            & Section~\ref{info:profiles}               & m/s                 &                         \\ \hline
 \ct{VEL_GRAD}                                           & Real            & Section~\ref{info:vel_grad}               & 1/s                 &                         \\ \hline
@@ -13940,6 +14006,7 @@ Keyword             & Type     & Description                      & Units       
 174  \> \ct{REAC, Not enough nitrogen for the FUEL_N_TO_HCN_FRACTION.} \> Section~\ref{info:simple_chemistry}  \\
 175  \> \ct{REAC, Not enough carbon for the FUEL_C_TO_CO_FRACTION ...} \> Section~\ref{info:simple_chemistry}  \\
 176  \> \ct{REAC, Not enough hydrogen for the FUEL_H_TO_H2_FRACTION ...} \> Section~\ref{info:simple_chemistry}  \\
+179  \> \ct{BACK tracked species ... not found.} \> Section~\ref{info:BACKGROUND_SPECIES}  \\
 180  \> \ct{SPEC ... does not have a SPECIFIC_HEAT_LIQUID ...} \> Section~\ref{info:liquid_props}  \\
 181  \> \ct{SPEC ... does not have a MELTING_TEMPERATURE.} \> Section~\ref{info:liquid_props}  \\
 182  \> \ct{SPEC ... does not have a VAPORIZATION_TEMPERATURE.} \> Section~\ref{info:liquid_props}  \\
@@ -13999,6 +14066,7 @@ Keyword             & Type     & Description                      & Units       
 242  \> \ct{Spray Pattern Table ... massflux <= 0 for line ...} \> Section~\ref{info:sprinklers}  \\
 243  \> \ct{PROP ... VIEW_ANGLE must be between 0 and 180} \> Section~\ref{info:sprinklers}  \\
      \>                                                                               \>                                     \\
+250  \> \ct{MATL ... REAC ... requires a HEAT_OF_REACTION.} \> Section~\ref{solid_phase_energy_conservation}  \\
 251  \> \ct{MATL ... REAC ... Set REFERENCE_TEMPERATURE or E, A.} \> Section~\ref{info:kinetic_parameters}  \\
 252  \> \ct{MATL ... HEAT_OF_REACTION should be greater than 0.} \> Section~\ref{info:HEAT_OF_REACTION}  \\
 253  \> \ct{MATL ... DENSITY=0.} \> Section~\ref{info:thermal_properties}  \\
@@ -14022,7 +14090,7 @@ Keyword             & Type     & Description                      & Units       
 300  \> \ct{N_LAYER_CELLS_MAX should be at least ... for ...} \> Section~\ref{info:solid_phase_stability} \\
 301  \> \ct{SURF line must have an ID.} \> Section~\ref{info:SURF}  \\
 302  \> \ct{SURF ID ... is used more than once.} \> Section~\ref{info:SURF}  \\
-303  \> \ct{MOISTURE_FRACTION on SURF ... exceeds theoretical limit.} \> Section~\ref{info:vegetation}  \\
+303  \> \ct{MOISTURE_CONTENT on SURF ... exceeds theoretical limit.} \> Section~\ref{info:vegetation}  \\
 304  \> \ct{SURF ... One layer only for TGA_ANALYSIS=T.} \> Section~\ref{info:TGA_DSC_MCC}  \\
 305  \> \ct{SURF ... indicates a level set simulation ...} \> Section~\ref{info:level_set}  \\
 306  \> \ct{SURF ... cannot have a specified flux and a MATL_ID.} \> Section~\ref{info:MASS_FLUX}  \\
@@ -14098,6 +14166,7 @@ Keyword             & Type     & Description                      & Units       
 376  \> \ct{Meshes must have the same y/z bounds for TUNNEL_PRECONDITIONER.} \> Section~\ref{tunnel_solver}  \\
 377  \> \ct{SURF ... IMPINGING JET model requires ...} \> Section~\ref{info:impinging_jet}  \\
 378  \> \ct{SURF ... cannot be applied to a 3-D conducting solid.} \> Section~\ref{info:BACKING}  \\
+379  \> \ct{SURF ... NODE_ID does not exist.} \> Section~\ref{info:hvac_geom}  \\
      \>                                                                               \>                                     \\
 381  \> \ct{Need more spectral band limits.} \> Section~\ref{info:RADI_Wide_Band}  \\
 382  \> \ct{Spectral band limits should be given in ascending order.} \> Section~\ref{info:RADI_Wide_Band}  \\
@@ -14227,6 +14296,13 @@ Keyword             & Type     & Description                      & Units       
     \> \ct{A_TROE, T1_TROE, and T3_TROE.}   \\
 567 \> \ct{REAC: ... Tracked species ... used in a finite rate reaction} \> Section~\ref{info:finite}  \\
     \> \ct{without N_S defined is not a primitive species.}   \\
+568 \> \ct{Ductnode with GEOM cannot have a VENT_ID. Ductnode ID:...} \> Section~\ref{info:hvac_geom}  \\
+569 \> \ct{Ductnode with one duct needs either AMBIENT, GEOM, or VENT_ID.} \> Section~\ref{info:hvac_geom}  \\
+    \> \ct{ Ductnode ID:...} \\
+570 \> \ct{Problem with ductnode:..., cannot assign to both VENT and GEOM.} \> Section~\ref{info:hvac_geom}  \\
+571 \> \ct{VENT_ID for leakage cannot be AMBIENT if GEOM is set. Leak ID:...} \> Section~\ref{info:hvac_geom}  \\
+572 \> \ct{VENT2_ID for leakage cannot be AMBIENT if GEOM2 is set. Leak ID:...}\> Section~\ref{info:hvac_geom}  \\
+573 \> \ct{Ductnode:...,Ductnode ID:... defined with GEOM had no CFACE found.}\> Section~\ref{info:hvac_geom}  \\
     \>                                                                               \>                          \\
 601 \> \ct{OBST ... MULT_ID ... not found.} \> Section~\ref{info:MULT}  \\
 602 \> \ct{OBST ... SHAPE requires RADIUS.} \> Section~\ref{info:multobst}  \\
@@ -14241,7 +14317,7 @@ Keyword             & Type     & Description                      & Units       
 611 \> \ct{OBST ... has a BULK_DENSITY but zero volume.} \> Section~\ref{info:BURN_AWAY}  \\
 612 \> \ct{OBST ... must have a volume to be assigned HT3D.} \> Section~\ref{checkerboard}  \\
 613 \> \ct{OBST ... and OBST ... cannot overlap in Mesh ...} \> Section~\ref{info:OVERLAY}  \\
-    \>                                                                                \>                          \\
+614 \> \ct{OBST_ID ... cannot have a SURF with NODE_ID} \> Section~\ref{info:hvac_geom}  \\    \>                                                                                \>                          \\
 701 \> \ct{problem with GEOM, local SURF_ID index ... out of bounds.} \> Section~\ref{info:GEOM_Basics}  \\
 702 \> \ct{problem with GEOM, SURF_IDS not defined properly.} \> Section~\ref{info:first_geom}  \\
 703 \> \ct{missing SURF_ID in \&GEOM line ...} \> Section~\ref{subsec:readbin}  \\
@@ -14299,6 +14375,7 @@ Keyword             & Type     & Description                      & Units       
 820 \> \ct{VENT ... has no solid backing or an IOR is needed.} \> Section~\ref{info:VENT_Basics} \\
 821 \> \ct{VENT ... cannot have normal component of UVW equal to 0.} \> Section~\ref{info:HVAClouvers} \\
 822 \> \ct{VENT ... has the same ID as another VENT.} \> Section~\ref{info:HVAC} \\
+823 \> \ct{VENT ... cannot have SURF_ID=HVAC and GEOM=T.} \> Section~\ref{info:hvac_geom} \\
     \>                                                                                \>                          \\
 841 \> \ct{INIT ... has an unknown MULT_ID ...} \> Section~\ref{info:MULT} \\
 842 \> \ct{INIT ... cannot have both MASS and VOLUME_FRACTION.} \> Section~\ref{info:init_species} \\
@@ -14425,9 +14502,13 @@ Keyword             & Type     & Description                      & Units       
 1043 \> \ct{PROP_ID ... not found.} \> Section~\ref{info:gasoutputquantities} \\
 1044 \> \ct{Cannot set EXTERNAL_FILE=T for a RAMP used for an output clock ...} \> Section~\ref{info:external_control} \\
 1045 \> \ct{QUANTITY ... requires a PART_ID for particles with mass.} \> Section~\ref{tab:particleoutputquantities} \\
-     \>                                                                               \>                                     \\
+\\
 1051 \> \ct{RESTART initial time equals T_END.} \> Section~\ref{info:restart} \\
-
+1052 \> \ct{On TIME, do not set both RAMP_TIME and RAMP_DT.} \> Section~\ref{info:simulation_time_ramp} \\
+1053 \> \ct{One TIME, if one of DT_EXTERNAL_HEARTBEAT or} \> Section~\ref{info:external_control} \\
+     \> \ct{EXTERNAL_HEARTBEAT_FILENAME is set, both must be set.} \\
+\\
+1054 \> \ct{On MULT, must set DX if I_UPPER-I_LOWER>0, etc.} \> Section~\ref{info:MULT} \\
 \end{tabbing}
 
 
@@ -14549,6 +14630,9 @@ The \ct{Time Step} indicates the total number of iterations. The date and time i
 
 Following the completion of a successful run, a summary of the CPU usage per subroutine is listed in the file called \ct{CHID_cpu.csv} (Section~\ref{out:CPU}). This is useful in determining where most of the computational effort is being placed.
 
+Add \ct{VERBOSE=T} to the \ct{MISC} line to add addiational information about time usage to the diagnostic file.
+
+
 \section{Heat Release Rate and Related Quantities (\ct{_hrr.csv})}
 \label{out:hrr}
 
@@ -14625,96 +14709,6 @@ Routine     & Description  \\ \hline \hline
 \ct{VEGE}   & Wildland fire spread \\ \hline
 \ct{CHEM}   & Complex chemistry \\ \hline
 \end{tabular}
-\end{table}
-
-The \ct{CHID_cpu.csv} file is printed out at the end of the simulation. To force it to be printed out periodically during the simulation, set \ct{DT_CPU} or \ct{RAMP_CPU} on the \ct{DUMP} line. The latter parameter allows you to write out the files at specified times.
-
-\section{Time Step Data}
-\label{out:timestep}
-
-The file called \ct{CHID_steps.csv} records data on the size of time steps and the amount of elapsed CPU time.
-\begin{lstlisting}
-Time Step,Wall Time,Step Size,Simulation Time,CPU Time
-\end{table}
-
-The \ct{CHID_cpu.csv} file is printed out at the end of the simulation. To force it to be printed out periodically during the simulation, set \ct{DT_CPU} or \ct{RAMP_CPU} on the \ct{DUMP} line. The latter parameter allows you to write out the files at specified times.
-
-\section{Time Step Data}
-\label{out:timestep}
-
-The file called \ct{CHID_steps.csv} records data on the size of time steps and the amount of elapsed CPU time.
-\begin{lstlisting}
-Time Step,Wall Time,Step Size,Simulation Time,CPU Time
-\end{table}
-
-The \ct{CHID_cpu.csv} file is printed out at the end of the simulation. To force it to be printed out periodically during the simulation, set \ct{DT_CPU} or \ct{RAMP_CPU} on the \ct{DUMP} line. The latter parameter allows you to write out the files at specified times.
-
-\section{Time Step Data}
-\label{out:timestep}
-
-The file called \ct{CHID_steps.csv} records data on the size of time steps and the amount of elapsed CPU time.
-\begin{lstlisting}
-Time Step,Wall Time,Step Size,Simulation Time,CPU Time
-\end{table}
-
-The \ct{CHID_cpu.csv} file is printed out at the end of the simulation. To force it to be printed out periodically during the simulation, set \ct{DT_CPU} or \ct{RAMP_CPU} on the \ct{DUMP} line. The latter parameter allows you to write out the files at specified times.
-
-\section{Time Step Data}
-\label{out:timestep}
-
-The file called \ct{CHID_steps.csv} records data on the size of time steps and the amount of elapsed CPU time.
-\begin{lstlisting}
-Time Step,Wall Time,Step Size,Simulation Time,CPU Time
-\end{table}
-
-The \ct{CHID_cpu.csv} file is printed out at the end of the simulation. To force it to be printed out periodically during the simulation, set \ct{DT_CPU} or \ct{RAMP_CPU} on the \ct{DUMP} line. The latter parameter allows you to write out the files at specified times.
-
-\section{Time Step Data}
-\label{out:timestep}
-
-The file called \ct{CHID_steps.csv} records data on the size of time steps and the amount of elapsed CPU time.
-\begin{lstlisting}
-Time Step,Wall Time,Step Size,Simulation Time,CPU Time
-\end{table}
-
-The \ct{CHID_cpu.csv} file is printed out at the end of the simulation. To force it to be printed out periodically during the simulation, set \ct{DT_CPU} or \ct{RAMP_CPU} on the \ct{DUMP} line. The latter parameter allows you to write out the files at specified times.
-
-\section{Time Step Data}
-\label{out:timestep}
-
-The file called \ct{CHID_steps.csv} records data on the size of time steps and the amount of elapsed CPU time.
-\begin{lstlisting}
-Time Step,Wall Time,Step Size,Simulation Time,CPU Time
-\end{table}
-
-The \ct{CHID_cpu.csv} file is printed out at the end of the simulation. To force it to be printed out periodically during the simulation, set \ct{DT_CPU} or \ct{RAMP_CPU} on the \ct{DUMP} line. The latter parameter allows you to write out the files at specified times.
-
-\section{Time Step Data}
-\label{out:timestep}
-
-The file called \ct{CHID_steps.csv} records data on the size of time steps and the amount of elapsed CPU time.
-\begin{lstlisting}
-Time Step,Wall Time,Step Size,Simulation Time,CPU Time
-\end{table}
-
-The \ct{CHID_cpu.csv} file is printed out at the end of the simulation. To force it to be printed out periodically during the simulation, set \ct{DT_CPU} or \ct{RAMP_CPU} on the \ct{DUMP} line. The latter parameter allows you to write out the files at specified times.
-
-\section{Time Step Data}
-\label{out:timestep}
-
-The file called \ct{CHID_steps.csv} records data on the size of time steps and the amount of elapsed CPU time.
-\begin{lstlisting}
-Time Step,Wall Time,Step Size,Simulation Time,CPU Time
-\end{table}
-
-The \ct{CHID_cpu.csv} file is printed out at the end of the simulation. To force it to be printed out periodically during the simulation, set \ct{DT_CPU} or \ct{RAMP_CPU} on the \ct{DUMP} line. The latter parameter allows you to write out the files at specified times.
-
-\section{Time Step Data}
-\label{out:timestep}
-
-The file called \ct{CHID_steps.csv} records data on the size of time steps and the amount of elapsed CPU time.
-\begin{lstlisting}
-Time Step,Wall Time,Step Size,Simulation Time,CPU Time
 \end{table}
 
 The \ct{CHID_cpu.csv} file is printed out at the end of the simulation. To force it to be printed out periodically during the simulation, set \ct{DT_CPU} or \ct{RAMP_CPU} on the \ct{DUMP} line. The latter parameter allows you to write out the files at specified times.

@@ -17,7 +17,7 @@ USE OUTPUT_DATA
 USE PROPERTY_DATA
 USE CHEMCONS, ONLY : WRITE_CVODE_SUBSTEPS, CVODE_SUBSTEP_DATA, TOTAL_SUBSTEPS_TAKEN
 USE COMPLEX_GEOMETRY, ONLY : WRITE_GEOM,WRITE_GEOM_ALL,CC_FGSC,CC_IDCF,CC_IDCC,CC_UNKZ,CC_UNKF,CC_FTYPE_RCGAS,&
-                             CC_FTYPE_CFGAS,CC_FTYPE_CFINB,CC_SOLID,CC_CGSC,CC_CUTCFE,TRIANGULATE,&
+                             CC_FTYPE_CFGAS,CC_FTYPE_CFINB,CC_SOLID,CC_CGSC,CC_IDRC,CC_CUTCFE,TRIANGULATE,&
                              CC_VGSC,CC_GASPHASE,MAKE_UNIQUE_VERT_ARRAY,AVERAGE_FACE_VALUES
 
 USE CC_SCALARS, ONLY : ADD_Q_DOT_CUTCELLS,GET_PRES_CFACE,GET_PRES_CFACE_TEST,GET_UVWGAS_CFACE,GET_MUDNS_CFACE
@@ -88,7 +88,7 @@ END SUBROUTINE UPDATE_GLOBAL_OUTPUTS
 SUBROUTINE DUMP_MESH_OUTPUTS(T,DT,NM)
 
 USE COMP_FUNCTIONS, ONLY : CURRENT_TIME
-USE TURBULENCE, ONLY: SANDIA_OUT, SPECTRAL_OUTPUT
+USE TURBULENCE, ONLY: SANDIA_OUT
 REAL(EB) :: TNOW
 REAL(EB), INTENT(IN) :: T,DT
 INTEGER, INTENT(IN) :: NM
@@ -539,9 +539,7 @@ END SUBROUTINE ASSIGN_FILE_NAMES
 SUBROUTINE INITIALIZE_GLOBAL_DUMPS(T,DT)
 
 USE COMP_FUNCTIONS, ONLY: CURRENT_TIME,GET_FILE_NUMBER,APPEND_FILE
-USE PHYSICAL_FUNCTIONS, ONLY: GET_MASS_FRACTION_ALL,GET_MOLECULAR_WEIGHT
 USE HVAC_ROUTINES, ONLY: N_DUCT_QUANTITY,N_NODE_QUANTITY
-USE CONTROL_VARIABLES
 REAL(EB) :: TNOW
 REAL(EB), INTENT(IN) :: T,DT
 INTEGER :: NN,I,N,N_OUT,N_ZONE_TMP,LU,J, N_NODE_OUT, N_DUCT_OUT, NS
@@ -2187,28 +2185,34 @@ MESH_LOOP: DO NM=1,NMESHES
    WRITE(MYSTR,'(A)')     'OFFSET'; CALL ADDSTR
    WRITE(MYSTR,'(3F13.5)') 0.,0.,0.; CALL ADDSTR
 
-   ! Mesh grid dimensions and neighbor information.
-   ! Determine if the six mesh faces abut a single mesh (MESH_NEIGHBOR>0), nothing (MESH_NEIGHBOR=0), 
-   ! or a combination of nothing and/or multiple meshes (MESH_NEIGHBOR=-1). Write six values to GRID line.
+   MESH_NEIGHBOR = 0
 
-   DO I=1,6
-      SELECT CASE(I)
-         CASE(1) ; IW1=1                                                 ; IW2=IW1+M%JBAR*M%KBAR-1
-         CASE(2) ; IW1=  M%JBAR*M%KBAR+1                                 ; IW2=IW1+M%JBAR*M%KBAR-1
-         CASE(3) ; IW1=2*M%JBAR*M%KBAR+1                                 ; IW2=IW1+M%IBAR*M%KBAR-1
-         CASE(4) ; IW1=2*M%JBAR*M%KBAR+  M%IBAR*M%KBAR+1                 ; IW2=IW1+M%IBAR*M%KBAR-1
-         CASE(5) ; IW1=2*M%JBAR*M%KBAR+2*M%IBAR*M%KBAR+1                 ; IW2=IW1+M%IBAR*M%JBAR-1
-         CASE(6) ; IW1=2*M%JBAR*M%KBAR+2*M%IBAR*M%KBAR+  M%IBAR*M%JBAR+1 ; IW2=IW1+M%IBAR*M%JBAR-1
-      END SELECT
-      MESH_NEIGHBOR(I) = M%EXTERNAL_WALL(IW1)%NOM
-      DO IW=IW1,IW2
-         IF (M%EXTERNAL_WALL(IW)%NOM/=MESH_NEIGHBOR(I)) THEN
-            MESH_NEIGHBOR(I) = -1
-            EXIT
-         ENDIF
+   IF (.NOT.SETUP_ONLY) THEN
+
+      ! Mesh grid dimensions and neighbor information.
+      ! Determine if the six mesh faces abut a single mesh (MESH_NEIGHBOR>0), nothing (MESH_NEIGHBOR=0), 
+      ! or a combination of nothing and/or multiple meshes (MESH_NEIGHBOR=-1). Write six values to GRID line.
+   
+      DO I=1,6
+         SELECT CASE(I)
+            CASE(1) ; IW1=1                                                 ; IW2=IW1+M%JBAR*M%KBAR-1
+            CASE(2) ; IW1=  M%JBAR*M%KBAR+1                                 ; IW2=IW1+M%JBAR*M%KBAR-1
+            CASE(3) ; IW1=2*M%JBAR*M%KBAR+1                                 ; IW2=IW1+M%IBAR*M%KBAR-1
+            CASE(4) ; IW1=2*M%JBAR*M%KBAR+  M%IBAR*M%KBAR+1                 ; IW2=IW1+M%IBAR*M%KBAR-1
+            CASE(5) ; IW1=2*M%JBAR*M%KBAR+2*M%IBAR*M%KBAR+1                 ; IW2=IW1+M%IBAR*M%JBAR-1
+            CASE(6) ; IW1=2*M%JBAR*M%KBAR+2*M%IBAR*M%KBAR+  M%IBAR*M%JBAR+1 ; IW2=IW1+M%IBAR*M%JBAR-1
+         END SELECT
+         MESH_NEIGHBOR(I) = M%EXTERNAL_WALL(IW1)%NOM
+         DO IW=IW1,IW2
+            IF (M%EXTERNAL_WALL(IW)%NOM/=MESH_NEIGHBOR(I)) THEN
+               MESH_NEIGHBOR(I) = -1
+               EXIT
+            ENDIF
+         ENDDO
       ENDDO
-   ENDDO
 
+   ENDIF
+   
    CALL EOL
    WRITE(MYSTR,'(A,3X,A)') 'GRID',TRIM(MESH_NAME(NM)); CALL ADDSTR
    WRITE(MYSTR,'(9I6)')     M%IBAR,M%JBAR,M%KBAR,MESH_NEIGHBOR(1:6) ; CALL ADDSTR
@@ -2356,11 +2360,15 @@ MESH_LOOP: DO NM=1,NMESHES
          XX = M%X(0) - 0.001_EB*M%DX(0)
          CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
          IF (NOM>0 .AND. VENT_INDICES(J,K,1)<1) VENT_INDICES(J,K,1)=-1
-         IF (M%WALL(M%CELL(M%CELL_INDEX(1,J,K))%WALL_INDEX(-1))%OBST_INDEX>0) VENT_INDICES(J,K,1)=-1
+         IF (.NOT.SETUP_ONLY) THEN
+            IF (M%WALL(M%CELL(M%CELL_INDEX(1,J,K))%WALL_INDEX(-1))%OBST_INDEX>0) VENT_INDICES(J,K,1)=-1
+         ENDIF
          XX = M%X(M%IBAR) + 0.001_EB*M%DX(M%IBAR)
          CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
          IF (NOM>0 .AND. VENT_INDICES(J,K,2)<1) VENT_INDICES(J,K,2)=-1
-         IF (M%WALL(M%CELL(M%CELL_INDEX(M%IBAR,J,K))%WALL_INDEX(1))%OBST_INDEX>0) VENT_INDICES(J,K,2)=-1
+         IF (.NOT.SETUP_ONLY) THEN
+            IF (M%WALL(M%CELL(M%CELL_INDEX(M%IBAR,J,K))%WALL_INDEX(1))%OBST_INDEX>0) VENT_INDICES(J,K,2)=-1
+         ENDIF
       ENDDO
    ENDDO
 
@@ -2371,11 +2379,15 @@ MESH_LOOP: DO NM=1,NMESHES
          YY = M%Y(0) - 0.001_EB*M%DY(0)
          CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
          IF (NOM>0 .AND. VENT_INDICES(I,K,3)<1) VENT_INDICES(I,K,3)=-1
-         IF (M%WALL(M%CELL(M%CELL_INDEX(I,1,K))%WALL_INDEX(-2))%OBST_INDEX>0) VENT_INDICES(I,K,3)=-1
+         IF (.NOT.SETUP_ONLY) THEN
+            IF (M%WALL(M%CELL(M%CELL_INDEX(I,1,K))%WALL_INDEX(-2))%OBST_INDEX>0) VENT_INDICES(I,K,3)=-1
+         ENDIF
          YY = M%Y(M%JBAR) + 0.001_EB*M%DY(M%JBAR)
          CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
          IF (NOM>0 .AND. VENT_INDICES(I,K,4)<1) VENT_INDICES(I,K,4)=-1
-         IF (M%WALL(M%CELL(M%CELL_INDEX(I,M%JBAR,K))%WALL_INDEX(2))%OBST_INDEX>0) VENT_INDICES(I,K,4)=-1
+         IF (.NOT.SETUP_ONLY) THEN
+            IF (M%WALL(M%CELL(M%CELL_INDEX(I,M%JBAR,K))%WALL_INDEX(2))%OBST_INDEX>0) VENT_INDICES(I,K,4)=-1
+         ENDIF
       ENDDO
    ENDDO
 
@@ -2386,11 +2398,15 @@ MESH_LOOP: DO NM=1,NMESHES
          ZZ = M%Z(0) - 0.001_EB*M%DZ(0)
          CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
          IF (NOM>0 .AND. VENT_INDICES(I,J,5)<1) VENT_INDICES(I,J,5)=-1
-         IF (M%WALL(M%CELL(M%CELL_INDEX(I,J,1))%WALL_INDEX(-3))%OBST_INDEX>0) VENT_INDICES(I,J,5)=-1
+         IF (.NOT.SETUP_ONLY) THEN
+            IF (M%WALL(M%CELL(M%CELL_INDEX(I,J,1))%WALL_INDEX(-3))%OBST_INDEX>0) VENT_INDICES(I,J,5)=-1
+         ENDIF
          ZZ = M%Z(M%KBAR) + 0.001_EB*M%DZ(M%KBAR)
          CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
          IF (NOM>0 .AND. VENT_INDICES(I,J,6)<1) VENT_INDICES(I,J,6)=-1
-         IF (M%WALL(M%CELL(M%CELL_INDEX(I,J,M%KBAR))%WALL_INDEX(3))%OBST_INDEX>0) VENT_INDICES(I,J,6)=-1
+         IF (.NOT.SETUP_ONLY) THEN
+            IF (M%WALL(M%CELL(M%CELL_INDEX(I,J,M%KBAR))%WALL_INDEX(3))%OBST_INDEX>0) VENT_INDICES(I,J,6)=-1
+         ENDIF
       ENDDO
    ENDDO
 
@@ -2729,7 +2745,7 @@ IF (.NOT.SUPPRESS_DIAGNOSTICS) THEN
       WRITE(LU_OUTPUT,'(A,I8)')     '   Cells in the X Direction      ',M%IBAR
       WRITE(LU_OUTPUT,'(A,I8)')     '   Cells in the Y Direction      ',M%JBAR
       WRITE(LU_OUTPUT,'(A,I8)')     '   Cells in the Z Direction      ',M%KBAR
-      WRITE(LU_OUTPUT,'(A,I8)')     '   Number of Grid Cells          ',M%IBAR*M%JBAR*M%KBAR
+      WRITE(LU_OUTPUT,'(A,I12)')    '   Number of Grid Cells      ',M%IBAR*M%JBAR*M%KBAR
       WRITE(LU_OUTPUT,'(//A,I5/)')' Physical Dimensions, Mesh ',NM
       WRITE(LU_OUTPUT,'(A,F10.3)')  '   Length (m)                  ',M%XF-M%XS
       WRITE(LU_OUTPUT,'(A,F10.3)')  '   Width  (m)                  ',M%YF-M%YS
@@ -2744,7 +2760,7 @@ IF (ORIGIN_LAT>-1.E6_EB) THEN
 ENDIF
 
 WRITE(LU_OUTPUT,'(/A/)')      ' Miscellaneous Parameters'
-WRITE(LU_OUTPUT,'(A,I9)'  )   '   Total Number of Grid Cells   ',CELL_COUNT
+WRITE(LU_OUTPUT,'(A,I12)')    '   Total Number of Grid Cells'   ,CELL_COUNT
 WRITE(LU_OUTPUT,'(A,F9.3)')   '   Maximum Cell Aspect Ratio    ',MAXVAL(MAX_CELL_ASPECT_RATIO)
 WRITE(LU_OUTPUT,'(A,F9.3)')   '   Initial Time Step (s)        ',DT
 WRITE(LU_OUTPUT,'(A,I9)')     '   CFL Velocity Norm            ',CFL_VELOCITY_NORM
@@ -3926,10 +3942,10 @@ SUBROUTINE WRITE_DIAGNOSTICS(T,DT)
 
 USE COMP_FUNCTIONS, ONLY : CURRENT_TIME,GET_DATE,GET_DATE_ISO_8601
 REAL(EB), INTENT(IN) :: T,DT
-INTEGER :: NM,II,JJ,KK,OUT_DIGITS,SOUT_DIGITS
+INTEGER :: NM,II,JJ,KK,OUT_DIGITS,SOUT_DIGITS,MAX_VN_IJK(3),MAX_CFL_IJK(3),MAX_CFL_MESH,MAX_VN_MESH
 CHARACTER(120) :: SIMPLE_OUTPUT,SIMPLE_OUTPUT_ERR,OUT_FORMAT
 CHARACTER(LABEL_LENGTH) :: DATE
-REAL(EB) :: TNOW,CPUTIME,STIME,DTS
+REAL(EB) :: TNOW,CPUTIME,STIME,DTS,MAX_CFL,MAX_VN
 
 TNOW = CURRENT_TIME()
 
@@ -3987,6 +4003,24 @@ ENDIF
 
 WRITE(LU_ERR,'(A)') TRIM(SIMPLE_OUTPUT_ERR)
 
+! Determine the mesh where the maximum CFL, VN, etc, occur
+
+MAX_CFL = -1._EB
+MAX_VN  = -1._EB
+DO NM=1,NMESHES
+   M => MESHES(NM)
+   IF (M%CFL>MAX_CFL) THEN
+      MAX_CFL = MAX(M%CFL,MAX_CFL)
+      MAX_CFL_MESH = NM
+      MAX_CFL_IJK = (/M%ICFL,M%JCFL,M%KCFL/)
+   ENDIF
+   IF (CHECK_VN .AND. M%VN>MAX_VN) THEN
+      MAX_VN  = MAX(M%VN,MAX_VN)
+      MAX_VN_MESH = NM
+      MAX_VN_IJK = (/M%I_VN,M%J_VN,M%K_VN/)
+   ENDIF
+ENDDO
+
 ! Header for .out file
 
 IF (ICYC==1) WRITE(LU_OUTPUT,100)
@@ -4039,6 +4073,13 @@ IF (ITERATE_PRESSURE) THEN
                                             ' on Mesh ',NM,' at (',II,',',JJ,',',KK,')'
 ENDIF
 
+WRITE(LU_OUTPUT,'(7X,A,E9.2,A,4(I0,A))') 'Maximum CFL Number    : ',MAX_CFL,' on Mesh ',MAX_CFL_MESH,&
+                                         ' at (',MAX_CFL_IJK(1),',',MAX_CFL_IJK(2),',',MAX_CFL_IJK(3),')'
+IF (CHECK_VN) THEN
+   WRITE(LU_OUTPUT,'(7X,A,E9.2,A,4(I0,A))') 'Maximum VN Number     : ',MAX_VN,' on Mesh ',MAX_VN_MESH,&
+                                            ' at (',MAX_VN_IJK(1),',',MAX_VN_IJK(2),',',MAX_VN_IJK(3),')'
+ENDIF
+
 WRITE(LU_OUTPUT,'(7X,A)') '---------------------------------------------------------------'
 
 DO NM=1,NMESHES
@@ -4054,7 +4095,6 @@ DO NM=1,NMESHES
       WRITE(LU_OUTPUT,121) M%DT_RESTRICT_STORE
       M%DT_RESTRICT_STORE=0
    ENDIF
-
 ENDDO
 
 WRITE(LU_OUTPUT,*)
@@ -4256,13 +4296,16 @@ ENDDO
 QUANTITY => WORK3
 
 ISOF_LOOP: DO N=1,N_ISOF
+
    IS => ISOSURFACE_FILE(N)
    ERROR = 0
    ISOOFFSET = 1
    HAVE_ISO2 = 0
 
    ! Fill up the dummy array QUANTITY with the appropriate gas phase output
+
    IF (IS%DEBUG) THEN
+
       ISO_CENX = REAL((XS_MIN + XF_MAX)/2.0_EB, FB)
       ISO_CENY = REAL((YS_MIN + YF_MAX)/2.0_EB, FB)
       ISO_CENZ = REAL((ZS_MIN + ZF_MAX)/2.0_EB, FB)
@@ -4273,7 +4316,9 @@ ISOF_LOOP: DO N=1,N_ISOF
             ENDDO
          ENDDO
       ENDDO
+
    ELSE
+
       DO K=0,KBP1
          DO J=0,JBP1
             DO I=0,IBP1
@@ -4282,39 +4327,34 @@ ISOF_LOOP: DO N=1,N_ISOF
          ENDDO
       ENDDO
 
-   ! Mirror QUANTITY into ghost cells
-
-      QUANTITY(0   ,0:JBP1,0:KBP1) = QUANTITY(1   ,0:JBP1,0:KBP1)
-      QUANTITY(IBP1,0:JBP1,0:KBP1) = QUANTITY(IBAR,0:JBP1,0:KBP1)
-      QUANTITY(0:IBP1,0   ,0:KBP1) = QUANTITY(0:IBP1,1   ,0:KBP1)
-      QUANTITY(0:IBP1,JBP1,0:KBP1) = QUANTITY(0:IBP1,JBAR,0:KBP1)
-      QUANTITY(0:IBP1,0:JBP1,0   ) = QUANTITY(0:IBP1,0:JBP1,1   )
-      QUANTITY(0:IBP1,0:JBP1,KBP1) = QUANTITY(0:IBP1,0:JBP1,KBAR)
       CALL FILL_EDGES(QUANTITY)
 
-   ! Average the data (which is assumed to be cell-centered) at cell corners
+      ! Average the data (which is assumed to be cell-centered) at cell corners
 
       DO K=0,KBAR
          DO J=0,JBAR
             DO I=0,IBAR
                QQ(I,J,K,1) = REAL(S(I,J,K)*(QUANTITY(I,J,K)*B(I,J,K)        + QUANTITY(I+1,J,K)*B(I+1,J,K)+ &
-                                                  QUANTITY(I,J,K+1)*B(I,J,K+1)    + QUANTITY(I+1,J,K+1)*B(I+1,J,K+1)+ &
-                                                  QUANTITY(I,J+1,K)*B(I,J+1,K)    + QUANTITY(I+1,J+1,K)*B(I+1,J+1,K)+ &
-                                                  QUANTITY(I,J+1,K+1)*B(I,J+1,K+1)+ QUANTITY(I+1,J+1,K+1)*B(I+1,J+1,K+1)),FB)
+                                            QUANTITY(I,J,K+1)*B(I,J,K+1)    + QUANTITY(I+1,J,K+1)*B(I+1,J,K+1)+ &
+                                            QUANTITY(I,J+1,K)*B(I,J+1,K)    + QUANTITY(I+1,J+1,K)*B(I+1,J+1,K)+ &
+                                            QUANTITY(I,J+1,K+1)*B(I,J+1,K+1)+ QUANTITY(I+1,J+1,K+1)*B(I+1,J+1,K+1)),FB)
             ENDDO
          ENDDO
       ENDDO
+
    ENDIF
 
    ! Fill up QUANTITY2 and QQ2 arrays if the isosurface is colored with a second quantity
 
    INDEX2_IF: IF ( IS%INDEX2 /= -1 ) THEN
+
       HAVE_ISO2 = 1
       QUANTITY2 => WORK4
 
       ! Fill up the dummy array QUANTITY2 with the appropriate gas phase output
 
       IF (IS%DEBUG) THEN
+
          DO K=0,KBAR+1
             IF (K.EQ.KBAR+1) THEN
                ZZ = 2.0_FB*ZPLT(KBAR) - ZPLT(KBAR-1)
@@ -4327,7 +4367,9 @@ ISOF_LOOP: DO N=1,N_ISOF
                ENDDO
             ENDDO
          ENDDO
+
       ELSE
+
          DO K=0,KBP1
             DO J=0,JBP1
                DO I=0,IBP1
@@ -4336,17 +4378,9 @@ ISOF_LOOP: DO N=1,N_ISOF
             ENDDO
          ENDDO
 
-      ! Mirror QUANTITY into ghost cells
-
-         QUANTITY2(0   ,0:JBP1,0:KBP1) = QUANTITY2(1   ,0:JBP1,0:KBP1)
-         QUANTITY2(IBP1,0:JBP1,0:KBP1) = QUANTITY2(IBAR,0:JBP1,0:KBP1)
-         QUANTITY2(0:IBP1,0   ,0:KBP1) = QUANTITY2(0:IBP1,1   ,0:KBP1)
-         QUANTITY2(0:IBP1,JBP1,0:KBP1) = QUANTITY2(0:IBP1,JBAR,0:KBP1)
-         QUANTITY2(0:IBP1,0:JBP1,0   ) = QUANTITY2(0:IBP1,0:JBP1,1   )
-         QUANTITY2(0:IBP1,0:JBP1,KBP1) = QUANTITY2(0:IBP1,0:JBP1,KBAR)
          CALL FILL_EDGES(QUANTITY2)
 
-      ! Average the data (which is assumed to be cell-centered) at cell corners
+         ! Average the data (which is assumed to be cell-centered) at cell corners
 
          DO KK=0,KBAR+1
             K = MIN(KK, KBAR)
@@ -4361,6 +4395,7 @@ ISOF_LOOP: DO N=1,N_ISOF
                ENDDO
             ENDDO
          ENDDO
+
       ENDIF
 
    ENDIF INDEX2_IF
@@ -4402,7 +4437,6 @@ INTEGER  :: I,J,K,N
 REAL(FB) :: DXX,STIME
 REAL(EB), POINTER, DIMENSION(:,:,:) :: FF
 REAL(FB), ALLOCATABLE, DIMENSION(:) :: QQ_PACK
-REAL(EB) :: FR_C
 TYPE(SMOKE3D_TYPE), POINTER :: S3
 
 ! Miscellaneous settings
@@ -4426,13 +4460,6 @@ DATA_FILE_LOOP: DO N=1,N_SMOKE3D
          ENDDO
       ENDDO
    ENDDO
-
-   ! Adjust the temperature as it is used in the expression for the radiation source term
-
-   IF (S3%DISPLAY_TYPE=='TEMPERATURE' .AND. RTE_SOURCE_CORRECTION) THEN
-      FR_C = RTE_SOURCE_CORRECTION_FACTOR**0.25_EB
-      WHERE (CHI_R*Q>QR_CLIP) FF = (FF+TMPM)*FR_C - TMPM
-   ENDIF
 
    ! Interpolate data to cell nodes
 
@@ -6016,7 +6043,7 @@ IF (PLOT3D) THEN  ! Write out information to .smv file
       STRING => MESHES(NM)%STRING
    ENDIF
    N_STRINGS = N_STRINGS + 1
-   WRITE(STRING(N_STRINGS),'(A,I8,A,I0,I6)')  'PL3D ',ITM,'.',ITM1,NM
+   WRITE(STRING(N_STRINGS),'(A,I8,A,I2.2,I6)')  'PL3D ',ITM,'.',ITM1,NM
    N_STRINGS = N_STRINGS + 1
    WRITE(STRING(N_STRINGS),'(1X,A)') TRIM(FN_PL3D(NM))
    DO IQ=1,5
@@ -6496,7 +6523,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
    IF (DV%SUBDEVICE_INDEX(NM)==0) CYCLE DEVICE_LOOP
 
    SDV => DV%SUBDEVICE(DV%SUBDEVICE_INDEX(NM))
-   SDV%N_VALUES = 0  ! Count the number of values for Device N in Mesh NM
 
    ! Check to see if the device is tied to an INIT line, in which case it is tied to a specific particle. Test to see if the
    ! particle is in the current mesh.
@@ -6532,13 +6558,11 @@ DEVICE_LOOP: DO N=1,N_DEVC
       IF (DV%NO_UPDATE_DEVC_INDEX>0) THEN
          IF (DEVICE(DV%NO_UPDATE_DEVC_INDEX)%CURRENT_STATE) THEN
             SDV%VALUE_1 = DV%SMOOTHED_VALUE
-            SDV%N_VALUES = SDV%N_VALUES + 1
             CYCLE DEVICE_LOOP
          ENDIF
       ELSEIF (DV%NO_UPDATE_CTRL_INDEX>0) THEN
          IF (CONTROL(DV%NO_UPDATE_CTRL_INDEX)%CURRENT_STATE) THEN
             SDV%VALUE_1 = DV%SMOOTHED_VALUE
-            SDV%N_VALUES = SDV%N_VALUES + 1
             CYCLE DEVICE_LOOP
          ENDIF
       ENDIF
@@ -6574,7 +6598,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                   SDV%VALUE_1 = SOLID_PHASE_OUTPUT(ABS(DV%QUANTITY_INDEX(1)),DV%Y_INDEX,DV%Z_INDEX,DV%PART_CLASS_INDEX,&
                                                    OPT_CFACE_INDEX=DV%CFACE_INDEX,OPT_DEVC_INDEX=N)
                ENDIF
-               SDV%N_VALUES = SDV%N_VALUES + 1
 
             CASE DEFAULT SOLID_STATS_SELECT
 
@@ -6611,7 +6634,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                   VALUE = SOLID_PHASE_OUTPUT(ABS(DV%QUANTITY_INDEX(1)),DV%Y_INDEX,DV%Z_INDEX,DV%PART_CLASS_INDEX,&
                                              OPT_WALL_INDEX=IW,OPT_DEVC_INDEX=N,OPT_CUT_FACE_INDEX=WC%CUT_FACE_INDEX)
                   CALL SELECT_SPATIAL_STATISTIC(OPT_CUT_FACE_INDEX=WC%CUT_FACE_INDEX)
-                  SDV%N_VALUES = SDV%N_VALUES + 1
                ENDDO WALL_CELL_LOOP
 
                CFACE_LOOP : DO ICF=INTERNAL_CFACE_CELLS_LB+1,INTERNAL_CFACE_CELLS_LB+N_INTERNAL_CFACE_CELLS
@@ -6628,7 +6650,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                   VALUE = SOLID_PHASE_OUTPUT(ABS(DV%QUANTITY_INDEX(1)),DV%Y_INDEX,DV%Z_INDEX,DV%PART_CLASS_INDEX,&
                                              OPT_CFACE_INDEX=ICF,OPT_DEVC_INDEX=N)
                   CALL SELECT_SPATIAL_STATISTIC
-                  SDV%N_VALUES = SDV%N_VALUES + 1
                ENDDO CFACE_LOOP
 
                PARTICLE_LOOP: DO IP=1,NLP
@@ -6645,7 +6666,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                   VALUE = SOLID_PHASE_OUTPUT(ABS(DV%QUANTITY_INDEX(1)),DV%Y_INDEX,DV%Z_INDEX,DV%PART_CLASS_INDEX,&
                                              OPT_LP_INDEX=IP,OPT_DEVC_INDEX=N)
                   CALL SELECT_SPATIAL_STATISTIC(OPT_LP_INDEX=IP)
-                  SDV%N_VALUES = SDV%N_VALUES + 1
                ENDDO PARTICLE_LOOP
 
                ! If no WALL, CFACE, or PARTICLE is found, set the value of the device to 0
@@ -6666,7 +6686,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                SDV%VALUE_1 = GAS_PHASE_OUTPUT(T,DT,NM,I,J,K,DV%QUANTITY_INDEX(1),0,DV%Y_INDEX,DV%Z_INDEX,DV%ELEM_INDEX,&
                                               DV%PART_CLASS_INDEX,DV%VELO_INDEX,DV%PIPE_INDEX,DV%PROP_INDEX,DV%REAC_INDEX,&
                                               DV%MATL_INDEX)
-               SDV%N_VALUES = SDV%N_VALUES + 1
 
                IF (DV%N_QUANTITY>1) &
                   SDV%VALUE_2 = GAS_PHASE_OUTPUT(T,DT,NM,DV%I(2),DV%J(2),DV%K(2),DV%QUANTITY_INDEX(2),0,DV%Y_INDEX,DV%Z_INDEX,&
@@ -6711,7 +6730,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                         VALUE = GAS_PHASE_OUTPUT(T,DT,NM,I,J,K,DV%QUANTITY_INDEX(1),0,DV%Y_INDEX,DV%Z_INDEX,DV%ELEM_INDEX,&
                                                  DV%PART_CLASS_INDEX,DV%VELO_INDEX,DV%PIPE_INDEX,DV%PROP_INDEX,DV%REAC_INDEX,&
                                                  DV%MATL_INDEX)
-                        SDV%N_VALUES = SDV%N_VALUES + 1
                         STATISTICS_SELECT: SELECT CASE(DV%SPATIAL_STATISTIC)
                            CASE('MAX','MAXLOC X','MAXLOC Y','MAXLOC Z')
                               IF (VALUE>SDV%VALUE_1) THEN
@@ -6793,7 +6811,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
       CASE(300:350) OUTPUT_INDEX_SELECT  ! HVAC output
 
          SDV%VALUE_1 = HVAC_OUTPUT(DV%QUANTITY_INDEX(1),DV%Y_INDEX,DV%Z_INDEX,DV%DUCT_INDEX,DV%NODE_INDEX,DV%DUCT_CELL_INDEX)
-         SDV%N_VALUES = SDV%N_VALUES + 1
 
       CASE(400:454) OUTPUT_INDEX_SELECT  ! Particle-specific output
 
@@ -6803,7 +6820,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
 
                IF (LP_INDEX>0) THEN
                   SDV%VALUE_1 = PARTICLE_OUTPUT(T,ABS(DV%QUANTITY_INDEX(1)),LP_INDEX)
-                  SDV%N_VALUES = SDV%N_VALUES + 1
                ENDIF
 
             CASE DEFAULT
@@ -6821,7 +6837,6 @@ DEVICE_LOOP: DO N=1,N_DEVC
                   VALUE = PARTICLE_OUTPUT(T,ABS(DV%QUANTITY_INDEX(1)),IP)
                   B1 => BOUNDARY_PROP1(LP%B1_INDEX)
                   CALL SELECT_SPATIAL_STATISTIC(OPT_LP_INDEX=IP)
-                  SDV%N_VALUES = SDV%N_VALUES + 1
                ENDDO PARTICLE_LOOP2
 
                ! If no appropriate particles are found, set the value of the device to 0
@@ -7271,6 +7286,7 @@ END SUBROUTINE UPDATE_DEVICES_2
 !> \param IND2 Index of the sometimes needed second output quantity
 !> \param Y_INDEX Index of the primitive gas species
 !> \param Z_INDEX Index of the gas species mixture
+!> \param ELEM_INDX Index of the chemical element
 !> \param PART_INDEX Index of the Lagrangian particle class
 !> \param VELO_INDEX Index of the velocity component, x=1, y=2, z=3
 !> \param PIPE_INDEX Index of the pipe branch
@@ -7283,7 +7299,7 @@ REAL(EB) RECURSIVE FUNCTION GAS_PHASE_OUTPUT(T,DT,NM,II,JJ,KK,IND,IND2,Y_INDEX,Z
                                            PROP_INDEX,REAC_INDEX,MATL_INDEX,ICC_IN,JCC_IN) RESULT(GAS_PHASE_OUTPUT_RES)
 
 USE MEMORY_FUNCTIONS, ONLY: REALLOCATE
-USE MATH_FUNCTIONS, ONLY: INTERPOLATE1D,INTERPOLATE1D_UNIFORM,EVALUATE_RAMP,UPDATE_HISTOGRAM
+USE MATH_FUNCTIONS, ONLY: INTERPOLATE1D,INTERPOLATE1D_UNIFORM,UPDATE_HISTOGRAM
 USE PHYSICAL_FUNCTIONS, ONLY: GET_MASS_FRACTION,FED,FIC,GET_SPECIFIC_HEAT,RELATIVE_HUMIDITY, &
                               GET_CONDUCTIVITY,GET_MOLECULAR_WEIGHT,GET_MASS_FRACTION_ALL,GET_ENTHALPY,GET_SENSIBLE_ENTHALPY, &
                               GET_VISCOSITY,GET_POTENTIAL_TEMPERATURE,GET_SPECIFIC_GAS_CONSTANT,&
@@ -8224,8 +8240,33 @@ IND_SELECT: SELECT CASE(IND)
       GAS_PHASE_OUTPUT_RES = MIN(1._EB,AVG_DROP_DEN(II,JJ,KK,LPC%ARRAY_INDEX)/LPC%DENSITY)
 
    CASE(190) ! CELL PHASE
-      GAS_PHASE_OUTPUT_RES = 0
-      IF (CELL(CELL_INDEX(II,JJ,KK))%SOLID) GAS_PHASE_OUTPUT_RES=1
+      GAS_PHASE_OUTPUT_RES = 0._EB
+      IF (CELL(CELL_INDEX(II,JJ,KK))%SOLID) GAS_PHASE_OUTPUT_RES=1._EB
+
+   CASE(191) ! SCALAR UNKNOWN NUMBER
+      GAS_PHASE_OUTPUT_RES = 0._EB
+      IF (CC_IBM) GAS_PHASE_OUTPUT_RES = REAL(CCVAR(II,JJ,KK,CC_UNKZ),EB)
+
+   CASE(192) ! F_X UNKNOWN NUMBER
+      GAS_PHASE_OUTPUT_RES = 0._EB
+      IF (CC_IBM) THEN
+         GAS_PHASE_OUTPUT_RES = REAL(FCVAR(II,JJ,KK,CC_UNKF,IAXIS),EB)
+         IF(FCVAR(II,JJ,KK,CC_IDRC,IAXIS)>0) GAS_PHASE_OUTPUT_RES = REAL(RC_FACE(FCVAR(II,JJ,KK,CC_IDRC,IAXIS))%UNKF,EB)
+      ENDIF
+
+   CASE(193) ! F_Y UNKNOWN NUMBER
+      GAS_PHASE_OUTPUT_RES = 0._EB
+      IF (CC_IBM) THEN
+         GAS_PHASE_OUTPUT_RES = REAL(FCVAR(II,JJ,KK,CC_UNKF,JAXIS),EB)
+         IF(FCVAR(II,JJ,KK,CC_IDRC,JAXIS)>0) GAS_PHASE_OUTPUT_RES = REAL(RC_FACE(FCVAR(II,JJ,KK,CC_IDRC,JAXIS))%UNKF,EB)
+      ENDIF
+
+   CASE(194) ! F_Z UNKNOWN NUMBER    
+      GAS_PHASE_OUTPUT_RES = 0._EB
+      IF (CC_IBM) THEN
+         GAS_PHASE_OUTPUT_RES = REAL(FCVAR(II,JJ,KK,CC_UNKF,KAXIS),EB)
+         IF(FCVAR(II,JJ,KK,CC_IDRC,KAXIS)>0) GAS_PHASE_OUTPUT_RES = REAL(RC_FACE(FCVAR(II,JJ,KK,CC_IDRC,KAXIS))%UNKF,EB)
+      ENDIF
 
    CASE(230) ! RANDOM NUMBER
       CALL RANDOM_NUMBER(RN)
@@ -8454,34 +8495,52 @@ IND_SELECT: SELECT CASE(IND)
       ENDIF
    CASE(534)  ! TOTAL MASS FLUX X
       GAS_PHASE_OUTPUT_RES = 0._EB
-      IF (Z_INDEX>0) THEN
-         GAS_PHASE_OUTPUT_RES = ADV_FX(II,JJ,KK,Z_INDEX) + DIF_FX(II,JJ,KK,Z_INDEX)
-      ELSEIF (Y_INDEX>0) THEN
-         GAS_PHASE_OUTPUT_RES = DOT_PRODUCT( Z2Y(Y_INDEX,1:N_TRACKED_SPECIES),&
-                                (ADV_FX(II,JJ,KK,1:N_TRACKED_SPECIES) + DIF_FX(II,JJ,KK,1:N_TRACKED_SPECIES)) )
+      IF (Z_INDEX<=0 .AND. Y_INDEX<=0) THEN
+         GAS_PHASE_OUTPUT_RES = SUM(ADV_FX(II,JJ,KK,:) + DIF_FX(II,JJ,KK,:))
+      ELSE
+         IF (Z_INDEX>0) THEN
+            GAS_PHASE_OUTPUT_RES = ADV_FX(II,JJ,KK,Z_INDEX) + DIF_FX(II,JJ,KK,Z_INDEX)
+         ELSEIF (Y_INDEX>0) THEN
+            GAS_PHASE_OUTPUT_RES = DOT_PRODUCT( Z2Y(Y_INDEX,1:N_TRACKED_SPECIES),&
+                                   (ADV_FX(II,JJ,KK,1:N_TRACKED_SPECIES) + DIF_FX(II,JJ,KK,1:N_TRACKED_SPECIES)) )
+         ENDIF
       ENDIF
    CASE(535)  ! TOTAL MASS FLUX Y
       GAS_PHASE_OUTPUT_RES = 0._EB
-      IF (Z_INDEX>0) THEN
-         GAS_PHASE_OUTPUT_RES = ADV_FY(II,JJ,KK,Z_INDEX) + DIF_FY(II,JJ,KK,Z_INDEX)
-      ELSEIF (Y_INDEX>0) THEN
-         GAS_PHASE_OUTPUT_RES = DOT_PRODUCT( Z2Y(Y_INDEX,1:N_TRACKED_SPECIES),&
-                                (ADV_FY(II,JJ,KK,1:N_TRACKED_SPECIES) + DIF_FY(II,JJ,KK,1:N_TRACKED_SPECIES)) )
+      IF (Z_INDEX<=0 .AND. Y_INDEX<=0) THEN
+         GAS_PHASE_OUTPUT_RES = SUM(ADV_FY(II,JJ,KK,:) + DIF_FY(II,JJ,KK,:))
+      ELSE
+         IF (Z_INDEX>0) THEN
+            GAS_PHASE_OUTPUT_RES = ADV_FY(II,JJ,KK,Z_INDEX) + DIF_FY(II,JJ,KK,Z_INDEX)
+         ELSEIF (Y_INDEX>0) THEN
+            GAS_PHASE_OUTPUT_RES = DOT_PRODUCT( Z2Y(Y_INDEX,1:N_TRACKED_SPECIES),&
+                                   (ADV_FY(II,JJ,KK,1:N_TRACKED_SPECIES) + DIF_FY(II,JJ,KK,1:N_TRACKED_SPECIES)) )
+         ENDIF
       ENDIF
    CASE(536)  ! TOTAL MASS FLUX Z
       GAS_PHASE_OUTPUT_RES = 0._EB
-      IF (Z_INDEX>0) THEN
-         GAS_PHASE_OUTPUT_RES = ADV_FZ(II,JJ,KK,Z_INDEX) + DIF_FZ(II,JJ,KK,Z_INDEX)
-      ELSEIF (Y_INDEX>0) THEN
-         GAS_PHASE_OUTPUT_RES = DOT_PRODUCT( Z2Y(Y_INDEX,1:N_TRACKED_SPECIES),&
-                                (ADV_FZ(II,JJ,KK,1:N_TRACKED_SPECIES) + DIF_FZ(II,JJ,KK,1:N_TRACKED_SPECIES)) )
+      IF (Z_INDEX<=0 .AND. Y_INDEX<=0) THEN
+         GAS_PHASE_OUTPUT_RES = SUM(ADV_FZ(II,JJ,KK,:) + DIF_FZ(II,JJ,KK,:))
+      ELSE
+         IF (Z_INDEX>0) THEN
+            GAS_PHASE_OUTPUT_RES = ADV_FZ(II,JJ,KK,Z_INDEX) + DIF_FZ(II,JJ,KK,Z_INDEX)
+         ELSEIF (Y_INDEX>0) THEN
+            GAS_PHASE_OUTPUT_RES = DOT_PRODUCT( Z2Y(Y_INDEX,1:N_TRACKED_SPECIES),&
+                                   (ADV_FZ(II,JJ,KK,1:N_TRACKED_SPECIES) + DIF_FZ(II,JJ,KK,1:N_TRACKED_SPECIES)) )
+         ENDIF
       ENDIF
 
-    CASE(550) ! CUTCELL VELOCITY DIVERGENCE
-       GAS_PHASE_OUTPUT_RES = CARTVELDIV(II,JJ,KK)
+   CASE(550) ! CUTCELL VELOCITY DIVERGENCE
+      GAS_PHASE_OUTPUT_RES = CARTVELDIV(II,JJ,KK)
 
-    CASE(551) ! CARTESIAN VELOCITY DIVERGENCE
-       GAS_PHASE_OUTPUT_RES = CARTVELDIV(II,JJ,KK)
+   CASE(551) ! CARTESIAN VELOCITY DIVERGENCE
+      GAS_PHASE_OUTPUT_RES = CARTVELDIV(II,JJ,KK)
+
+   CASE(552) ! U_LS
+       GAS_PHASE_OUTPUT_RES = U_LS(II,JJ)
+
+   CASE(553) ! V_LS
+       GAS_PHASE_OUTPUT_RES = V_LS(II,JJ)
 
  END SELECT IND_SELECT
 
@@ -8568,6 +8627,9 @@ CC_IBM_IF: IF (CC_IBM) THEN
             CASE(138) ! HRRPUV REAC
                GAS_PHASE_OUTPUT_CC = GAS_PHASE_OUTPUT_CC + CUT_CELL(ICC)%Q_REAC(JCC,REAC_INDEX)*0.001_EB &
                                                                                             * CUT_CELL(ICC)%VOLUME(JCC)
+            CASE(191) ! SCALAR UNKNOWN NUMBER
+               GAS_PHASE_OUTPUT_RES = REAL(CUT_CELL(ICC)%UNKZ(JCC),EB); RETURN
+
             CASE(523) ! ABSOLUTE PRESSURE
                GAS_PHASE_OUTPUT_CC = GAS_PHASE_OUTPUT_CC + &
                   ( PBAR(KK,PRESSURE_ZONE(II,JJ,KK)) + CUT_CELL(ICC)%RHO(JCC)*(CUT_CELL(ICC)%H(JCC)-KRES(II,JJ,KK)) ) &
@@ -8601,6 +8663,8 @@ CC_IBM_IF: IF (CC_IBM) THEN
                   GAS_PHASE_OUTPUT_CFA = GAS_PHASE_OUTPUT_CFA + CUT_FACE(ICF)%VEL(JCF) * CUT_FACE(ICF)%AREA(JCF)
                CASE(8)   ! W-VELOCITY
                   GAS_PHASE_OUTPUT_CFA = GAS_PHASE_OUTPUT_CFA + CUT_FACE(ICF)%VEL(JCF) * CUT_FACE(ICF)%AREA(JCF)
+               CASE(192:194) ! F_X,F_Y,F_Z UNKNOWN NUMBER
+                  GAS_PHASE_OUTPUT_RES = REAL(CUT_FACE(ICF)%UNKF(JCF),EB); RETURN
             END SELECT IND_SELECT_3
 
          ENDDO CFA_LOOP
@@ -8739,7 +8803,11 @@ SOLID_PHASE_SELECT: SELECT CASE(INDX)
          CASE( 3) ; SOLID_PHASE_OUTPUT = -W(BC%IIG,BC%JJG,BC%KKG-1)
          CASE(-3) ; SOLID_PHASE_OUTPUT =  W(BC%IIG,BC%JJG,BC%KKG  )
       END SELECT
-      IF (ICF>0) THEN
+      IF(PRESENT(OPT_CFACE_INDEX)) THEN
+         IND1 = CFA%CUT_FACE_IND1
+         IND2 = CFA%CUT_FACE_IND2
+         SOLID_PHASE_OUTPUT = CUT_FACE(IND1)%VEL(IND2)
+      ELSEIF (ICF>0) THEN
          SOLID_PHASE_OUTPUT_CTF = 0._EB
          CUT_FACE_AREA = 0._EB
          NFACE=CUT_FACE(ICF)%NFACE

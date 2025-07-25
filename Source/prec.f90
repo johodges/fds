@@ -10,6 +10,7 @@ INTEGER, PARAMETER :: QB = SELECTED_REAL_KIND(33,4931) !< Precision of "Sixteen 
 INTEGER, PARAMETER :: MAX_LPC=20                     !< Maximum number of declared particle classes
 INTEGER, PARAMETER :: MAX_SPECIES=20                 !< Maximum number of declared species
 INTEGER, PARAMETER :: MAX_LAYERS=20                  !< Maximum number of solid material layers
+INTEGER, PARAMETER :: MAX_LAYERS_HT3D=500            !< Maximum number of solid material layers for an HT3D solid
 INTEGER, PARAMETER :: MAX_MATERIALS=20               !< Maximum number of solid material components
 INTEGER, PARAMETER :: MAX_MATERIALS_TOTAL=400        !< Dimension of material work array
 INTEGER, PARAMETER :: MAX_CONE_CURVES=10             !< Maximum number of cone calorimeter curves
@@ -40,6 +41,7 @@ REAL(EB), PARAMETER :: TWO_EPSILON_EB=2._EB*EPSILON(1._EB)    !< A very small nu
 REAL(FB), PARAMETER :: TWO_EPSILON_FB=2._EB*EPSILON(1._FB)    !< A very small number 4 byte accuracy
 REAL(EB), PARAMETER :: TINY_EB=TINY(1._EB)                    !< The smallest resolvable 8 byte real number
 REAL(EB), PARAMETER :: HUGE_EB=HUGE(1._EB)                    !< The largest resolvable 8 btye real number
+REAL(EB), PARAMETER :: HUGE_FB=HUGE(1._FB)                    !< A large number but not too large for various operations
 
 ! Often used numbers
 
