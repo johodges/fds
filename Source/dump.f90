@@ -2023,6 +2023,7 @@ TYPE (PATCH_TYPE), POINTER :: EP
 INTEGER :: STR_GATHER_LEN
 INTEGER, ALLOCATABLE, DIMENSION(:) :: RECV_USE_LEN,RECV_USE_OFF,RECV_COUNTS
 CHARACTER(LEN=:), ALLOCATABLE :: STR_GATHER
+INTEGER SHOW_BNDF(-3:3)
 
 ! If WRITE_SMV is False, call the required initialization routines and exit
 CALL ADD_EXTERIOR_VENTS
@@ -2773,12 +2774,23 @@ MESH_LOOP: DO NM=1,NMESHES
    ENDDO
    DO N=1,M%N_OBST
       OB => M%OBSTRUCTION(N)
+      DO NN=-3,3
+        IF (NN.EQ.0) CYCLE
+        SHOW_BNDF(NN)=0
+        IF (OB%SHOW_BNDF(NN)) SHOW_BNDF(NN) = 1
+      END DO
       IF (OB%COLOR_INDICATOR/=-3) THEN
-         WRITE(MYSTR,'(8I5,A,L1,1X,6I2)') OB%I1,OB%I2,OB%J1,OB%J2,OB%K1,OB%K2,OB%COLOR_INDICATOR,OB%TYPE_INDICATOR, &
-                                          ' ! ',OB%REMOVABLE,OB%EXPOSED_FACE_INDEX(1:6)
+         WRITE(MYSTR,'(8I5,A,L1,1X,6I2,1X,6I2)') OB%I1,OB%I2,OB%J1,OB%J2,OB%K1,OB%K2,OB%COLOR_INDICATOR,OB%TYPE_INDICATOR, &
+                                          ' ! ',OB%REMOVABLE,OB%EXPOSED_FACE_INDEX(1:6), &
+                                                SHOW_BNDF(-1),SHOW_BNDF(1), &
+                                                SHOW_BNDF(-2),SHOW_BNDF(2), &
+                                                SHOW_BNDF(-3),SHOW_BNDF(3)
       ELSE
-         WRITE(MYSTR,'(8I5,4F13.5,A,L1,1X,6I2)') OB%I1,OB%I2,OB%J1,OB%J2,OB%K1,OB%K2,OB%COLOR_INDICATOR,OB%TYPE_INDICATOR, &
-                                          REAL(OB%RGB,FB)/255._FB, OB%TRANSPARENCY,' ! ',OB%REMOVABLE,OB%EXPOSED_FACE_INDEX(1:6)
+         WRITE(MYSTR,'(8I5,4F13.5,A,L1,1X,6I2,1X,6I2)') OB%I1,OB%I2,OB%J1,OB%J2,OB%K1,OB%K2,OB%COLOR_INDICATOR,OB%TYPE_INDICATOR, &
+                                          REAL(OB%RGB,FB)/255._FB, OB%TRANSPARENCY,' ! ',OB%REMOVABLE,OB%EXPOSED_FACE_INDEX(1:6), &
+                                          SHOW_BNDF(-1),SHOW_BNDF(1), &
+                                          SHOW_BNDF(-2),SHOW_BNDF(2), &
+                                          SHOW_BNDF(-3),SHOW_BNDF(3)
       ENDIF
       CALL ADDSTR
    ENDDO
@@ -3302,8 +3314,8 @@ IF (SIM_MODE/=DNS_MODE) THEN
          END SELECT
       ENDIF
    ENDDO
-   WRITE(LU_OUTPUT,'(A,F8.2)')   '   Turbulent Prandtl Number:     ',PR
-   WRITE(LU_OUTPUT,'(A,F8.2)')   '   Turbulent Schmidt Number:     ',SC
+   WRITE(LU_OUTPUT,'(A,F8.2)')   '   Turbulent Prandtl Number:     ',PR_T
+   WRITE(LU_OUTPUT,'(A,F8.2)')   '   Turbulent Schmidt Number:     ',SC_T
    IF (ANY(SPECIES_MIXTURE(:)%SC_T_USER>0._EB)) &
         WRITE(LU_OUTPUT,'(A)')   '   Differential turbulent transport specified, see Tracked Species Information'
 
@@ -4439,7 +4451,7 @@ REAL(EB), INTENT(IN) :: T,DT
 INTEGER :: NM,II,JJ,KK,OUT_DIGITS,SOUT_DIGITS,MAX_VN_IJK(3),MAX_CFL_IJK(3),MAX_CFL_MESH,MAX_VN_MESH
 CHARACTER(120) :: SIMPLE_OUTPUT,SIMPLE_OUTPUT_ERR,OUT_FORMAT
 CHARACTER(LABEL_LENGTH) :: DATE
-REAL(EB) :: TNOW,CPUTIME,STIME,DTS,MAX_CFL,MAX_VN
+REAL(EB) :: TNOW,CPUTIME,STIME,DTS,MAX_CFL,MAX_VN,TROUND
 
 TNOW = CURRENT_TIME()
 
@@ -4448,10 +4460,11 @@ TNOW = CURRENT_TIME()
 CALL GET_DATE_ISO_8601(DATE)
 CALL CPU_TIME(CPUTIME)
 
+TROUND = ANINT(T * 1.E7_EB) / 1.E7_EB
 
 IF (SIM_MODE==DNS_MODE) THEN
-   IF (ABS(T) > 0._EB) THEN
-      OUT_DIGITS = MAX(0,MIN(7,7-INT(LOG10(ABS(T)))))
+   IF (ABS(TROUND) > 0._EB) THEN
+      OUT_DIGITS = MAX(0,MIN(7,7-INT(LOG10(ABS(TROUND)))))
    ELSE
       OUT_DIGITS = 7
    ENDIF
@@ -4465,8 +4478,8 @@ IF (SIM_MODE==DNS_MODE) THEN
       DTS = DT * TIME_SHRINK_FACTOR
    ENDIF
 ELSE
-   IF (ABS(T) > 0._EB) THEN
-      OUT_DIGITS = MAX(2,MIN(5,7-INT(LOG10(ABS(T)))))
+   IF (ABS(TROUND) > 0._EB) THEN
+      OUT_DIGITS = MAX(2,MIN(5,7-INT(LOG10(ABS(TROUND)))))
    ELSE
       OUT_DIGITS = 5
    ENDIF
@@ -8937,6 +8950,7 @@ END SUBROUTINE UPDATE_DEVICES_2
 !> \param IND2 Index of the sometimes needed second output quantity
 !> \param Y_INDEX Index of the primitive gas species
 !> \param Z_INDEX Index of the gas species mixture
+!> \param ELEM_INDX Index of the chemical element
 !> \param PART_INDEX Index of the Lagrangian particle class
 !> \param VELO_INDEX Index of the velocity component, x=1, y=2, z=3
 !> \param PIPE_INDEX Index of the pipe branch
@@ -9168,9 +9182,7 @@ IND_SELECT: SELECT CASE(IND)
    CASE(37)  ! DIFFUSIVITY
       SELECT CASE (SIM_MODE)
          CASE DEFAULT
-            GAS_PHASE_OUTPUT_RES = MU(II,JJ,KK)*RSC/RHO(II,JJ,KK)
-         CASE (LES_MODE)
-            GAS_PHASE_OUTPUT_RES = (MU(II,JJ,KK)-MU_DNS(II,JJ,KK)*RSC)/RHO(II,JJ,KK)
+            GAS_PHASE_OUTPUT_RES = MU(II,JJ,KK)*RSC_T/RHO(II,JJ,KK)
          CASE (DNS_MODE)
             D_Z_N = D_Z(:,Z_INDEX)
             CALL INTERPOLATE1D_UNIFORM(LBOUND(D_Z_N,1),D_Z_N,TMP(II,JJ,KK),GAS_PHASE_OUTPUT_RES)
@@ -9291,7 +9303,7 @@ IND_SELECT: SELECT CASE(IND)
       ELSE
          R_DX2 = RDX(II)**2 + RDY(JJ)**2 + RDZ(KK)**2
       ENDIF
-      GAS_PHASE_OUTPUT_RES = DT*2._EB*R_DX2*MAX(D_Z_MAX(II,JJ,KK),MAX(RPR,RSC)*MU(II,JJ,KK)/RHO(II,JJ,KK))
+      GAS_PHASE_OUTPUT_RES = DT*2._EB*R_DX2*MAX(D_Z_MAX(II,JJ,KK),MAX(RPR_T,RSC_T)*MU(II,JJ,KK)/RHO(II,JJ,KK))
 
    CASE(72)  ! CFL MAX
       GAS_PHASE_OUTPUT_RES = CFL
@@ -10642,13 +10654,18 @@ SOLID_PHASE_SELECT: SELECT CASE(INDX)
 
    CASE(27) ! SOLID DENSITY
       SOLID_PHASE_OUTPUT = 0._EB
-      DO NN=1,ONE_D%N_MATL
-         IF (MATL_INDEX==ONE_D%MATL_INDEX(NN)) THEN
-            SOLID_PHASE_OUTPUT = ONE_D%MATL_COMP(NN)%RHO(I_DEPTH)
-            RETURN
-         ENDIF
-         SOLID_PHASE_OUTPUT = SOLID_PHASE_OUTPUT + ONE_D%MATL_COMP(NN)%RHO(I_DEPTH)
-      ENDDO
+      IF (MATL_INDEX > 0) THEN
+         DO NN=1,ONE_D%N_MATL
+            IF (MATL_INDEX==ONE_D%MATL_INDEX(NN)) THEN
+               SOLID_PHASE_OUTPUT = ONE_D%MATL_COMP(NN)%RHO(I_DEPTH)
+               RETURN
+            ENDIF
+         ENDDO
+      ELSE
+         DO NN=1,ONE_D%N_MATL
+            SOLID_PHASE_OUTPUT = SOLID_PHASE_OUTPUT + ONE_D%MATL_COMP(NN)%RHO(I_DEPTH)
+         ENDDO
+      ENDIF
 
    CASE(28) ! EMISSIVITY
       SOLID_PHASE_OUTPUT = B1%EMISSIVITY

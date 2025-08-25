@@ -294,7 +294,7 @@ LOGICAL :: WROTE_SL2D=.FALSE.                       !< Flag indicating if a SL2D
 LOGICAL :: WROTE_SMOKE3D=.FALSE.                    !< Flag indicating if a Smoke3D file was written during primary out
 LOGICAL :: WROTE_BNDF=.FALSE.                       !< Flag indicating if a BNDF file was written during primary out
 LOGICAL :: WROTE_PART=.FALSE.                       !< Flag indicating if a PART file was written during primary out
-LOGICAL :: FLUX_LIMITER_MW_CORRECTION=.FALSE.       !< Flag for MW correction ensure consistent equation of state at face
+LOGICAL :: FLUX_LIMITER_SINGLE_COEF=.TRUE.          !< Flag to base flux coefficients off of a single worst-case scalar gradient
 LOGICAL :: STORE_FIRE_ARRIVAL=.FALSE.               !< Flag for tracking arrival of spreading fire front over a surface
 LOGICAL :: STORE_FIRE_RESIDENCE=.FALSE.             !< Flag for tracking residence time of spreading fire front over a surface
 LOGICAL :: STORE_LS_SPREAD_RATE=.FALSE.             !< Flag for outputting local level set spread rate magnitude
@@ -328,8 +328,8 @@ CHARACTER(FORMULA_LENGTH) :: COMPILE_DATE='unknown'                       !< Dat
 ! Miscellaneous real constants
 
 REAL(EB) :: CPOPR                              !< Specific heat divided by the Prandtl number (J/kg/K)
-REAL(EB) :: RSC                                !< Reciprocal of the Schmidt number
-REAL(EB) :: RPR                                !< Reciprocal of the Prandtl number
+REAL(EB) :: RSC_T                              !< Reciprocal of the turbulent Schmidt number
+REAL(EB) :: RPR_T                              !< Reciprocal of the turbulent Prandtl number
 REAL(EB) :: TMPA                               !< Ambient temperature (K)
 REAL(EB) :: TMPA4                              !< Ambient temperature to the fourth power (K^4)
 REAL(EB) :: RHOA                               !< Ambient density (kg/m3)
@@ -357,8 +357,8 @@ REAL(EB) :: CFL_MAX=1.0_EB                     !< Upper bound of CFL constraint
 REAL(EB) :: CFL_MIN=0.8_EB                     !< Lower bound of CFL constraint
 REAL(EB) :: VN_MAX=1.0_EB                      !< Upper bound of von Neumann constraint
 REAL(EB) :: VN_MIN=0.8_EB                      !< Lower bound of von Neumann constraint
-REAL(EB) :: PR                                 !< Prandtl number
-REAL(EB) :: SC                                 !< Schmidt number
+REAL(EB) :: PR_T                               !< Turbulent Prandtl number
+REAL(EB) :: SC_T                               !< Turbulent Schmidt number
 REAL(EB) :: GROUND_LEVEL=0._EB                 !< Height of the ground, used for establishing atmospheric profiles (m)
 REAL(EB) :: LIMITING_DT_RATIO=1.E-4_EB         !< Ratio of current to initial time step when code is stopped
 REAL(EB) :: NOISE_VELOCITY=0.005_EB            !< Velocity of random noise vectors (m/s)
@@ -467,6 +467,7 @@ INTEGER :: MAX_PRIORITY=1                                           !< Maximum n
 INTEGER :: N_PASSIVE_SCALARS=0                                      !< Number of passive scalars
 INTEGER :: N_TOTAL_SCALARS=0                                        !< Number of total scalars, tracked and passive
 INTEGER :: N_FIXED_CHEMISTRY_SUBSTEPS=-1                            !< Number of chemistry substeps in combustion routine
+INTEGER :: ZETA_0_RAMP_INDEX=0                                      !< Ramp index for initial unmixed fraction
 
 LOGICAL :: OUTPUT_CHEM_IT=.FALSE.
 LOGICAL :: REAC_SOURCE_CHECK=.FALSE.
