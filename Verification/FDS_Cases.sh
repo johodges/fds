@@ -322,6 +322,7 @@ $QFDS -d Heat_Transfer ht3d_slab.fds
 $QFDS -d Heat_Transfer ht3d_sphere_24.fds
 $QFDS -p 4 -d Heat_Transfer ht3d_sphere_48.fds
 $QFDS -p 64 -d Heat_Transfer ht3d_sphere_96.fds
+$QFDS -d Heat_Transfer back_wall.fds
 $QFDS -p 4 -d Heat_Transfer back_wall_test.fds
 $QFDS -p 3 -d Heat_Transfer back_wall_test_2.fds
 $QFDS -d Heat_Transfer SFPE_Case_1.fds
@@ -414,6 +415,7 @@ $QFDS -d Pressure_Effects isentropic.fds
 $QFDS -d Pressure_Effects isentropic2.fds
 $QFDS -d Pressure_Effects pressure_boundary.fds
 $QFDS -d Pressure_Effects pressure_rise.fds
+$QFDS -p 8 -d Pressure_Effects thick_orifice_5cm.fds
 $QFDS -d Pressure_Effects zone_break_fast.fds
 $QFDS -d Pressure_Effects zone_break_slow.fds
 $QFDS -d Pressure_Effects zone_break_fast_ulmat.fds
@@ -769,10 +771,6 @@ $QFDS -d Scalar_Analytical_Solution compression_wave_FL4_16.fds
 $QFDS -d Scalar_Analytical_Solution compression_wave_FL4_32.fds
 $QFDS -d Scalar_Analytical_Solution compression_wave_FL4_64.fds
 $QFDS -d Scalar_Analytical_Solution compression_wave_FL4_128.fds
-$QFDS -d Scalar_Analytical_Solution compression_wave_FL5_16.fds
-$QFDS -d Scalar_Analytical_Solution compression_wave_FL5_32.fds
-$QFDS -d Scalar_Analytical_Solution compression_wave_FL5_64.fds
-$QFDS -d Scalar_Analytical_Solution compression_wave_FL5_128.fds
 $QFDS -d Scalar_Analytical_Solution move_slug.fds
 $QFDS -d Scalar_Analytical_Solution move_slug_fl1.fds
 $QFDS -d Scalar_Analytical_Solution shunn3_32.fds
@@ -818,10 +816,6 @@ $QFDS      -d Scalar_Analytical_Solution soborot_superbee_cos_wave_16.fds
 $QFDS      -d Scalar_Analytical_Solution soborot_superbee_cos_wave_32.fds
 $QFDS      -d Scalar_Analytical_Solution soborot_superbee_cos_wave_64.fds
 $QFDS -p 4 -d Scalar_Analytical_Solution soborot_superbee_cos_wave_128.fds
-$QFDS      -d Scalar_Analytical_Solution soborot_mp5_cos_wave_16.fds
-$QFDS      -d Scalar_Analytical_Solution soborot_mp5_cos_wave_32.fds
-$QFDS      -d Scalar_Analytical_Solution soborot_mp5_cos_wave_64.fds
-$QFDS -p 4 -d Scalar_Analytical_Solution soborot_mp5_cos_wave_128.fds
 
 $QFDS -o 1 -d Thread_Check race_test_1.fds
 $QFDS -o 4 -d Thread_Check race_test_4.fds
