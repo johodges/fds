@@ -281,6 +281,7 @@ LOGICAL :: NO_PRESSURE_ZONES=.FALSE.                !< Flag to suppress pressure
 LOGICAL :: CTRL_DIRECT_FORCE=.FALSE.                !< Allow adjustable direct force via CTRL logic
 LOGICAL :: REACTING_THIN_OBSTRUCTIONS=.FALSE.       !< Thin obstructions that off-gas are present
 LOGICAL :: TENSOR_DIFFUSIVITY=.FALSE.               !< If true, use experimental tensor diffusivity model for spec and tmp
+LOGICAL :: VTK_KEEPOPEN=.FALSE.                     !< Flag that indicates VTK output files should be kept open or closed
 LOGICAL :: VTK_BINARY=.TRUE.                        !< Flag that indicates VTK outputs should be binary or ascii
 LOGICAL :: VTK_HDF=.TRUE.                           !< Flag that indicates VTK outputs should be HDF or XML
 LOGICAL :: PARAVIEW_PROJECT=.FALSE.                 !< Flag that indicates if a paraview project script should be generated
