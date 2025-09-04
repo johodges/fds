@@ -274,7 +274,6 @@ LOGICAL :: REACTING_THIN_OBSTRUCTIONS=.FALSE.       !< Thin obstructions that of
 LOGICAL :: TENSOR_DIFFUSIVITY=.FALSE.               !< If true, use experimental tensor diffusivity model for spec and tmp
 LOGICAL :: OXPYRO_MODEL=.FALSE.                     !< Flag to use oxidative pyrolysis mass transfer model
 LOGICAL :: OUTPUT_WALL_QUANTITIES=.FALSE.           !< Flag to force call to WALL_MODEL
-LOGICAL :: FLUX_LIMITER_MW_CORRECTION=.FALSE.       !< Flag for MW correction ensure consistent equation of state at face
 LOGICAL :: STORE_FIRE_ARRIVAL=.FALSE.               !< Flag for tracking arrival of spreading fire front over a surface
 LOGICAL :: STORE_FIRE_RESIDENCE=.FALSE.             !< Flag for tracking residence time of spreading fire front over a surface
 LOGICAL :: STORE_LS_SPREAD_RATE=.FALSE.             !< Flag for outputting local level set spread rate magnitude
@@ -306,8 +305,8 @@ CHARACTER(FORMULA_LENGTH) :: COMPILE_DATE='unknown'                       !< Dat
 ! Miscellaneous real constants
 
 REAL(EB) :: CPOPR                              !< Specific heat divided by the Prandtl number (J/kg/K)
-REAL(EB) :: RSC                                !< Reciprocal of the Schmidt number
-REAL(EB) :: RPR                                !< Reciprocal of the Prandtl number
+REAL(EB) :: RSC_T                              !< Reciprocal of the turbulent Schmidt number
+REAL(EB) :: RPR_T                              !< Reciprocal of the turbulent Prandtl number
 REAL(EB) :: TMPA                               !< Ambient temperature (K)
 REAL(EB) :: TMPA4                              !< Ambient temperature to the fourth power (K^4)
 REAL(EB) :: RHOA                               !< Ambient density (kg/m3)
@@ -335,8 +334,8 @@ REAL(EB) :: CFL_MAX=1.0_EB                     !< Upper bound of CFL constraint
 REAL(EB) :: CFL_MIN=0.8_EB                     !< Lower bound of CFL constraint
 REAL(EB) :: VN_MAX=1.0_EB                      !< Upper bound of von Neumann constraint
 REAL(EB) :: VN_MIN=0.8_EB                      !< Lower bound of von Neumann constraint
-REAL(EB) :: PR                                 !< Prandtl number
-REAL(EB) :: SC                                 !< Schmidt number
+REAL(EB) :: PR_T                               !< Turbulent Prandtl number
+REAL(EB) :: SC_T                               !< Turbulent Schmidt number
 REAL(EB) :: GROUND_LEVEL=0._EB                 !< Height of the ground, used for establishing atmospheric profiles (m)
 REAL(EB) :: LIMITING_DT_RATIO=1.E-4_EB         !< Ratio of current to initial time step when code is stopped
 REAL(EB) :: NOISE_VELOCITY=0.005_EB            !< Velocity of random noise vectors (m/s)
@@ -439,6 +438,7 @@ INTEGER :: MAX_PRIORITY=1                                           !< Maximum n
 INTEGER :: N_PASSIVE_SCALARS=0                                      !< Number of passive scalars
 INTEGER :: N_TOTAL_SCALARS=0                                        !< Number of total scalars, tracked and passive
 INTEGER :: N_FIXED_CHEMISTRY_SUBSTEPS=-1                            !< Number of chemistry substeps in combustion routine
+INTEGER :: ZETA_0_RAMP_INDEX=0                                      !< Ramp index for initial unmixed fraction
 
 LOGICAL :: OUTPUT_CHEM_IT=.FALSE.
 LOGICAL :: REAC_SOURCE_CHECK=.FALSE.
@@ -885,14 +885,25 @@ END MODULE RADCONS
 MODULE CHEMCONS
 USE PRECISION_PARAMETERS
 
+!> \brief Parameters associated with IGNITION_ZONES
+TYPE IGNITION_ZONE_TYPE
+   REAL(EB) :: X1            !< Lower x bound of Ignition Zone
+   REAL(EB) :: X2            !< Upper x bound of Ignition Zone
+   REAL(EB) :: Y1            !< Lower y bound of Ignition Zone
+   REAL(EB) :: Y2            !< Upper y bound of Ignition Zone
+   REAL(EB) :: Z1            !< Lower z bound of Ignition Zone
+   REAL(EB) :: Z2            !< Upper z bound of Ignition Zone
+   INTEGER :: DEVC_INDEX=0   !< Index of device controlling the status of the zone
+   CHARACTER(LABEL_LENGTH) :: DEVC_ID='null'  !< Name of device controlling the status of the zone
+END TYPE IGNITION_ZONE_TYPE
+
 INTEGER, ALLOCATABLE, DIMENSION(:) :: YP2ZZ
 REAL(EB) :: ODE_MIN_ATOL= -1._EB
 LOGICAL  :: EQUIV_RATIO_CHECK = .FALSE.
-REAL(EB) :: MIN_EQUIV_RATIO=0.0_EB
+REAL(EB) :: MIN_EQUIV_RATIO=0.1_EB
 REAL(EB) :: MAX_EQUIV_RATIO=20.0_EB
 LOGICAL  :: DO_CHEM_LOAD_BALANCE = .FALSE.
 INTEGER  :: MAX_CVODE_SUBSTEPS=100000
-REAL(EB) :: MAX_CHEM_TIME=1.E-6_EB
 INTEGER  :: CVODE_MAX_TRY=4
 LOGICAL  :: IS_EXPONENT_LT_1 = .FALSE.
 
@@ -901,5 +912,18 @@ LOGICAL  :: WRITE_CVODE_SUBSTEPS = .FALSE.
 REAL(EB), ALLOCATABLE, DIMENSION(:,:) :: CVODE_SUBSTEP_DATA
 INTEGER :: TOTAL_SUBSTEPS_TAKEN
 
-END MODULE CHEMCONS
+! Adiabatic flame temperature calculation
+CHARACTER(LABEL_LENGTH) :: FUEL_ID_FOR_AFT='null'
+INTEGER :: I_FUEL,I_CO2,I_H2O,I_O2,I_N2 ! Store the index of the species in the ZZ array.
+LOGICAL  :: USE_MIXED_ZN_AFT_TMP = .FALSE.
 
+! Mixing
+REAL(EB) :: ZETA_ARTIFICAL_MIN_LIMIT=0.99_EB
+REAL(EB) :: ZETA_ARTIFICAL_MAX_LIMIT=0.9999_EB
+REAL(EB) :: ZETA_FIRST_STEP_DIV=10._EB
+
+! IGNITION ZONES (mainly for premixed flame)
+INTEGER :: N_IGNITION_ZONES = 0
+TYPE(IGNITION_ZONE_TYPE), DIMENSION(MAX_IGNITION_ZONES) :: IGNITION_ZONES !< Coordinates of ignition zones
+
+END MODULE CHEMCONS
