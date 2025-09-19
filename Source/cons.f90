@@ -294,6 +294,8 @@ CHARACTER(CHID_LENGTH) :: CHID                                            !< Job
 CHARACTER(CHID_LENGTH) :: RESTART_CHID                                    !< Job ID for a restarted case
 CHARACTER(FILE_LENGTH) :: RESULTS_DIR                                     !< Custom directory for output
 CHARACTER(FILE_LENGTH) :: BINGEOM_DIR                                     !< Custom directory for writing binary geometry files
+CHARACTER(5) :: DECIMAL_SPECIFIER='POINT'                                 !< Use point or comma for real outputs
+CHARACTER(1) :: SEPARATOR                                                 !< Decimal point or comma
 
 ! Dates, version numbers, revision numbers
 
@@ -519,6 +521,7 @@ REAL(EB), ALLOCATABLE, DIMENSION(:) :: PRESSURE_ERROR_MAX        !< Max pressure
 INTEGER, ALLOCATABLE, DIMENSION(:,:) :: VELOCITY_ERROR_MAX_LOC   !< Indices of max velocity error
 INTEGER, ALLOCATABLE, DIMENSION(:,:) :: PRESSURE_ERROR_MAX_LOC   !< Indices of max pressure error
 INTEGER :: PRESSURE_ITERATIONS=0                                 !< Counter for pressure iterations
+INTEGER :: MAX_PREDICTOR_PRESSURE_ITERATIONS=-1                  !< Max pressure iterations per pressure solve in predictor
 INTEGER :: MAX_PRESSURE_ITERATIONS=10                            !< Max pressure iterations per pressure solve
 INTEGER :: TOTAL_PRESSURE_ITERATIONS=0                           !< Counter for total pressure iterations
 CHARACTER(LABEL_LENGTH) :: PRES_METHOD='FFT'                     !< Pressure solver method
@@ -582,6 +585,9 @@ CHARACTER(FN_LENGTH), ALLOCATABLE, DIMENSION(:) :: FN_PART,FN_PROF,FN_XYZ,FN_TER
 CHARACTER(FN_LENGTH), ALLOCATABLE, DIMENSION(:,:) :: FN_SLCF,FN_SLCF_GEOM,FN_BNDF,FN_BNDG,FN_ISOF,FN_ISOF2,FN_SMOKE3D,FN_RADF
 
 CHARACTER(9) :: FMT_R
+CHARACTER(25) :: REAL_LIST
+CHARACTER( 9) :: CHAR_LIST
+CHARACTER(11) :: INTG_LIST
 LOGICAL :: OUT_FILE_OPENED=.FALSE.
 
 ! Boundary condition arrays
@@ -914,7 +920,7 @@ INTEGER :: TOTAL_SUBSTEPS_TAKEN
 
 ! Adiabatic flame temperature calculation
 CHARACTER(LABEL_LENGTH) :: FUEL_ID_FOR_AFT='null'
-INTEGER :: I_FUEL,I_CO2,I_H2O,I_O2,I_N2 ! Store the index of the species in the ZZ array.
+INTEGER :: I_FUEL,I_CO2,I_H2O,I_O2 ! Store the index of the species in the ZZ array.
 LOGICAL  :: USE_MIXED_ZN_AFT_TMP = .FALSE.
 
 ! Mixing
