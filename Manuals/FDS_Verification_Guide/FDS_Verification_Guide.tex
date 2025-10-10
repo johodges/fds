@@ -1354,7 +1354,7 @@ In Fig.~\ref{fig_vort2d_pointvelocity}, we show the $u$-velocity at a single poi
 
 When multiple infinitely fast reactions are present it is not trivial to correctly partition the limiting reactant and maintain species bounds.  FDS uses a special subcycling algorithm by Kahaner \cite{Kahaner:1989} to maintain boundedness for species when time integrating the ODEs for the chemical reaction step (the method is further discussed in the FDS Tech Guide \cite{FDS_Math_Guide}).  In this section, we examine two test cases designed to verify the time integration method.
 
-The first case, \ct{bound_test_1}, consists of two independent reactions, one with air as the limiting reactant, one with fuel as the limiting reactant.  The stoichiometry of each reaction is the same: $\mathrm{F} + \mathrm{A} \rightarrow 2\,\mathrm{P}$.  The initial volume fractions of determine which species are limiting.  The results are shown in Fig.~\ref{fig:bound_test_1}.  For the first reaction, $X_{\rm F1}$ is initially 0.3 and $X_{\rm A1}$ is initially 0.2.  Therefore, all the A1 is converted to P1, which has a final volume fraction of $X_{\rm P1}=0.4$.  In the second reaction, the initial fuel volume fraction is $X_{\rm F2}=0.1$ (limiting) and the initial air volume fraction is $X_{\rm A2}=0.4$.  As can be see in Fig.~\ref{fig:bound_test_1}, the resulting final values give a product volume fraction of twice the limiting reactant, $X_{\rm P2}=0.2$.
+The first case, \ct{bound_test_1}, consists of two independent reactions, one with air as the limiting reactant, one with fuel as the limiting reactant.  The stoichiometry of each reaction is the same: $\mathrm{F} + \mathrm{A} \rightarrow 2\,\mathrm{P}$.  The initial volume fractions determine which species are limiting.  The results are shown in Fig.~\ref{fig:bound_test_1}.  For the first reaction, $X_{\rm F1}$ is initially 0.3 and $X_{\rm A1}$ is initially 0.2.  Therefore, all the A1 is converted to P1, which has a final volume fraction of $X_{\rm P1}=0.4$.  In the second reaction, the initial fuel volume fraction is $X_{\rm F2}=0.1$ (limiting) and the initial air volume fraction is $X_{\rm A2}=0.4$.  As can be seen in Fig.~\ref{fig:bound_test_1}, the resulting final values give a product volume fraction of twice the limiting reactant, $X_{\rm P2}=0.2$.
 
 \begin{figure}[!ht]
    \centering
@@ -1484,7 +1484,7 @@ In this case a 128 \si{m^3} box is initially filled with air at 20 \si{\degreeCe
       \includegraphics[height=2.2in]{SCRIPT_FIGURES/fire_const_gamma_dH} &
       \includegraphics[height=2.2in]{SCRIPT_FIGURES/fire_const_gamma_dP}
    \end{tabular*}
-   \caption[Results of the \ct{fire\_const\_gamma} case]{Results of the \ct{fire\_const\_gamma} case.}
+   \caption[Results of the \ct{fire_const_gamma} case]{Results of the \ct{fire_const_gamma} case.}
    \label{fig_fire_const_gamma}
 \end{figure}
 
@@ -2314,10 +2314,10 @@ Unstable & $4000 \times 2000 \times 1500$ & $40\times 40 \times 40$     & 0.0200
 
 \begin{figure}[ht]
    \centering
-   \includegraphics[height=2.2in]{../FDS_Validation_Guide/SCRIPT_FIGURES/Schoenberg_Ekman_Layers/ekman_neutral_winds}
+   \includegraphics[height=2.2in]{SCRIPT_FIGURES/ekman_neutral_winds}
    \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
-      \includegraphics[height=2.2in]{../FDS_Validation_Guide/SCRIPT_FIGURES/Schoenberg_Ekman_Layers/ekman_stable_winds} &
-      \includegraphics[height=2.2in]{../FDS_Validation_Guide/SCRIPT_FIGURES/Schoenberg_Ekman_Layers/ekman_unstable_winds}
+      \includegraphics[height=2.2in]{SCRIPT_FIGURES/ekman_stable_winds} &
+      \includegraphics[height=2.2in]{SCRIPT_FIGURES/ekman_unstable_winds}
    \end{tabular*}
    \caption[Schoenberg Ekman Layers]{\label{fig:ekman_layers} Comparison Ekman layer profiles for neutral (top), stable (bottom-left), and unstable (bottom-right) atmospheric boundary layers with the simulation results of Schoenberg \cite{Schoenberg:2004}.}
 \end{figure}
@@ -4423,6 +4423,15 @@ This verification test consists of two test cases. The second case, \ct{aerosol\
 
 This verification test consists of two test cases. The second case, \ct{aerosol\_thermophoretic\_deposition\_2}, reverses the temperature gradient. The case consists of a box 1~cm on a side with adiabatic, free-slip side walls and a 100 K temperature gradient over the height of the box. The box is filled with two gas species each having a molecular weight of 28.8~g/mol, a viscosity of $2\times10^{-5}$~\si{kg/(m.s)}, a thermal conductivity of 0.025~\si{W/(m.K)}, and specific heat of 1~\si{kJ/(kg.K)}, and zero diffusivity. One of the gas species is defined as an aerosol with a diameter of 1~$\mu$m, a solid phase density of 2000~\si{kg/m^3}, and a solid phase conductivity of 1~\si{W/(m.K)}. The initial mass fraction of the aerosol is $1\times10^{-5}$. The gas temperature is initialized to its steady-state temperature gradient. \ct{STRATIFICATION}, \ct{NOISE}, and all aerosol behaviors except for \ct{THERMOPHORETIC\_SETTLING} and \ct{THERMOPHORETIC\_DEPOSITION} are turned off. Thermophoretic settling rates are weakly dependent on the gas density. Since there is a temperature gradient, the settling rates are not uniform over the height of the box. Unlike the gravitational settling case, this means over long enough time periods the overall settling rate is not linear in time; however, for a short time period a near linear settling rate is expected and can be determined analytically.
 
+Using the equation for the thermophoretic velocity, $u_{\rm th}$, the thermophoretic velocities for the gas cells adjacent to the hot and cold walls are respectively 2.25E-4~\si{m/s} and 2.15E-4~\si{m/s}. Adjacent to the cold wall, $u_{\rm th}$ is the rate at which the aerosol deposits onto the wall. Over the simulation time of 2~s, the soot will move 4.29E-4~m which is 42.9~\% of the cell size. That fraction of the aerosol in the cell will deposit which is 5.05E-9~\si{kg/m^2}. Adjacent to the hot wall, $u_{\rm th}$ is the rate at which the aerosol leaves the cell. Over the simulation time of 2~s, the soot will move 4.49E-4~m which is 44.9~\% of the cell size. One minus that fraction of the original aerosol density in the cell will remain which is 4.98E-6~\si{kg/m^3}.
+
+The thermophorertic velocity is given by
+\be
+u_{\rm th} = \frac{K_{\rm th} \nu}{T_{\rm g}} \; \frac{\d T}{\d x}
+\ee
+where $K_{\rm th}$ is a coefficient dependent on the particle size and solid conductivity, $\nu$ is the kinematic viscosity, $T_{\rm g}$ is the cell gas temperature, and $\frac{\d T}{\d x}$ is the temperature gradient.
+
+
 \begin{figure}[ht]
 \noindent
 \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
@@ -4734,7 +4743,7 @@ This example tests the simple thermocouple model in FDS. It consists of a box wh
 
 
 
-\section{Heat Conduction through Insulated Steel (\texorpdfstring{\ct{insulated\_steel\_x}}{insulated\_steel\_x})}
+\section{Heat Conduction through Insulated Steel (\texorpdfstring{\ct{insulated_steel_x}}{insulated\_steel\_x})}
 \label{insulated_steel_pipe}
 \label{insulated_steel_plate}
 
@@ -4759,7 +4768,7 @@ where $T_{s,i}$ is the surface temperature corresponding to radial coordinates 1
 \includegraphics[height=2.2in]{SCRIPT_FIGURES/insulated_steel_pipe} \\
 \multicolumn{2}{c}{\includegraphics[height=2.2in]{SCRIPT_FIGURES/insulated_steel_pipe_2d}}
 \end{tabular*}
-\caption[The \ct{insulated\_steel} test cases]{Steady-state temperature profile within an insulated steel plate and pipe. Note that the pipe conduction case has been performed as part of a 3-D calculation (upper right) and a 2-D, axi-symmetric calculation (bottom).}
+\caption[The \ct{insulated_steel} test cases]{Steady-state temperature profile within an insulated steel plate and pipe. Note that the pipe conduction case has been performed as part of a 3-D calculation (upper right) and a 2-D, axi-symmetric calculation (bottom).}
 \label{insulated_steel_fig}
 \end{figure}
 
@@ -7934,31 +7943,40 @@ The use of computer software for safety purposes is sometimes regulated under a 
 \end{enumerate}
 
 \begin{landscape}
-\centering
-\captionof{table}[FDS Installation Test Suite]{FDS Installation Test Suite. Details of each case may be found in the listed section or reference. Note that the light blue colored links refer to the FDS User's Guide.} \label{tbl:installation_test}
-\footnotesize
-\begin{tabular}{|l|c|l|l|l|}
-\hline
-Folder                  & Reference                       & Input File                                 & FDS Output File                                  & Expected Results File \\ \hline \hline
-Controls                & \ref{UG-activate_vents}         & activate\_vents.fds                        & activate\_vents\_ctrl.csv                        & activate\_vents.csv \\ \hline
-Pressure\_Effects       & \ref{isentropic2}               & isentropic2.fds                            & isentropic2\_devc.csv                           & isentropic2.csv \\ \hline
-Energy\_Budget          & \ref{energy_budget_tmix}        & energy\_budget\_tmix.fds                   & energy\_budget\_tmix\_devc.csv                   & energy\_budget\_tmix.csv \\ \hline
-Energy\_Budget          & \ref{energy_budget_walls}       & energy\_budget\_cold\_walls.fds            & energy\_budget\_cold\_walls\_hrr.csv             & energy\_budget\_cold\_walls.csv \\ \hline
-Fires                   & \ref{UG-spray_burner}           & spray\_burner.fds                          & spray\_burner\_hrr.csv                           & spray\_burner.csv \\ \hline
-Heat\_Transfer          & \ref{heat_conduction_kc}        & heat\_conduction\_kc.fds                   & heat\_conduction\_kc\_devc.csv                   & heat\_conduction\_kc.csv \\ \hline
-HVAC                    & \ref{ashrae7}                   & ashrae7\_table.fds                         & ashrae7\_table\_devc.csv                         & ashrae7\_exp.csv \\ \hline
-Pressure\_Solver        & \ref{UG-duct_flow}              & duct\_flow.fds                             & duct\_flow\_devc.csv                             & duct\_flow.csv \\ \hline
-Pressure\_Solver        & \ref{UG-duct_flow}              & duct\_flow\_uglmat.fds                     & duct\_flow\_uglmat\_devc.csv                     & duct\_flow.csv \\ \hline
-Pyrolysis               & \ref{enthalpy}                  & enthalpy.fds                               & enthalpy\_devc.csv                               & enthalpy.csv \\ \hline
-Pyrolysis               & \ref{shrink_swell}              & shrink\_swell.fds                          & shrink\_swell\_devc.csv                          & shrink\_swell.csv \\ \hline
-Radiation               & \ref{radiation_shield}          & radiation\_shield.fds                      & radiation\_shield\_devc.csv                      & radiation\_shield.csv \\ \hline
-Species                 & \ref{mixing_reactions}          & reactionrate\_EDC\_1step\_CH4\_nonmix.fds  & reactionrate\_EDC\_1step\_CH4\_nonmix\_devc.csv  & reactionrate\_EDC\_1step\_CH4\_nonmix\_spec.csv \\ \hline
-Species                 & \ref{finite_rate_reactions}     & reactionrate\_arrhenius\_2order\_1step.fds & reactionrate\_arrhenius\_2order\_1step\_devc.csv & reactionrate\_arrhenius\_2order\_1step\_soln.csv \\ \hline
-Sprinklers\_and\_Sprays & \ref{water_evaporation_1}       & water\_evaporation\_1.fds                  & water\_evaporation\_1\_devc.csv                  & water\_evaporation\_1.csv \\ \hline
-Sprinklers\_and\_Sprays & \ref{particle_drag}             & particle\_drag\_U50\_N16.fds               & particle\_drag\_U50\_N16\_devc.csv               & particle\_drag\_U50\_N16.csv \\ \hline
 
-\end{tabular}
+\scriptsize
+\begin{xltabular}{9in}{|p{1.4in}|X|p{2.1in}|p{2.1in}|p{2.1in}|}
+\caption[FDS Installation Test Suite]{FDS Installation Test Suite. Details of each case may be found in the listed section or reference. Note that the light blue colored links refer to the FDS User's Guide.}
+\label{tbl:installation_test} \\
+\hline
+Folder                      & Reference                     & Input File                                   & FDS Output File                                    & Expected Results File                              \\ 
+\hline \hline
+\endfirsthead
+\caption[]{FDS Installation Test (continued).} \\
+\hline
+Folder                      & Reference                     & Input File                                   & FDS Output File                                    & Expected Results File                              \\
+\hline \hline
+\endhead
+\tct{Controls}              & \ref{UG-activate_vents}      & \tct{activate_vents.fds}                      & \tct{activate_vents_ctrl.csv}                      & \tct{activate_vents.csv}                           \\ \hline
+\tct{Energy_Budget}         & \ref{energy_budget_tmix}     & \tct{energy_budget_tmix.fds}                  & \tct{energy_budget_tmix_devc.csv}                  & \tct{energy_budget_tmix.csv}                       \\ \hline
+\tct{Energy_Budget}         & \ref{energy_budget_walls}    & \tct{energy_budget_cold_walls.fds}            & \tct{energy_budget_cold_walls_hrr.csv}             & \tct{energy_budget_cold_walls.csv}                 \\ \hline
+\tct{Fires}                 & \ref{UG-spray_burner}        & \tct{spray_burner.fds}                        & \tct{spray_burner_hrr.csv}                         & \tct{spray_burner.csv}                             \\ \hline
+\tct{Heat_Transfer}         & \ref{heat_conduction_kc}     & \tct{heat_conduction_kc.fds}                  & \tct{heat_conduction_kc_devc.csv}                  & \tct{heat_conduction_kc.csv}                       \\ \hline
+\tct{HVAC}                  & \ref{ashrae7}                & \tct{ashrae7_table.fds}                       & \tct{ashrae7_table_devc.csv}                       & \tct{ashrae7_exp.csv}                              \\ \hline
+\tct{Pressure_Effects}      & \ref{isentropic2}            & \tct{isentropic2.fds}                         & \tct{isentropic2_devc.csv}                         & \tct{isentropic2.csv}                              \\ \hline
+\tct{Pressure_Solver}       & \ref{UG-duct_flow}           & \tct{duct_flow.fds}                           & \tct{duct_flow_devc.csv}                           & \tct{duct_flow.csv}                                \\ \hline
+\tct{Pressure_Solver}       & \ref{UG-duct_flow}           & \tct{duct_flow_uglmat.fds}                    & \tct{duct_flow_uglmat_devc.csv}                    & \tct{duct_flow.csv}                                \\ \hline
+\tct{Pyrolysis}             & \ref{enthalpy}               & \tct{enthalpy.fds}                            & \tct{enthalpy_devc.csv}                            & \tct{enthalpy.csv}                                 \\ \hline
+\tct{Pyrolysis}             & \ref{shrink_swell}           & \tct{shrink_swell.fds}                        & \tct{shrink_swell_devc.csv}                        & \tct{shrink_swell.csv}                             \\ \hline
+\tct{Radiation}             & \ref{radiation_shield}       & \tct{radiation_shield.fds}                    & \tct{radiation_shield_devc.csv}                    & \tct{radiation_shield.csv}                         \\ \hline
+\tct{Species}               & \ref{mixing_reactions}       & \tct{reactionrate_EDC_1step_CH4_nonmix.fds}   & \tct{reactionrate_EDC_1step_CH4_nonmix_devc.csv}   & \tct{reactionrate_EDC_1step_CH4_nonmix_spec.csv}   \\ \hline
+\tct{Species}               & \ref{finite_rate_reactions}  & \tct{reactionrate_arrhenius_2order_1step.fds} & \tct{reactionrate_arrhenius_2order_1step_devc.csv} & \tct{reactionrate_arrhenius_2order_1step_soln.csv} \\ \hline
+\tct{Sprinklers_and_Sprays} & \ref{water_evaporation_1}    & \tct{water_evaporation_1.fds}                 & \tct{water_evaporation_1_devc.csv}                 & \tct{water_evaporation_1.csv}                      \\ \hline
+\tct{Sprinklers_and_Sprays} & \ref{particle_drag}          & \tct{particle_drag_U50_N16.fds}               & \tct{particle_drag_U50_N16_devc.csv}               & \tct{particle_drag_U50_N16.csv}                    \\ \hline
+\end{xltabular}
 \end{landscape}
+
+\normalsize
 
 % Unstructured geometry Appendix:
 
