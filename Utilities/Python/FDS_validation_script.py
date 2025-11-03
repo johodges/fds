@@ -1,53 +1,98 @@
 #!$FIREMODELS/fds/.github/fds_python_env/bin/python
 
-import subprocess
 import fdsplotlib
 import importlib
+import runpy
 importlib.reload(fdsplotlib) # use for development (while making changes to fdsplotlib.py)
 
-# # Scripts to run prior to dataplot
+# Scripts to run prior to dataplot
 
-# print("catchpole_spread_rates...");       subprocess.run(["python","./scripts/catchpole_spread_rates.py"])
-# print("NIST_deposition_gauge...");        subprocess.run(["python","./scripts/NIST_deposition_gauge.py"])
-# print("flame_height...");                 subprocess.run(["python","./scripts/flame_height.py"])
-# print("NIST_RSE...");                     subprocess.run(["python","./scripts/NIST_RSE.py"])
-# print("sippola_aerosol_deposition...");   subprocess.run(["python","./scripts/sippola_aerosol_deposition.py"])
-# print("layer_height...");                 subprocess.run(["python","./scripts/layer_height.py"])
-# print("NIST_NRC_Corner_Effects...");      subprocess.run(["python","./scripts/NIST_NRC_Corner_Effects.py"])
-# # print("fm_data_center...");               subprocess.run(["python","./scripts/fm_data_center.py"])
-# print("LNG_Dispersion...");               subprocess.run(["python","./scripts/LNG_Dispersion.py"])
-# print("LNG_wind_profiles...");            subprocess.run(["python","./scripts/LNG_wind_profiles.py"])
-# print("FM_Vertical_Wall_Flames...");      subprocess.run(["python","./scripts/FM_Vertical_Wall_Flames.py"])
-# print("umd_line_burner_process...");      subprocess.run(["python","./scripts/umd_line_burner_process.py"])
-# # print("Askervein_Hill...");               subprocess.run(["python","./scripts/Askervein_Hill.py"])
-# print("UWO_Wind_Tunnel...");              subprocess.run(["python","./scripts/UWO_Wind_Tunnel.py"])
-# print("FM_Burner...");                    subprocess.run(["python","./scripts/FM_Burner.py"])
-# print("Crown_Fires...");                  subprocess.run(["python","./scripts/Crown_Fires.py"])
-# print("Ranz_Marshall...");                subprocess.run(["python","./scripts/Ranz_Marshall.py"])
-# print("Phoenix_LNG_Fires...");            subprocess.run(["python","./scripts/Phoenix_LNG_Fires.py"])
+print("NIST_deposition_gauge...");        runpy.run_path("./scripts/NIST_deposition_gauge.py", run_name="__main__")
+print("flame_height...");                 runpy.run_path("./scripts/flame_height.py", run_name="__main__")
+print("NIST_RSE...");                     runpy.run_path("./scripts/NIST_RSE.py", run_name="__main__")
+print("sippola_aerosol_deposition...");   runpy.run_path("./scripts/sippola_aerosol_deposition.py", run_name="__main__")
+print("layer_height...");                 runpy.run_path("./scripts/layer_height.py", run_name="__main__")
+print("NIST_NRC_Corner_Effects...");      runpy.run_path("./scripts/NIST_NRC_Corner_Effects.py", run_name="__main__")
+print("LNG_Dispersion...");               runpy.run_path("./scripts/LNG_Dispersion.py", run_name="__main__")
+print("LNG_wind_profiles...");            runpy.run_path("./scripts/LNG_wind_profiles.py", run_name="__main__")
+print("FM_Vertical_Wall_Flames...");      runpy.run_path("./scripts/FM_Vertical_Wall_Flames.py", run_name="__main__")
+print("umd_line_burner_process...");      runpy.run_path("./scripts/umd_line_burner_process.py", run_name="__main__")
+# print("Askervein_Hill...");               runpy.run_path("./scripts/Askervein_Hill.py", run_name="__main__")
+print("UWO_Wind_Tunnel...");              runpy.run_path("./scripts/UWO_Wind_Tunnel.py", run_name="__main__")
+print("FM_Burner...");                    runpy.run_path("./scripts/FM_Burner.py", run_name="__main__")
+print("Crown_Fires...");                  runpy.run_path("./scripts/Crown_Fires.py", run_name="__main__")
+print("Ranz_Marshall...");                runpy.run_path("./scripts/Ranz_Marshall.py", run_name="__main__")
+print("Phoenix_LNG_Fires...");            runpy.run_path("./scripts/Phoenix_LNG_Fires.py", run_name="__main__")
+print("Sandia_Plumes_TKE...");            runpy.run_path("./scripts/Sandia_Plumes_TKE.py", run_name="__main__")
 
 # Dataplot and scatplot options
 
+Dataplot_Inputs_File = '../Matlab/FDS_validation_dataplot_inputs.csv'
+EXP_Dir = '../../../exp/'
+OUT_Dir = '../../../out/'
+Manuals_Dir = '../../Manuals/'
+Scatterplot_Inputs_File = '../Matlab/FDS_validation_scatterplot_inputs.csv'
+
 # Statistics output options
+
+Stats_Output = 'Validation'
+Scatterplot_Dir = '../../Manuals/FDS_Validation_Guide/SCRIPT_FIGURES/ScatterPlots/'
 
 # # Run dataplot and scatplot scripts
 
-# fdsplotlib.dataplot(config_filename='../Matlab/FDS_validation_dataplot_inputs.csv',
-#                     expdir='../../../exp/',
-#                     cmpdir='../../../out/',
-#                     pltdir='../../Manuals/',
-#                     close_figs=True,
+# saved_data, drange = fdsplotlib.dataplot(config_filename=Dataplot_Inputs_File,
+#                                          expdir=EXP_Dir,
+#                                          cmpdir=OUT_Dir,
+#                                          pltdir=Manuals_Dir,
+#                                          close_figs=True,
+#                                          verbose=True,
+#                                          plot_range=["all"],
+#                                          quantity_filter=["Target Heat Flux"],
+#                                          ) # see notes below on plot_range
+
+# # ----- write saved_data, drange to disk -----
+# import pickle
+
+# # Save
+# with open("saved_data_debug.pkl", "wb") as f:
+#     pickle.dump((saved_data, drange), f)
+
+# # Later...
+# with open("saved_data_debug.pkl", "rb") as f:
+#     saved_data, drange = pickle.load(f)
+# #---------------------------------------------
+
+# fdsplotlib.scatplot(saved_data,drange,
+#                     Manuals_Dir=Manuals_Dir,
+#                     Scatterplot_Inputs_File=Scatterplot_Inputs_File,
+#                     Stats_Output=Stats_Output,
+#                     Scatterplot_Dir=Scatterplot_Dir,
 #                     verbose=True,
-#                     plot_range=["all"]) # see notes below on plot_range
+#                     )
+
+# Create table of git statistics for FDS Validation Guide
+
+print("validation_git_stats...");         runpy.run_path("./scripts/validation_git_stats.py", run_name="__main__")
 
 # Special cases
 
-print("FM_FPRF_Datacenter...");    subprocess.run(["python","./scripts/FM_FPRF_Datacenter.py"])
-print("McCaffrey_Plume...");       subprocess.run(["python","./scripts/McCaffrey_Plume.py"])
-print("Sandia_Pools...");          subprocess.run(["python","./scripts/Sandia_Pools.py"])
-print("TUS_Facade...");            subprocess.run(["python","./scripts/TUS_Facade_contours.py"])
-print("USFS_Deep_Fuel_Beds...");   subprocess.run(["python","./scripts/USFS_Deep_Fuel_Beds.py"])
-print("Wu_Bakar_Tunnels...");      subprocess.run(["python","./scripts/Wu_Bakar_Tunnels.py"])
+print("Backward_Facing_Step...");         runpy.run_path("./scripts/Backward_Facing_Step.py", run_name="__main__")
+print("Beyler_Hood...");                  runpy.run_path("./scripts/Beyler_Hood.py", run_name="__main__")
+print("BRE_LEMTA_Sprays...");             runpy.run_path("./scripts/BRE_LEMTA_Sprays.py", run_name="__main__")
+print("catchpole_spread_rates...");       runpy.run_path("./scripts/catchpole_spread_rates.py", run_name="__main__")
+print("FHWA_Tunnel...");                  runpy.run_path("./scripts/FHWA_Tunnel.py", run_name="__main__")
+print("FM_FPRF_Datacenter...");           runpy.run_path("./scripts/FM_FPRF_Datacenter.py", run_name="__main__")
+print("Heskestad_Flame_Height_2...");     runpy.run_path("./scripts/Heskestad_Flame_Height_2.py", run_name="__main__")
+print("McCaffrey_Plume...");              runpy.run_path("./scripts/McCaffrey_Plume.py", run_name="__main__")
+print("Memorial_Tunnel...");              runpy.run_path("./scripts/Memorial_Tunnel.py", run_name="__main__")
+print("Memorial_Tunnel_2...");            runpy.run_path("./scripts/Memorial_Tunnel_2.py", run_name="__main__")
+print("NIST_NRC_Parallel_Panels...");     runpy.run_path("./scripts/NIST_NRC_Parallel_Panels.py", run_name="__main__")
+print("Sandia_Plumes...");                runpy.run_path("./scripts/Sandia_Plumes.py", run_name="__main__")
+print("Sandia_Pools...");                 runpy.run_path("./scripts/Sandia_Pools.py", run_name="__main__")
+print("Theobald_Hose_Stream...");         runpy.run_path("./scripts/Theobald_Hose_Stream.py", run_name="__main__")
+print("TUS_Facade...");                   runpy.run_path("./scripts/TUS_Facade_contours.py", run_name="__main__")
+print("USFS_Deep_Fuel_Beds...");          runpy.run_path("./scripts/USFS_Deep_Fuel_Beds.py", run_name="__main__")
+print("Wu_Bakar_Tunnels...");             runpy.run_path("./scripts/Wu_Bakar_Tunnels.py", run_name="__main__")
 
 print("Python validation scripts completed successfully!")
 
