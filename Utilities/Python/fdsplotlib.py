@@ -268,8 +268,14 @@ def dataplot(config_filename, **kwargs):
     }
     safe_na_values = default_na
 
-    df = pd.read_csv(configdir + config_filename, sep=',', engine='python',
-                     quotechar='"', na_values=safe_na_values, keep_default_na=False)
+    df = pd.read_csv(
+        configdir + config_filename,
+        sep=',',
+        engine='python',
+        quotechar='"',
+        na_values=safe_na_values,
+        keep_default_na=False
+    )
     df["__orig_index__"] = df.index
     C = df.where(pd.notnull(df), None)
 
@@ -355,6 +361,7 @@ def dataplot(config_filename, **kwargs):
         start_idx = int(pp.d1_Data_Row - pp.d1_Col_Name_Row - 1)
         x, _ = get_data(E, pp.d1_Ind_Col_Name, start_idx)
         y, _ = get_data(E, pp.d1_Dep_Col_Name, start_idx)
+
         flip_axis = str(pp.Flip_Axis).strip().lower() in ['yes', 'true', '1']
         x_scale = float(pp.Scale_Ind or 1.0)
         y_scale = float(pp.Scale_Dep or 1.0)
@@ -384,7 +391,7 @@ def dataplot(config_filename, **kwargs):
         raw_keys = [c.strip() for c in (pp.d1_Key or '').split('|')] if pp.d1_Key else []
         key_labels = (raw_keys + [None] * len(y_plot_list))[:len(y_plot_list)]
 
-        if dtest:
+        if dtest or gtest:
             if verbose:
                 print(f"Generating plot {csv_rownum} {pltdir}{pp.Plot_Filename}...")
             if close_figs:
@@ -396,21 +403,30 @@ def dataplot(config_filename, **kwargs):
         else:
             continue
 
+        # --- Styles and keys (EXP d1) ---
+        d1_raw_styles = [c.strip() for c in (pp.d1_Style or '').split('|')] if pp.d1_Style else []
+        d1_styles = (d1_raw_styles + [None] * len(y_plot_list))[:len(y_plot_list)]
+        d1_raw_keys = [c.strip() for c in (pp.d1_Key or '').split('|')] if pp.d1_Key else []
+        d1_key_labels = (d1_raw_keys + [None] * len(y_plot_list))[:len(y_plot_list)]
+
+        # --- Plot Exp curves ---
         for i, (x_i, y_i) in enumerate(zip(x_plot_list, y_plot_list)):
             f = plot_to_fig(
                 x_data=y_i if flip_axis else x_i,
                 y_data=x_i if flip_axis else y_i,
                 figure_handle=None if (first_plot and i == 0) else f,
-                data_label=key_labels[i],
+                data_label=d1_key_labels[i],
                 x_label=pp.Dep_Title if flip_axis else pp.Ind_Title,
                 y_label=pp.Ind_Title if flip_axis else pp.Dep_Title,
-                marker_style=styles[i],
+                marker_style=d1_styles[i],
                 x_min=pp.Min_Dep if flip_axis else pp.Min_Ind,
                 x_max=pp.Max_Dep if flip_axis else pp.Max_Ind,
                 y_min=pp.Min_Ind if flip_axis else pp.Min_Dep,
                 y_max=pp.Max_Ind if flip_axis else pp.Max_Dep,
                 legend_location=matlab_legend_to_matplotlib(pp.Key_Position),
+                legend_expand=pp.Paper_Width_Factor,
                 plot_type=plot_type,
+                plot_title=pp.Plot_Title,
             )
 
         # --- Save measured (experimental) ---
@@ -420,7 +436,8 @@ def dataplot(config_filename, **kwargs):
                 qty_meas_list = []
                 if y.ndim == 2 and x.ndim == 2 and y.shape[1] == x.shape[1]:
                     for j in range(y.shape[1]):
-                        xj = np.ravel(x[:, j]); yj = np.ravel(y[:, j])
+                        xj = np.ravel(x[:, j])
+                        yj = np.ravel(y[:, j])
                         mask = np.isfinite(xj) & np.isfinite(yj)
                         xj, yj = xj[mask], yj[mask]
                         if len(xj) > 0 and len(yj) > 0:
@@ -447,11 +464,17 @@ def dataplot(config_filename, **kwargs):
                     )
                     vals_meas_list = [vals_meas]
                     qty_meas_list = [qty_meas]
+
+                # Replace placeholder "curve#" labels with actual dependent column name
+                qty_label = str(pp.d1_Dep_Col_Name).strip() or "Unknown"
+
                 Save_Measured_Metric[-1] = np.array(vals_meas_list, dtype=object)
-                Save_Measured_Quantity[-1] = np.array(qty_meas_list, dtype=object)
+                Save_Measured_Quantity[-1] = np.array([qty_label] * len(vals_meas_list), dtype=object)
+
             except Exception as e:
                 print(f"[dataplot] Error computing measured metric for {pp.Dataname}: {e}")
-                Save_Measured_Metric[-1] = np.array([]); Save_Measured_Quantity[-1] = []
+                Save_Measured_Metric[-1] = np.array([])
+                Save_Measured_Quantity[-1] = []
 
         # ---------------------- LOAD MODEL ----------------------
         M = read_csv_cached(cmpdir + pp.d2_Filename,
@@ -461,18 +484,24 @@ def dataplot(config_filename, **kwargs):
         M = M.loc[:M.dropna(how='all').last_valid_index()]
         M.columns = M.columns.str.strip()
         start_idx = int(pp.d2_Data_Row - pp.d2_Col_Name_Row - 1)
+
         version_string = revision
         if pp.VerStr_Filename:
             try:
                 with open(cmpdir + pp.VerStr_Filename, "r") as fver:
                     Lines = fver.readlines()
-                    if Lines: version_string = Lines[0].strip()
+                    if Lines:
+                        version_string = Lines[0].strip()
             except Exception as e:
                 print(f"[dataplot] Warning: could not read version string: {e}")
+
         x, _ = get_data(M, pp.d2_Ind_Col_Name, start_idx)
         y, _ = get_data(M, pp.d2_Dep_Col_Name, start_idx)
-        x_scale = float(pp.Scale_Ind or 1.0); y_scale = float(pp.Scale_Dep or 1.0)
-        x_scaled = np.asarray(x) / x_scale; y_scaled = np.asarray(y) / y_scale
+
+        x_scale = float(pp.Scale_Ind or 1.0)
+        y_scale = float(pp.Scale_Dep or 1.0)
+        x_scaled = np.asarray(x) / x_scale
+        y_scaled = np.asarray(y) / y_scale
 
         if x_scaled.ndim == 2 and y_scaled.ndim == 2 and x_scaled.shape[1] == y_scaled.shape[1]:
             x_plot_list = [x_scaled[:, i] for i in range(x_scaled.shape[1])]
@@ -481,11 +510,29 @@ def dataplot(config_filename, **kwargs):
             x_plot_list = [x_scaled for _ in range(y_scaled.shape[1])]
             y_plot_list = [y_scaled[:, i] for i in range(y_scaled.shape[1])]
         else:
-            x_plot_list = [np.ravel(x_scaled)]; y_plot_list = [np.ravel(y_scaled)]
+            x_plot_list = [np.ravel(x_scaled)]
+            y_plot_list = [np.ravel(y_scaled)]
 
         for xi, yi in zip(x_plot_list, y_plot_list):
             if len(xi) != len(yi):
                 print(f"[dataplot] Pair length mismatch in {pp.Dataname}: x={len(xi)}, y={len(yi)}")
+
+        # --- Styles and keys (MODEL d2) ---
+        d2_raw_styles = [c.strip() for c in (pp.d2_Style or '').split('|')] if pp.d2_Style else []
+        d2_styles = (d2_raw_styles + [None] * len(y_plot_list))[:len(y_plot_list)]
+        d2_raw_keys = [c.strip() for c in (pp.d2_Key or '').split('|')] if pp.d2_Key else []
+        d2_key_labels = (d2_raw_keys + [None] * len(y_plot_list))[:len(y_plot_list)]
+
+        # --- Plot model curves ---
+        for i, (x_i, y_i) in enumerate(zip(x_plot_list, y_plot_list)):
+            f = plot_to_fig(
+                x_data=y_i if flip_axis else x_i,
+                y_data=x_i if flip_axis else y_i,
+                revision_label=version_string if dtest else None,
+                figure_handle=f,
+                data_label=d2_key_labels[i],
+                line_style=d2_styles[i],
+            )
 
         # --- Interpolated, metric-aware model logic ---
         if not gtest:
@@ -493,7 +540,7 @@ def dataplot(config_filename, **kwargs):
                 metric_str = str(pp.Metric or '').strip().lower()
                 meas_list, pred_list, qty_pred_list = [], [], []
 
-                # --- Load experimental data for alignment ---
+                # Load experimental again for alignment (safe; cached)
                 E = read_csv_cached(expdir + pp.d1_Filename,
                                     header=int(pp.d1_Col_Name_Row - 1),
                                     sep=',', engine='python', quotechar='"',
@@ -503,7 +550,7 @@ def dataplot(config_filename, **kwargs):
                 x_exp, _ = get_data(E, pp.d1_Ind_Col_Name, start_idx_exp)
                 y_exp, _ = get_data(E, pp.d1_Dep_Col_Name, start_idx_exp)
 
-                # Normalize shapes
+                # Normalize shapes to 2D (col-major semantics)
                 x_exp = np.atleast_2d(x_exp)
                 y_exp = np.atleast_2d(y_exp)
                 x_mod = np.atleast_2d(x)
@@ -512,6 +559,7 @@ def dataplot(config_filename, **kwargs):
                 ncols = min(y_exp.shape[1], y_mod.shape[1])
 
                 for j in range(ncols):
+                    # Cull NaNs per series keeping pairs aligned
                     xj_e = np.ravel(x_exp[:, j] if x_exp.shape[1] > 1 else x_exp)
                     yj_e = np.ravel(y_exp[:, j])
                     m_e = np.isfinite(xj_e) & np.isfinite(yj_e)
@@ -523,7 +571,7 @@ def dataplot(config_filename, **kwargs):
                     xj_m, yj_m = xj_m[m_m], yj_m[m_m]
 
                     if metric_str == 'all':
-                        # interpolate model→exp grid
+                        # align by interpolating model to exp x
                         if xj_m.size < 2 or xj_e.size == 0:
                             continue
                         yj_m_i = np.interp(xj_e, xj_m, yj_m, left=np.nan, right=np.nan)
@@ -533,53 +581,72 @@ def dataplot(config_filename, **kwargs):
                         x_use = xj_e[mask_pair]
                         y_exp_use = yj_e[mask_pair]
                         y_mod_use = yj_m_i[mask_pair]
+                        # compute both on the same x grid
+                        v_meas, _, _ = _compute_metrics_block(
+                            x=x_use, Y=y_exp_use, metric=metric_str,
+                            initial_value=float(pp.d1_Initial_Value or 0.0),
+                            comp_start=float(pp.d1_Comp_Start or np.nan),
+                            comp_end=float(pp.d1_Comp_End or np.nan),
+                            dep_comp_start=float(pp.d1_Dep_Comp_Start or np.nan),
+                            dep_comp_end=float(pp.d1_Dep_Comp_End or np.nan),
+                            variant_side="d1",
+                        )
+                        v_pred, qty_pred, _ = _compute_metrics_block(
+                            x=x_use, Y=y_mod_use, metric=metric_str,
+                            initial_value=float(pp.d2_Initial_Value or 0.0),
+                            comp_start=float(pp.d2_Comp_Start or np.nan),
+                            comp_end=float(pp.d2_Comp_End or np.nan),
+                            dep_comp_start=float(pp.d2_Dep_Comp_Start or np.nan),
+                            dep_comp_end=float(pp.d2_Dep_Comp_End or np.nan),
+                            variant_side="d2",
+                        )
                     else:
-                        # no interpolation; operate independently
-                        x_use, y_exp_use, y_mod_use = xj_e, yj_e, yj_m
-
-                    if y_exp_use.size == 0 or y_mod_use.size == 0:
-                        continue
-
-                    v_meas, _, _ = _compute_metrics_block(
-                        x=x_use, Y=y_exp_use, metric=metric_str,
-                        initial_value=float(pp.d1_Initial_Value or 0.0),
-                        comp_start=float(pp.d1_Comp_Start or np.nan),
-                        comp_end=float(pp.d1_Comp_End or np.nan),
-                        dep_comp_start=float(pp.d1_Dep_Comp_Start or np.nan),
-                        dep_comp_end=float(pp.d1_Dep_Comp_End or np.nan),
-                        variant_side="d1",
-                    )
-                    v_pred, qty_pred, _ = _compute_metrics_block(
-                        x=x_use if metric_str == 'all' else xj_m,
-                        Y=y_mod_use, metric=metric_str,
-                        initial_value=float(pp.d2_Initial_Value or 0.0),
-                        comp_start=float(pp.d2_Comp_Start or np.nan),
-                        comp_end=float(pp.d2_Comp_End or np.nan),
-                        dep_comp_start=float(pp.d2_Dep_Comp_Start or np.nan),
-                        dep_comp_end=float(pp.d2_Dep_Comp_End or np.nan),
-                        variant_side="d2",
-                    )
+                        # aggregate metrics: NO interpolation; operate independently
+                        if yj_e.size == 0 or yj_m.size == 0:
+                            continue
+                        v_meas, _, _ = _compute_metrics_block(
+                            x=xj_e, Y=yj_e, metric=metric_str,
+                            initial_value=float(pp.d1_Initial_Value or 0.0),
+                            comp_start=float(pp.d1_Comp_Start or np.nan),
+                            comp_end=float(pp.d1_Comp_End or np.nan),
+                            dep_comp_start=float(pp.d1_Dep_Comp_Start or np.nan),
+                            dep_comp_end=float(pp.d1_Dep_Comp_End or np.nan),
+                            variant_side="d1",
+                        )
+                        v_pred, qty_pred, _ = _compute_metrics_block(
+                            x=xj_m, Y=yj_m, metric=metric_str,
+                            initial_value=float(pp.d2_Initial_Value or 0.0),
+                            comp_start=float(pp.d2_Comp_Start or np.nan),
+                            comp_end=float(pp.d2_Comp_End or np.nan),
+                            dep_comp_start=float(pp.d2_Dep_Comp_Start or np.nan),
+                            dep_comp_end=float(pp.d2_Dep_Comp_End or np.nan),
+                            variant_side="d2",
+                        )
 
                     meas_list.append(np.atleast_1d(v_meas))
                     pred_list.append(np.atleast_1d(v_pred))
                     qty_pred_list.append(qty_pred)
 
-                # flatten appropriately
                 flat_meas = np.concatenate(meas_list) if meas_list else np.array([])
                 flat_pred = np.concatenate(pred_list) if pred_list else np.array([])
 
                 nmin = min(flat_meas.size, flat_pred.size)
                 if nmin == 0:
                     print(f"[dataplot] Warning: no valid data pairs for {pp.Dataname}")
-                elif flat_meas.size != flat_pred.size:
-                    print(f"[dataplot] Truncated unequal vectors for {pp.Dataname}: "
-                          f"Measured={flat_meas.size}, Predicted={flat_pred.size} → {nmin}")
-                    flat_meas = flat_meas[:nmin]
-                    flat_pred = flat_pred[:nmin]
+                else:
+                    if flat_meas.size != flat_pred.size:
+                        print(f"[dataplot] Truncated unequal vectors for {pp.Dataname}: "
+                              f"Measured={flat_meas.size}, Predicted={flat_pred.size} → {nmin}")
+                        # Truncate both sides to maintain one-to-one correspondence
+                        flat_meas = flat_meas[:nmin]
+                        flat_pred = flat_pred[:nmin]
 
-                Save_Measured_Metric[-1] = flat_meas
-                Save_Predicted_Metric[-1] = flat_pred
-                Save_Predicted_Quantity[-1] = np.array(qty_pred_list, dtype=object)
+                    # Save truncated paired arrays (but don’t overwrite earlier measured data)
+                    Save_Measured_Metric[-1] = flat_meas
+                    Save_Predicted_Metric[-1] = flat_pred
+
+                    qty_label = str(pp.d2_Dep_Col_Name).strip() or "Unknown"
+                    Save_Predicted_Quantity[-1] = np.array([qty_label] * len(flat_pred), dtype=object)
 
             except Exception as e:
                 print(f"[dataplot] Error computing predicted metric for {pp.Dataname}: {e}")
@@ -654,6 +721,7 @@ def plot_to_fig(x_data,y_data,**kwargs):
     plot_style = get_plot_style("fds")
 
     import matplotlib.pyplot as plt
+    import matplotlib.ticker as ticker
 
     plt.rcParams.update({
         "pdf.use14corefonts": True,
@@ -691,6 +759,7 @@ def plot_to_fig(x_data,y_data,**kwargs):
     default_legend_location = 'best'
     default_legend_framealpha = 1
     default_markevery = 1
+    detault_nticks = 6
     markerfacecolor = None
     markeredgecolor = 'black'
     marker = None
@@ -724,7 +793,7 @@ def plot_to_fig(x_data,y_data,**kwargs):
         ax = fig.add_axes([left, bottom, ax_w, ax_h])
 
     # widen paper if legend is outside, keeping axes fixed in physical size
-    if kwargs.get('legend_location') == 'outside':
+    if (kwargs.get('legend_location') == 'outside') and (not using_existing_figure):
         legend_expand = kwargs.get('legend_expand', 1.25)
         old_size = fig.get_size_inches()
 
@@ -787,14 +856,6 @@ def plot_to_fig(x_data,y_data,**kwargs):
     if linestyle == '--': dashes = kwargs.get('line_dashes',(6, 6))
     if linestyle == '-.': dashes = kwargs.get('line_dashes',(6, 3, 1, 3))
     if linestyle == ':': dashes = kwargs.get('line_dashes',(1, 3))
-
-    # This set is what we were using in Matlab
-    # if linestyle == '': dashes = (None, None); linewidth = 0;
-    # if linestyle == '-': dashes = (None, None)
-    # if linestyle == '--': dashes = kwargs.get('line_dashes',(10, 6.2))
-    # if linestyle == '-.': dashes = kwargs.get('line_dashes',(12, 7.4, 3, 7.4))
-    # if linestyle == ':': dashes = kwargs.get('line_dashes',(1, 3))
-
 
     data_label = kwargs.get('data_label',None)
 
@@ -945,6 +1006,88 @@ def plot_to_fig(x_data,y_data,**kwargs):
                       fontsize=ax._legend_fontsize,
                       frameon=False)
 
+        # plot title
+        if kwargs.get('plot_title'):
+            if kwargs.get('title_fontsize'):
+                title_fontsize=kwargs.get('title_fontsize')
+            else:
+                title_fontsize=default_title_fontsize
+
+            plt.text(0.05, 0.95, kwargs.get('plot_title'),
+            transform=plt.gca().transAxes,
+            fontsize=title_fontsize,
+            verticalalignment='top',
+            horizontalalignment='left')
+
+        # set axes and tick properties
+        xmin=kwargs.get('x_min')
+        xmax=kwargs.get('x_max')
+        ymin=kwargs.get('y_min')
+        ymax=kwargs.get('y_max')
+
+        ax.set_xlim(xmin,xmax)
+        ax.set_ylim(ymin,ymax)
+
+        # ------------------------------------------------------------
+        # TICK HANDLING (clean, deterministic)
+        # ------------------------------------------------------------
+
+        scale_x = ax.get_xscale()
+        scale_y = ax.get_yscale()
+
+        # -------------------------------
+        # X-axis ticks
+        # -------------------------------
+        if xticks is not None:
+            # USER EXPLICIT OVERRIDE
+            ax.set_xticks(xticks)
+            ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%g'))
+
+        elif xnumticks is not None:
+            # USER requests a number of ticks
+            if scale_x == "log":
+                ax.set_xticks(np.logspace(np.log10(xmin), np.log10(xmax), xnumticks))
+            else:
+                ax.set_xticks(np.linspace(xmin, xmax, xnumticks))
+
+        else:
+            # DEFAULT behavior
+            if scale_x == "log":
+                ax.xaxis.set_major_locator(ticker.LogLocator(base=10))
+                ax.xaxis.set_major_formatter(ticker.LogFormatterSciNotation(base=10))
+            else:
+                ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=detault_nticks, min_n_ticks=4))
+                sf = ticker.ScalarFormatter(useMathText=True)
+                sf.set_powerlimits((-3, 4))
+                ax.xaxis.set_major_formatter(sf)
+
+        # -------------------------------
+        # Y-axis ticks
+        # -------------------------------
+        if yticks is not None:
+            # USER EXPLICIT OVERRIDE
+            ax.set_yticks(yticks)
+            ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%g'))
+
+        elif ynumticks is not None:
+            # USER requests a number of ticks
+            if scale_y == "log":
+                ax.set_yticks(np.logspace(np.log10(ymin), np.log10(ymax), ynumticks))
+            else:
+                ax.set_yticks(np.linspace(ymin, ymax, ynumticks))
+
+        else:
+            # DEFAULT behavior
+            if scale_y == "log":
+                ax.yaxis.set_major_locator(ticker.LogLocator(base=10))
+                ax.yaxis.set_major_formatter(ticker.LogFormatterSciNotation(base=10))
+            else:
+                ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=detault_nticks, min_n_ticks=4))
+                sf = ticker.ScalarFormatter(useMathText=True)
+                sf.set_powerlimits((-3, 4))
+                ax.yaxis.set_major_formatter(sf)
+
+
     # --- case 3: existing figure, adding more data ---
     else:
         loc = getattr(ax, '_legend_loc', 'best')
@@ -959,51 +1102,6 @@ def plot_to_fig(x_data,y_data,**kwargs):
                       fontsize=fontsize,
                       framealpha=framealpha)
 
-
-    # plot title
-    if kwargs.get('plot_title'):
-        if kwargs.get('title_fontsize'):
-            title_fontsize=kwargs.get('title_fontsize')
-        else:
-            title_fontsize=default_title_fontsize
-
-        plt.text(0.05, 0.95, kwargs.get('plot_title'),
-        transform=plt.gca().transAxes,
-        fontsize=title_fontsize,
-        verticalalignment='top',
-        horizontalalignment='left')
-
-    # set axes and tick properties
-    xmin=kwargs.get('x_min')
-    xmax=kwargs.get('x_max')
-    ymin=kwargs.get('y_min')
-    ymax=kwargs.get('y_max')
-
-    ax.set_xlim(xmin,xmax)
-    ax.set_ylim(ymin,ymax)
-
-    # set number of ticks if requested by the user
-    if xnumticks != None:
-        if plot_type in ('loglog', 'semilogx'):
-            ax.set_xticks(np.logspace(xmin, xmax, xnumticks))
-        else:
-            ax.set_xticks(np.linspace(xmin, xmax, xnumticks))
-    if ynumticks != None:
-        if plot_type in ('loglog', 'semilogy'):
-            ax.set_yticks(np.logspace(ymin, ymax, ynumticks))
-        else:
-            ax.set_yticks(np.linspace(ymin, ymax, ynumticks))
-
-    # set ticks if requested by the user
-    if xticks is not None: ax.set_xticks(xticks)
-    if yticks is not None: ax.set_yticks(yticks)
-
-
-    if plot_type in ('loglog', 'semilogy'):
-        apply_global_exponent(ax, axis='y', fontsize=axeslabel_fontsize)
-    if plot_type in ('loglog', 'semilogx'):
-        apply_global_exponent(ax, axis='x', fontsize=axeslabel_fontsize)
-
     if kwargs.get('revision_label'):
         add_version_string(ax=ax, version_str=kwargs.get('revision_label'), plot_type=plot_type, font_size=version_fontsize)
 
@@ -1012,70 +1110,6 @@ def plot_to_fig(x_data,y_data,**kwargs):
     set_ticks_like_matlab(fig)
 
     return fig
-
-
-def apply_global_exponent(ax, axis='y', fontsize=10, minor_subs=None):
-    import numpy as np
-    from matplotlib.ticker import FuncFormatter, LogLocator
-
-    if axis == 'y':
-        ticks = ax.get_yticks()
-        axis_obj = ax.yaxis
-        lims = ax.get_ylim()
-    else:
-        ticks = ax.get_xticks()
-        axis_obj = ax.xaxis
-        lims = ax.get_xlim()
-
-    # Keep only positive finite ticks (for log axes)
-    ticks = np.array([t for t in ticks if t > 0 and np.isfinite(t)])
-    if ticks.size == 0:
-        return
-
-    # Choose representative exponent
-    exp = int(np.floor(np.log10(np.median(ticks))))
-    scale = 10.0**exp
-
-    # Major formatter: fixed-point decimals
-    def fmt(val, pos):
-        v = val / scale
-        return "{:g}".format(v)
-
-    axis_obj.set_major_formatter(FuncFormatter(fmt))
-    axis_obj.get_offset_text().set_visible(False)
-
-    # Decide what to do with minor tick labels
-    span_decades = np.log10(lims[1]) - np.log10(max(lims[0], 1e-300))
-
-    # Default subs = 2, 4, 6, 8
-    if minor_subs is None:
-        minor_subs = [2, 4, 6, 8]
-
-    if span_decades <= 1.1:  # only ~1 decade
-        axis_obj.set_minor_locator(LogLocator(base=10.0, subs=minor_subs, numticks=10))
-        axis_obj.set_minor_formatter(FuncFormatter(lambda val, pos: "{:g}".format(val/scale)))
-    else:
-        ax.tick_params(axis=axis, which='minor', labelleft=False, labelbottom=False)
-
-    # Force tick labels NOT to go through TeX
-    if axis == 'y':
-        for label in ax.get_yticklabels() + ax.get_yticklabels(minor=True):
-            label.set_usetex(False)
-    else:
-        for label in ax.get_xticklabels() + ax.get_xticklabels(minor=True):
-            label.set_usetex(False)
-
-    # Place the ×10^exp text at the axis end
-    if exp != 0:
-        if axis == 'y':
-            ax.text(0, 1.01, rf"$\times 10^{{{exp}}}$",
-                    transform=ax.transAxes,
-                    ha='left', va='bottom', fontsize=fontsize)
-        else:
-            ax.text(1.0, -0.1, rf"$\times 10^{{{exp}}}$",
-                    transform=ax.transAxes,
-                    ha='right', va='top', fontsize=fontsize)
-
 
 
 def parse_matlab_style(style):
@@ -1306,14 +1340,13 @@ def get_plot_style(style="fds"):
 
 def matlab_legend_to_matplotlib(position):
     """
-    Convert a MATLAB legend position string to the corresponding matplotlib location string.
-
-    Parameters:
-        position (str): MATLAB-style legend position (e.g., 'northeast', 'southwestoutside')
-
-    Returns:
-        str: Matplotlib-compatible legend location (e.g., 'upper right')
+    Convert a MATLAB legend position string to a matplotlib-compatible location.
     """
+    if not isinstance(position, str):
+        return 'best'
+
+    pos = position.strip().lower()
+
     mapping = {
         'north': 'upper center',
         'south': 'lower center',
@@ -1323,17 +1356,15 @@ def matlab_legend_to_matplotlib(position):
         'southeast': 'lower right',
         'southwest': 'lower left',
         'northwest': 'upper left',
-        'northeastoutside': 'center left',    # rough equivalent
-        'northwestoutside': 'center right',
-        'southeastoutside': 'center left',
-        'southwestoutside': 'center right',
+
+        # outside positions (MATLAB → Matplotlib approximations)
+        'eastoutside': 'outside',
+
         'best': 'best'
     }
 
-    if not isinstance(position, str):
-        return 'best'
+    return mapping.get(pos, 'best')
 
-    return mapping.get(position.strip().lower(), 'best')
 
 
 def define_plot_parameters(D, irow, lightweight=False):
@@ -1417,14 +1448,14 @@ def define_plot_parameters(D, irow, lightweight=False):
         d.Font_Interpreter = get('Font_Interpreter')
 
         # --- sanitization for human-facing strings ---
-        d.Plot_Title      = sanitize(safe_strip(d.Plot_Title))
-        d.Ind_Title       = sanitize(safe_strip(d.Ind_Title))
-        d.Dep_Title       = sanitize(safe_strip(d.Dep_Title))
-        d.Quantity        = sanitize(safe_strip(d.Quantity))
-        d.Metric          = sanitize(safe_strip(d.Metric))
-        d.Group_Key_Label = sanitize(safe_strip(d.Group_Key_Label))
-        d.d1_Key          = sanitize(safe_strip(d.d1_Key))
-        d.d2_Key          = sanitize(safe_strip(d.d2_Key))
+        d.Plot_Title      = safe_strip(d.Plot_Title)
+        d.Ind_Title       = safe_strip(d.Ind_Title)
+        d.Dep_Title       = safe_strip(d.Dep_Title)
+        d.Quantity        = safe_strip(d.Quantity)
+        d.Metric          = safe_strip(d.Metric)
+        d.Group_Key_Label = safe_strip(d.Group_Key_Label)
+        d.d1_Key          = safe_strip(d.d1_Key)
+        d.d2_Key          = safe_strip(d.d2_Key)
 
         return d
 
@@ -1491,14 +1522,14 @@ def define_plot_parameters(D, irow, lightweight=False):
     d = plot_parameters_full()
 
     # --- sanitization block (unchanged) ---
-    d.Plot_Title      = sanitize(safe_strip(d.Plot_Title))
-    d.Ind_Title       = sanitize(safe_strip(d.Ind_Title))
-    d.Dep_Title       = sanitize(safe_strip(d.Dep_Title))
-    d.Quantity        = sanitize(safe_strip(d.Quantity))
-    d.Metric          = sanitize(safe_strip(d.Metric))
-    d.Group_Key_Label = sanitize(safe_strip(d.Group_Key_Label))
-    d.d1_Key          = sanitize(safe_strip(d.d1_Key))
-    d.d2_Key          = sanitize(safe_strip(d.d2_Key))
+    d.Plot_Title      = safe_strip(d.Plot_Title)
+    d.Ind_Title       = safe_strip(d.Ind_Title)
+    d.Dep_Title       = safe_strip(d.Dep_Title)
+    d.Quantity        = safe_strip(d.Quantity)
+    d.Metric          = safe_strip(d.Metric)
+    d.Group_Key_Label = safe_strip(d.Group_Key_Label)
+    d.d1_Key          = safe_strip(d.d1_Key)
+    d.d2_Key          = safe_strip(d.d2Key)
 
     return d
 
@@ -1654,9 +1685,9 @@ def scatplot(saved_data, drange, **kwargs):
         Output_File = os.path.join(Scatterplot_Dir, "verification_scatterplot_output.csv")
         Histogram_Tex_Output = os.path.join(Scatterplot_Dir, "verification_histograms.tex")
     else:
-        Statistics_Tex_Output = os.path.join(Scatterplot_Dir, f"ScatterPlot_Tables_{Stats_Output}.tex")
-        Output_File = os.path.join(Scatterplot_Dir, f"ScatterPlot_Stats_{Stats_Output}.csv")
-        Histogram_Tex_Output = os.path.join(Scatterplot_Dir, f"ScatterPlot_Histograms_{Stats_Output}.tex")
+        Statistics_Tex_Output = os.path.join(Scatterplot_Dir, f"Scatterplot_Tables_{Stats_Output}.tex")
+        Output_File = os.path.join(Scatterplot_Dir, f"Scatterplot_Stats_{Stats_Output}.csv")
+        Histogram_Tex_Output = os.path.join(Scatterplot_Dir, f"Scatterplot_Histograms_{Stats_Output}.tex")
 
     # --- Unpack saved_data (dataplot output) ---
     (
@@ -1679,9 +1710,34 @@ def scatplot(saved_data, drange, **kwargs):
     if verbose:
         print(f"[scatplot] Loaded {len(Q)} scatterplot definitions")
 
-    output_stats = [["Quantity", "Number of Datasets", "Number of Points",
-                     "Sigma_Experiment", "Sigma_Model", "Bias"]]
     Output_Histograms = []
+
+    if Stats_Output.lower() == "verification":
+        output_stats = [[
+            "Dataplot Line Number",
+            "Verification Group",
+            "Case Name",
+            "Type of Metric",
+            "Expected Quantity",
+            "Expected Value",
+            "Predicted Quantity",
+            "Predicted Value",
+            "Dependent Variable",
+            "Type of Error",
+            "Error",
+            "Error Tolerance",
+            "Within Specified Error Tolerance",
+            "Plot Filename",
+        ]]
+    else:  # validation
+        output_stats = [[
+            "Quantity",
+            "Number of Datasets",
+            "Number of Points",
+            "Sigma_Experiment",
+            "Sigma_Model",
+            "Bias",
+        ]]
 
     for _, row in Q.iterrows():
         plt.close('all')
@@ -1691,11 +1747,16 @@ def scatplot(saved_data, drange, **kwargs):
         Plot_Filename = row["Plot_Filename"]
         Plot_Min = float(row["Plot_Min"])
         Plot_Max = float(row["Plot_Max"])
-        Sigma_E_input = float(row["Sigma_E"])
         Plot_Type = str(row["Plot_Type"]).strip().lower()
 
-        if verbose:
-            print(f"[scatplot] Processing {Scatter_Plot_Title}")
+        # --- MATLAB parity: Sigma_E only required for Validation ---
+        if Stats_Output.lower() == "validation":
+            Sigma_E_input = float(row["Sigma_E"]) if "Sigma_E" in row and not pd.isna(row["Sigma_E"]) else 0.0
+        else:
+            Sigma_E_input = 0.0
+
+        #if verbose:
+        #    print(f"[scatplot] Processing {Scatter_Plot_Title}")
 
         # Match dataplot entries
         match_idx = [i for i, q in enumerate(Save_Quantity)
@@ -1704,15 +1765,100 @@ def scatplot(saved_data, drange, **kwargs):
             print(f"[scatplot] No dataplot entries for {Scatter_Plot_Title}")
             continue
 
-        # Measured_Values = np.array([Save_Measured_Metric[i] for i in match_idx], dtype=float).flatten()
-        # Predicted_Values = np.array([Save_Predicted_Metric[i] for i in match_idx], dtype=float).flatten()
+        # --- Split logic: Verification vs Validation ---
+        # --- VERIFICATION branch ---
+        if Stats_Output.lower() == "verification":
 
-        Measured_Values = np.concatenate(
-            [np.ravel(np.array(Save_Measured_Metric[i], dtype=float)) for i in match_idx]
-        )
-        Predicted_Values = np.concatenate(
-            [np.ravel(np.array(Save_Predicted_Metric[i], dtype=float)) for i in match_idx]
-        )
+            # Loop through each dataplot entry that matches this scatterplot
+            for idx in match_idx:
+
+                # --- Extract measured/predicted numeric values ---
+                mvals = np.array(Save_Measured_Metric[idx], dtype=float).flatten()
+                pvals = np.array(Save_Predicted_Metric[idx], dtype=float).flatten()
+
+                # Keep only finite pairs
+                mask = np.isfinite(mvals) & np.isfinite(pvals)
+                mvals = mvals[mask]
+                pvals = pvals[mask]
+
+                # --- Extract quantity labels (MATLAB behavior: pipe = multiple quantities) ---
+                def _split_pipe_list(x):
+                    """
+                    MATLAB dataplot uses '|' to separate multiple quantity labels.
+                    Convert "a|b|c" → ["a", "b", "c"] exactly.
+                    """
+                    if x is None:
+                        return [""]
+
+                    # Try to extract a single string out of an object/array
+                    try:
+                        s = str(np.ravel(np.array(x, dtype=object))[0])
+                    except Exception:
+                        s = str(x)
+
+                    # Properly split on pipes and strip whitespace
+                    return [item.strip() for item in s.split("|")]
+
+                meas_labels = _split_pipe_list(Save_Measured_Quantity[idx])
+                pred_labels = _split_pipe_list(Save_Predicted_Quantity[idx])
+
+                # Assign label by index (MATLAB style)
+                def _label_at(k, labels):
+                    if len(labels) == 0:
+                        return ""
+                    if len(labels) == 1:
+                        return labels[0]
+                    if k < len(labels):
+                        return labels[k]
+                    return labels[-1]  # MATLAB tolerance fallback
+
+                # Case metadata
+                case_name = Save_Dataname[idx]
+                group     = Save_Group_Key_Label[idx]
+                metric    = Save_Metric_Type[idx]
+                depvar    = Save_Dep_Title[idx]
+                err_tol   = float(Save_Error_Tolerance[idx] or 0.0)
+                err_type  = str(Save_Quantity[idx] or "")
+                plot_file = Save_Plot_Filename[idx]
+
+                # --- Generate one row per point ---
+                for k in range(min(len(mvals), len(pvals))):
+
+                    m = float(mvals[k])
+                    p = float(pvals[k])
+                    mq = _label_at(k, meas_labels)
+                    pq = _label_at(k, pred_labels)
+
+                    # Compute error (Relative or Absolute)
+                    if err_type.lower().startswith("relative"):
+                        err = abs((p - m) / m) if m != 0 else np.nan
+                    else:
+                        err = abs(p - m)
+
+                    within = "Yes" if (np.isfinite(err) and err <= err_tol) else "Out of Tolerance"
+
+                    # Order MUST match MATLAB exactly
+                    output_stats.append([
+                        idx + 1,           # Dataplot line number
+                        group,             # Verification group
+                        case_name,         # Case name (string)
+                        metric,            # Metric type (e.g. "end")
+                        mq,                # Expected quantity label (MATLAB: one per row)
+                        m,                 # Expected value
+                        pq,                # Predicted quantity label
+                        p,                 # Predicted value
+                        depvar,            # Dependent variable title
+                        err_type,          # Type of Error (Relative or Absolute)
+                        f"{err:1.2e}",     # Error
+                        f"{err_tol:1.2e}", # Error Tolerance
+                        within,            # Within Spec?
+                        plot_file,         # Plot filename
+                    ])
+
+            continue  # Move to next scatterplot definition
+
+        Measured_Values = np.concatenate(  [np.ravel(np.array(Save_Measured_Metric[i], dtype=float)) for i in match_idx]  )
+        Predicted_Values = np.concatenate(  [np.ravel(np.array(Save_Predicted_Metric[i], dtype=float)) for i in match_idx]  )
 
         # --- Ensure equal-length measured and predicted arrays before masking ---
         m_len = len(Measured_Values)
@@ -1880,54 +2026,168 @@ def statistics_output(
     Output_Histograms=None,
 ):
     """
-    Replicates MATLAB statistics_output.m for Validation/Verification
-    using pandas only (no csv module import).
+    Python translation of MATLAB statistics_output.m
 
-    Produces:
-      - validation_scatterplot_output.csv  (MATLAB-style quoting)
-      - validation_statistics.tex
-      - validation_histograms.tex
+    - For 'Verification': writes CSV + verification_statistics.tex
+    - For 'Validation' : writes CSV + validation_statistics.tex + histograms
     """
+
     import os
     import pandas as pd
     import numpy as np
 
-    if Stats_Output.lower() == "none":
+    if Stats_Output is None or str(Stats_Output).lower() == "none":
         print("[statistics_output] Skipping (Stats_Output=None)")
         return
 
-    os.makedirs(os.path.dirname(Output_File), exist_ok=True)
+    # Ensure output directory exists
+    out_dir = os.path.dirname(Output_File)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
 
-    # -------- Build DataFrame from output_stats --------
+    # ------------------------------------------------------------------
+    # VERIFICATION BRANCH  (Stats_Output == 'Verification')
+    # ------------------------------------------------------------------
+    if str(Stats_Output).lower() == "verification":
+
+        # --- 1) Write CSV exactly from output_stats (header + rows) ---
+        header = output_stats[0]
+        rows   = output_stats[1:]
+        df_csv = pd.DataFrame(rows, columns=header)
+        df_csv.to_csv(Output_File, index=False)
+        print(f"[statistics_output] Wrote verification CSV: {Output_File}")
+
+        # --- 2) Write LaTeX table (MATLAB-style verification_statistics.tex) ---
+        # --- Write LaTeX verification table (MATLAB-faithful) ---
+        if Statistics_Tex_Output:
+
+            def _escape(s):
+                return (str(s)
+                        .replace('\\', '\\textbackslash{}')
+                        .replace('_', '\\_')
+                        .replace('%', '\\%')
+                        .replace('&', '\\&')
+                        .replace('#', '\\#')
+                        .replace('{', '\\{')
+                        .replace('}', '\\}'))
+
+            def _safe_float(x):
+                try:
+                    return float(x)
+                except:
+                    return None
+
+            header = output_stats[0]
+            rows = output_stats[1:]
+
+            # ! DO NOT SORT — MATLAB preserves dataplot order
+            # rows = sorted(rows, key=lambda r: str(r[2]).lower())
+
+            with open(Statistics_Tex_Output, "w") as fid:
+
+                fid.write("\\scriptsize\n")
+                fid.write("\\begin{longtable}{|p{2.5in}|l|p{1in}|l|p{1in}|l|l|l|l|l|}\n")
+                fid.write("\\hline\n")
+                fid.write("Case Name & Section & Expected & Expected & Predicted & Predicted & "
+                          "Type of & Error & Error & Within \\\\\n")
+                fid.write(" & & Quantity & Value & Quantity & Value & Error &  & Tolerance & Tol. "
+                          "\\\\ \\hline \\hline\n")
+                fid.write("\\endfirsthead\n\\hline\n")
+                fid.write("Case Name & Section & Expected & Expected & Predicted & Predicted & "
+                          "Type of & Error & Error & Within \\\\\n")
+                fid.write(" & & Quantity & Value & Quantity & Value & Error &  & Tolerance & Tol. "
+                          "\\\\ \\hline \\hline\n")
+                fid.write("\\endhead\n\\hline\n\\endfoot\n\\hline\n\\endlastfoot\n")
+
+                for r in rows:
+
+                    case = str(r[2])
+                    if str(r[13])[:14]=='FDS_User_Guide':
+                        section = f"\\ref{{{'UG-'+case}}}"
+                    else:
+                        section = f"\\ref{{{case}}}"
+
+                    # One row per datapoint; no splitting, no combining
+                    exp_q  = _escape(r[4])
+                    pred_q = _escape(r[6])
+
+                    exp_val_f = _safe_float(r[5])
+                    pred_val_f = _safe_float(r[7])
+                    err_val_f = _safe_float(r[10])
+                    tol_f = _safe_float(r[11])
+
+                    exp_val  = f"{exp_val_f:1.2e}" if exp_val_f is not None else _escape(r[5])
+                    pred_val = f"{pred_val_f:1.2e}" if pred_val_f is not None else _escape(r[7])
+                    err_val  = f"{err_val_f:1.2e}" if err_val_f is not None else _escape(r[10])
+                    tol_val  = f"{tol_f:1.2e}"     if tol_f is not None else _escape(r[11])
+
+                    err_type = str(r[9]).replace(" Error", "")
+                    within   = _escape(r[12])
+
+                    fid.write(
+                        f"{_escape(case)} & {section} & "
+                        f"{exp_q} & {exp_val} & "
+                        f"{pred_q} & {pred_val} & "
+                        f"{err_type} & {err_val} & "
+                        f"{tol_val} & {within} \\\\\n"
+                    )
+
+                fid.write("\\end{longtable}\n\\normalsize\n")
+
+            print(f"[statistics_output] Wrote LaTeX Verification table: {Statistics_Tex_Output}")
+
+        return  # Done with verification branch
+
+    # ------------------------------------------------------------------
+    # VALIDATION BRANCH  (unchanged in spirit from your version)
+    # ------------------------------------------------------------------
+    # Build DataFrame from output_stats
     df = pd.DataFrame(output_stats[1:], columns=output_stats[0])
 
     # Ensure correct types for the two numeric count columns
-    df["Number of Datasets"] = pd.to_numeric(df["Number of Datasets"], errors="coerce").fillna(0).astype(int)
-    df["Number of Points"]   = pd.to_numeric(df["Number of Points"],   errors="coerce").fillna(0).astype(int)
+    if "Number of Datasets" in df.columns:
+        df["Number of Datasets"] = pd.to_numeric(
+            df["Number of Datasets"], errors="coerce"
+        ).fillna(0).astype(int)
 
-    # Format last three numeric-looking columns as strings w/ 2 decimals (no quotes here)
+    if "Number of Points" in df.columns:
+        df["Number of Points"] = pd.to_numeric(
+            df["Number of Points"], errors="coerce"
+        ).fillna(0).astype(int)
+
+    # Format last three numeric-looking columns as strings w/ 2 decimals
     for col in ["Sigma_Experiment", "Sigma_Model", "Bias"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce").map(lambda x: f"{x:0.2f}")
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce").map(
+                lambda x: f"{x:0.2f}" if np.isfinite(x) else ""
+            )
 
-    # -------- Write CSV exactly like MATLAB --------
-    # quoting=2 == csv.QUOTE_NONNUMERIC: quotes strings (Quantity + the 3 we just made strings), leaves ints unquoted.
-    df.to_csv(Output_File, index=False, quoting=2)
+    # Write CSV
+    df.to_csv(Output_File, index=False)
     print(f"[statistics_output] Wrote CSV: {Output_File}")
 
     # -------- LaTeX Validation Table --------
-    if Stats_Output.lower() == "validation" and Statistics_Tex_Output:
+    if str(Stats_Output).lower() == "validation" and Statistics_Tex_Output:
         with open(Statistics_Tex_Output, "w") as fid:
             fid.write("\\begin{longtable}[c]{|l|c|c|c|c|c|c|}\n")
-            fid.write("\\caption[Summary statistics]{Summary statistics for all quantities of interest}\n")
+            fid.write(
+                "\\caption[Summary statistics]{Summary statistics for all quantities of interest}\n"
+            )
             fid.write("\\label{summary_stats}\n")
             fid.write("\\\\ \\hline\n")
-            fid.write("Quantity & Section   & Datasets  & Points    & "
-                      "$\\widetilde{\\sigma}_{\\rm E}$ & $\\widetilde{\\sigma}_{\\rm M}$ & Bias "
-                      "\\\\ \\hline \\hline\n")
+            fid.write(
+                "Quantity & Section   & Datasets  & Points    & "
+                "$\\widetilde{\\sigma}_{\\rm E}$ & "
+                "$\\widetilde{\\sigma}_{\\rm M}$ & Bias "
+                "\\\\ \\hline \\hline\n"
+            )
             fid.write("\\endfirsthead\n\\hline\n")
-            fid.write("Quantity & Section   & Datasets  & Points    & "
-                      "$\\widetilde{\\sigma}_{\\rm E}$ & $\\widetilde{\\sigma}_{\\rm M}$ & Bias "
-                      "\\\\ \\hline \\hline\n")
+            fid.write(
+                "Quantity & Section   & Datasets  & Points    & "
+                "$\\widetilde{\\sigma}_{\\rm E}$ & "
+                "$\\widetilde{\\sigma}_{\\rm M}$ & Bias "
+                "\\\\ \\hline \\hline\n"
+            )
             fid.write("\\endhead\n")
 
             for _, r in df.iterrows():
@@ -1937,33 +2197,40 @@ def statistics_output(
                         continue
                     quantity = str(r["Quantity"])
                     section = f"\\ref{{{quantity}}}"
-                    fid.write(f"{quantity} & {section} & {int(r['Number of Datasets'])} & "
-                              f"{int(r['Number of Points'])} & {sigma_e:0.2f} & "
-                              f"{float(r['Sigma_Model']):0.2f} & {float(r['Bias']):0.2f} "
-                              "\\\\ \\hline\n")
+                    fid.write(
+                        f"{quantity} & {section} & "
+                        f"{int(r['Number of Datasets'])} & "
+                        f"{int(r['Number of Points'])} & "
+                        f"{float(r['Sigma_Experiment']):0.2f} & "
+                        f"{float(r['Sigma_Model']):0.2f} & "
+                        f"{float(r['Bias']):0.2f} "
+                        "\\\\ \\hline\n"
+                    )
                 except Exception as e:
                     print(f"[statistics_output] Skipped row due to error: {e}")
 
             fid.write("\\end{longtable}\n")
+
         print(f"[statistics_output] Wrote LaTeX Validation table: {Statistics_Tex_Output}")
 
     # -------- Histogram LaTeX --------
-    if Stats_Output.lower() == "validation" and Output_Histograms:
+    if str(Stats_Output).lower() == "validation" and Output_Histograms:
         with open(Histogram_Tex_Output, "w") as fid:
             n = len(Output_Histograms)
-            pages = int(np.ceil(n / 8))
+            pages = int(np.ceil(n / 8.0))
             for i in range(pages):
                 fid.write("\\begin{figure}[p]\n")
                 fid.write("\\begin{tabular*}{\\textwidth}{l@{\\extracolsep{\\fill}}r}\n")
                 for j in range(i * 8, min((i + 1) * 8, n)):
-                    end = "&" if j % 2 == 0 else "\\\\"
-                    fid.write(f"\\includegraphics[height=2.2in]"
-                              f"{{SCRIPT_FIGURES/ScatterPlots/{Output_Histograms[j]}}} {end}\n")
+                    end = "&" if (j % 2) == 0 else "\\\\"
+                    fid.write(
+                        f"\\includegraphics[height=2.2in]"
+                        f"{{SCRIPT_FIGURES/Scatterplots/{Output_Histograms[j]}}} {end}\n"
+                    )
                 fid.write("\\end{tabular*}\n")
                 fid.write(f"\\label{{Histogram_{i + 1}}}\n")
                 fid.write("\\end{figure}\n\n")
         print(f"[statistics_output] Wrote LaTeX histograms: {Histogram_Tex_Output}")
-
 
 
 def histogram_output(Histogram_Tex_Output, Output_Histograms):
@@ -1988,7 +2255,7 @@ def histogram_output(Histogram_Tex_Output, Output_Histograms):
             for j in range(i * 8, min((i + 1) * 8, n)):
                 end = "&" if j % 2 == 0 else "\\\\"
                 fid.write(f"\\includegraphics[height=2.2in]"
-                          f"{{SCRIPT_FIGURES/ScatterPlots/{Output_Histograms[j]}}} {end}\n")
+                          f"{{SCRIPT_FIGURES/Scatterplots/{Output_Histograms[j]}}} {end}\n")
 
             fid.write("\\end{tabular*}\n")
             fid.write(f"\\label{{Histogram_{i + 1}}}\n")

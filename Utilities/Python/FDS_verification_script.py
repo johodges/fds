@@ -28,17 +28,45 @@ print('water_evap_1_const_gamma...');            runpy.run_path("./scripts/water
 
 # Dataplot and scatplot options
 
+Dataplot_Inputs_File = 'FDS_verification_dataplot_inputs.csv';
+Working_Dir = '../../Verification/';
+Manuals_Dir = '../../Manuals/';
+Scatterplot_Inputs_File = 'FDS_verification_scatterplot_inputs.csv';
+
 # Statistics output options
+
+Stats_Output = 'Verification'
+Scatterplot_Dir = '../../Manuals/FDS_Verification_Guide/SCRIPT_FIGURES/Scatterplots/'
 
 # Run dataplot and scatplot scripts
 
-fdsplotlib.dataplot(config_filename='../Matlab/FDS_verification_dataplot_inputs.csv',
-                    expdir='../../Verification/',
-                    cmpdir='../../Verification/',
-                    pltdir='../../Manuals/',
-                    close_figs=True,
+saved_data, drange = fdsplotlib.dataplot(config_filename=Dataplot_Inputs_File,
+                                         expdir=Working_Dir,
+                                         cmpdir=Working_Dir,
+                                         pltdir=Manuals_Dir,
+                                         close_figs=True,
+                                         verbose=True,
+                                         plot_range=["all"]) # plot_range[start, end], optionally instead use plot_list['Dataname']
+
+# ----- write saved_data, drange to disk -----
+import pickle
+
+# Save
+with open("saved_data_verification.pkl", "wb") as f:
+    pickle.dump((saved_data, drange), f)
+
+# Later...
+with open("saved_data_verification.pkl", "rb") as f:
+    saved_data, drange = pickle.load(f)
+#---------------------------------------------
+
+fdsplotlib.scatplot(saved_data,drange,
+                    Manuals_Dir=Manuals_Dir,
+                    Scatterplot_Inputs_File=Scatterplot_Inputs_File,
+                    Stats_Output=Stats_Output,
+                    Scatterplot_Dir=Scatterplot_Dir,
                     verbose=True,
-                    plot_range=[2,2]) # plot_range[start, end], optionally instead use plot_list['Dataname']
+                    )
 
 # Special cases
 
@@ -49,6 +77,7 @@ print('extinction...');                     runpy.run_path("./scripts/extinction
 print("fan_curve...");                      runpy.run_path("./scripts/fan_curve.py", run_name="__main__")
 print("favre_test...");                     runpy.run_path("./scripts/favre_test.py", run_name="__main__")
 print("fds_moody_chart...");                runpy.run_path("./scripts/fds_moody_chart.py", run_name="__main__")
+print("fds_timing_stats...");               runpy.run_path("./scripts/fds_timing_stats.py", run_name="__main__")
 print("fluid_part...");                     runpy.run_path("./scripts/fluid_part.py", run_name="__main__")
 print("freecon_sphere...");                 runpy.run_path("./scripts/freecon_sphere.py", run_name="__main__")
 print("geom_channel_test...");              runpy.run_path("./scripts/geom_channel_test.py", run_name="__main__")
@@ -61,6 +90,7 @@ print("jet_decay...");                      runpy.run_path("./scripts/jet_decay.
 print("law_of_the_wall...");                runpy.run_path("./scripts/law_of_the_wall.py", run_name="__main__")
 print("level_set_ellipse...");              runpy.run_path("./scripts/level_set_ellipse.py", run_name="__main__")
 print("mesh_transformation...");            runpy.run_path("./scripts/mesh_transformation.py", run_name="__main__")
+print("make_smv_images...");                runpy.run_path("./scripts/make_smv_images.py", run_name="__main__")
 print("mass_balance...");                   runpy.run_path("./scripts/mass_balance.py", run_name="__main__")
 print("mass_balance_gas_volume...");        runpy.run_path("./scripts/mass_balance_gas_volume.py", run_name="__main__")
 print("mass_balance_reac...");              runpy.run_path("./scripts/mass_balance_reac.py", run_name="__main__")
