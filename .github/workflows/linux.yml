@@ -39,7 +39,7 @@ jobs:
           mkl@2025.2.0
         prune: false       
          
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - name: build fds debug
       run: |
@@ -74,7 +74,7 @@ jobs:
           mkl@2025.1.0
         prune: false  
 
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: build fds debug
       run: |
         source /opt/intel/oneapi/setvars.sh
@@ -96,7 +96,7 @@ jobs:
     runs-on: [ubuntu-latest]
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - uses: actions/setup-python@v6
       with:
@@ -104,12 +104,13 @@ jobs:
         cache: 'pip' # caching pip dependencies
     - run: |
         echo $GITHUB_WORKSPACE
-        cd $GITHUB_WORKSPACE/.github
-        pip install -r requirements.txt
+        cd $GITHUB_WORKSPACE/Utilities/Python
+        source setup_python_env.sh --batchmode
 
     - name: Python test
       run: |
         echo $GITHUB_WORKSPACE
         cd $GITHUB_WORKSPACE/Utilities/Python
+        source $GITHUB_WORKSPACE/.github/fds_python_env/bin/activate
         python hello_world.py
         : # python FDS_verification_script.py
