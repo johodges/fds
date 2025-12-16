@@ -299,6 +299,7 @@ LOGICAL :: STORE_FIRE_ARRIVAL=.FALSE.               !< Flag for tracking arrival
 LOGICAL :: STORE_FIRE_RESIDENCE=.FALSE.             !< Flag for tracking residence time of spreading fire front over a surface
 LOGICAL :: STORE_LS_SPREAD_RATE=.FALSE.             !< Flag for outputting local level set spread rate magnitude
 LOGICAL :: TEST_NEW_CHAR_MODEL=.FALSE.              !< Flag to envoke new char model
+LOGICAL :: FLUX_LIMITER_MW_CORRECTION=.TRUE.        !< Flag for MW correction ensure consistent equation of state at face
 
 INTEGER, ALLOCATABLE, DIMENSION(:) :: CHANGE_TIME_STEP_INDEX      !< Flag to indicate if a mesh needs to change time step
 INTEGER, ALLOCATABLE, DIMENSION(:) :: SETUP_PRESSURE_ZONES_INDEX  !< Flag to indicate if a mesh needs to keep searching for ZONEs
@@ -986,6 +987,10 @@ LOGICAL  :: DO_CHEM_LOAD_BALANCE = .FALSE.
 INTEGER  :: MAX_CVODE_SUBSTEPS=100000
 INTEGER  :: CVODE_MAX_TRY=4
 INTEGER  :: CVODE_ORDER=0
+INTEGER  :: CVODE_ERR_CODE_MIN=-100
+INTEGER  :: CVODE_ERR_CODE_MAX=100
+INTEGER  :: CVODE_WARNING_CELLS(-100:100)! Index of the array is error code and value is Cell count
+CHARACTER(LEN=100) :: CVODE_WARN_MESSAGES(-100:100)
 
 ! FOR WRITING CVODE SUBSTEPS
 LOGICAL  :: WRITE_CVODE_SUBSTEPS = .FALSE.
@@ -1005,5 +1010,13 @@ REAL(EB) :: ZETA_FIRST_STEP_DIV=10._EB
 ! IGNITION ZONES (mainly for premixed flame)
 INTEGER :: N_IGNITION_ZONES = 0
 TYPE(IGNITION_ZONE_TYPE), DIMENSION(MAX_IGNITION_ZONES) :: IGNITION_ZONES !< Coordinates of ignition zones
+
+CONTAINS
+   SUBROUTINE INIT_CVODE_WARN_MESSAGES()
+      CVODE_WARN_MESSAGES = 'CVODE didn''t finish ODE solution with this code.'
+      CVODE_WARN_MESSAGES(-1) = 'CVODE took all internal substeps.'
+      CVODE_WARN_MESSAGES(-3) = 'Minimum step size was reached.'
+      CVODE_WARN_MESSAGES(-4) = 'Convergence test failure.'
+   END SUBROUTINE INIT_CVODE_WARN_MESSAGES
 
 END MODULE CHEMCONS

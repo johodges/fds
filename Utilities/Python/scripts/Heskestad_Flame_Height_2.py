@@ -1,4 +1,6 @@
 
+# Plot results of the Heskestad_Flame_Height cases against various experimental correlations
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -86,7 +88,7 @@ fig = fdsplotlib.plot_to_fig(x_data=[1e-6,1e-6], y_data=[1e-6,1e-6],
                              plot_title = 'Flame Height Variation',
                              plot_type='loglog',
                              x_label='$Q^*$',
-                             y_label='$L_{\\hbox{f}}/D$')
+                             y_label=r'$L_{\rm f}/D$')
 
 # Load experimental data
 M = pd.read_csv(os.path.join(expdir, 'flame_lengths.csv'), skiprows=0)
