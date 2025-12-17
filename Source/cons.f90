@@ -281,7 +281,7 @@ LOGICAL :: NO_PRESSURE_ZONES=.FALSE.                !< Flag to suppress pressure
 LOGICAL :: CTRL_DIRECT_FORCE=.FALSE.                !< Allow adjustable direct force via CTRL logic
 LOGICAL :: REACTING_THIN_OBSTRUCTIONS=.FALSE.       !< Thin obstructions that off-gas are present
 LOGICAL :: TENSOR_DIFFUSIVITY=.FALSE.               !< If true, use experimental tensor diffusivity model for spec and tmp
-LOGICAL :: VTK_KEEPOPEN=.FALSE.                     !< Flag that indicates VTK output files should be kept open or closed
+LOGICAL :: VTK_KEEPOPEN=.TRUE.                     !< Flag that indicates VTK output files should be kept open or closed
 LOGICAL :: VTK_BINARY=.TRUE.                        !< Flag that indicates VTK outputs should be binary or ascii
 LOGICAL :: VTK_HDF=.TRUE.                           !< Flag that indicates VTK outputs should be HDF or XML
 LOGICAL :: PARAVIEW_PROJECT=.FALSE.                 !< Flag that indicates if a paraview project script should be generated
@@ -637,6 +637,7 @@ INTEGER(HID_T), ALLOCATABLE, DIMENSION(:) :: HDF_SLCF_FILE_ID, HDF_SLCF_PLIST_ID
 INTEGER(HID_T), ALLOCATABLE, DIMENSION(:) :: HDF_SLCF_G1,HDF_SLCF_G2,HDF_SLCF_G3,HDF_SLCF_G4
 INTEGER(HID_T), ALLOCATABLE, DIMENSION(:) :: HDF_SLCF_G5,HDF_SLCF_G6,HDF_SLCF_G7 ! Group identifier
 INTEGER(HID_T), ALLOCATABLE, DIMENSION(:) :: HDF_SLCF_COUNTER
+INTEGER(HID_T), ALLOCATABLE, DIMENSION(:,:) :: HDF_SLCF_G1_NCELLS, HDF_SLCF_G1_NPOINTS 
 
 INTEGER(HID_T) :: HDF_BNDF_FILE_ID, HDF_BNDF_PLIST_ID, HDF_BNDF_CRP_LIST
 INTEGER(HID_T) :: HDF_BNDF_G1,HDF_BNDF_G2,HDF_BNDF_G3,HDF_BNDF_G4,HDF_BNDF_G5,HDF_BNDF_G6,HDF_BNDF_G7 ! Group identifier
