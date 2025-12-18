@@ -713,7 +713,7 @@ MAIN_LOOP: DO
 
       ! Exchange level set values, if necessary
 
-      IF (TERRAIN_CASE) CALL MESH_EXCHANGE(14)
+      IF (LEVEL_SET_MODE>0) CALL MESH_EXCHANGE(14)
 
       ! Exchange newly inserted particles, if necessary
 
