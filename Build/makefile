@@ -134,6 +134,18 @@ ifdef HDF5_HOME # This assumes the HDF5 libary is available
    LFLAGS_HDF5_WIN = ${HDF5_HOME}\lib\libhdf5_fortran.lib ${HDF5_HOME}\lib\libhdf5_f90cstub.lib ${HDF5_HOME}\lib\libhdf5.lib
 endif # HDF5_HOME
 
+LFLAGS_LINK_WIN =
+linkflag = false
+ifdef SUNDIALS_HOME
+   linkflag = true
+endif
+ifdef HDF5_HOME
+   linkflag = true
+endif
+ifeq ($(linkflag),true)
+   LFLAGS_LINK_WIN = /link /NODEFAULTLIB:MSVCRTD /NODEFAULTLIB:libcmtd.lib Shlwapi.lib
+endif
+
 obj_mpi = prec.o cons.o chem.o prop.o devc.o type.o data.o mesh.o func.o gsmv.o smvv.o rcal.o turb.o soot.o \
           pois.o geom.o ccib.o radi.o part.o vege.o ctrl.o hvac.o mass.o imkl.o \
           wall.o fire.o velo.o pres.o init.o vtkf.o dump.o read.o divg.o main.o
@@ -192,7 +204,7 @@ impi_intel_win : FFLAGS = -D_WIN32 /Qipo /O2 /I$(MPIINCLUDE) /wrap-margin- $(GIT
 impi_intel_win : FCOMPL = $(COMP_FC)
 impi_intel_win : obj = fds_impi_intel_win
 impi_intel_win : setup_win $(objwin_mpi)
-	$(FCOMPL) -o $(obj) $(FFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN)
+	$(FCOMPL) -o $(obj) $(FFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN) $(LFLAGS_LINK_WIN)
 
 impi_intel_win_vt : MPILIB = "$(I_MPI_ROOT)\lib\impi.lib"
 impi_intel_win_vt : MPIINCLUDE = "$(I_MPI_ROOT)\include\mpi"
@@ -200,7 +212,7 @@ impi_intel_win_vt : FFLAGS = -D_WIN32 /Qipo /O2 /I$(MPIINCLUDE) /wrap-margin- $(
 impi_intel_win_vt : FCOMPL = $(COMP_FC)
 impi_intel_win_vt : obj = fds_impi_intel_win_vt
 impi_intel_win_vt : setup_win $(objwin_mpi)
-	$(FCOMPL) -o $(obj) $(FFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN)
+	$(FCOMPL) -o $(obj) $(FFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN) $(LFLAGS_LINK_WIN)
 
 
 impi_intel_win_openmp : MPILIB = "$(I_MPI_ROOT)\lib\impi.lib"
@@ -210,7 +222,7 @@ impi_intel_win_openmp : FOPENMPFLAGS = /Qopenmp
 impi_intel_win_openmp : FCOMPL = $(COMP_FC)
 impi_intel_win_openmp : obj = fds_impi_intel_win_openmp
 impi_intel_win_openmp : setup_win $(objwin_mpi)
-	$(FCOMPL) -o $(obj) $(FFLAGS) $(FOPENMPFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL_OPENMP) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN)
+	$(FCOMPL) -o $(obj) $(FFLAGS) $(FOPENMPFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL_OPENMP) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN) $(LFLAGS_LINK_WIN)
 
 impi_intel_win_dv : MPILIB = "$(I_MPI_ROOT)\lib\impi.lib"
 impi_intel_win_dv : MPIINCLUDE = "$(I_MPI_ROOT)\include\mpi"
@@ -218,7 +230,7 @@ impi_intel_win_dv : FFLAGS = -D_WIN32 /O1 /I$(MPIINCLUDE) /Z7 /traceback /debug:
 impi_intel_win_dv : FCOMPL = $(COMP_FC)
 impi_intel_win_dv : obj = fds_impi_intel_win_dv
 impi_intel_win_dv : setup_win $(objwin_mpi)
-	$(FCOMPL) -o $(obj) $(FFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN)
+	$(FCOMPL) -o $(obj) $(FFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN) $(LFLAGS_LINK_WIN)
 
 impi_intel_win_openmp_dv : MPILIB = "$(I_MPI_ROOT)\lib\impi.lib"
 impi_intel_win_openmp_dv : MPIINCLUDE = "$(I_MPI_ROOT)\include\mpi"
@@ -227,7 +239,7 @@ impi_intel_win_openmp_dv : FOPENMPFLAGS = /Qopenmp
 impi_intel_win_openmp_dv : FCOMPL = $(COMP_FC)
 impi_intel_win_openmp_dv : obj = fds_impi_intel_win_openmp_dv
 impi_intel_win_openmp_dv : setup_win $(objwin_mpi)
-	$(FCOMPL) -o $(obj) $(FFLAGS) $(FOPENMPFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL_OPENMP) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN)
+	$(FCOMPL) -o $(obj) $(FFLAGS) $(FOPENMPFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL_OPENMP) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN) $(LFLAGS_LINK_WIN)
 
 impi_intel_win_db : MPILIB = "$(I_MPI_ROOT)\lib\impi.lib"
 impi_intel_win_db : MPIINCLUDE = "$(I_MPI_ROOT)\include\mpi"
@@ -235,7 +247,7 @@ impi_intel_win_db : FFLAGS = -D_WIN32 /Od /nologo /debug:all /I$(MPIINCLUDE) /Z7
 impi_intel_win_db : FCOMPL = $(COMP_FC)
 impi_intel_win_db : obj = fds_impi_intel_win_db
 impi_intel_win_db : setup_win $(objwin_mpi)
-	$(FCOMPL) -o $(obj) $(FFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN)
+	$(FCOMPL) -o $(obj) $(FFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN) $(LFLAGS_LINK_WIN)
 
 impi_intel_win_openmp_db : MPILIB = "$(I_MPI_ROOT)\lib\impi.lib"
 impi_intel_win_openmp_db : MPIINCLUDE = "$(I_MPI_ROOT)\include\mpi"
@@ -244,7 +256,7 @@ impi_intel_win_openmp_db : FOPENMPFLAGS = /Qopenmp_INTEL
 impi_intel_win_openmp_db : FCOMPL = $(COMP_FC)
 impi_intel_win_openmp_db : obj = fds_impi_intel_win_openmp_db
 impi_intel_win_openmp_db : setup_win $(objwin_mpi)
-	$(FCOMPL) -o $(obj) $(FFLAGS) $(FOPENMPFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL_OPENMP) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN)
+	$(FCOMPL) -o $(obj) $(FFLAGS) $(FOPENMPFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL_OPENMP) $(LFLAGS_HYPRE_WIN) $(LFLAGS_SUNDIALS_WIN) $(LFLAGS_HDF5_WIN) $(LFLAGS_LINK_WIN)
 
 # Linux Intel Fortran Compiler and Intel MPI
 
