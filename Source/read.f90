@@ -2631,21 +2631,21 @@ ENDIF
 
 IF (MY_RANK==0) THEN
 #ifdef _WIN32
-   CALL EXECUTE_COMMAND_LINE('cd > workingdir.txt')
+   CALL EXECUTE_COMMAND_LINE('cd > '//TRIM(CHID)//'workingdir.txt')
 #else
-   CALL EXECUTE_COMMAND_LINE('pwd > workingdir.txt')
+   CALL EXECUTE_COMMAND_LINE('pwd > '//TRIM(CHID)//'workingdir.txt')
 #endif
-   INQUIRE(FILE='workingdir.txt',EXIST=EX)
+   INQUIRE(FILE=TRIM(CHID)//'workingdir.txt',EXIST=EX)
    IF (.NOT.EX) THEN
       CALL SHUTDOWN('FAILED TO IDENTIFY WORKING DIRECTORY.')
    ENDIF
-   OPEN(LU_WDIR, FILE="workingdir.txt", STATUS="OLD", ACTION="READ")
+   OPEN(LU_WDIR, FILE=TRIM(CHID)//'workingdir.txt', STATUS="OLD", ACTION="READ")
    READ(LU_WDIR, '(A)') WORKING_DIR
    CLOSE(LU_WDIR)
 #ifdef _WIN32
-   CALL EXECUTE_COMMAND_LINE('del workingdir.txt')
+   CALL EXECUTE_COMMAND_LINE('del '//TRIM(CHID)//'workingdir.txt')
 #else
-   CALL EXECUTE_COMMAND_LINE('rm workingdir.txt')
+   CALL EXECUTE_COMMAND_LINE('rm '//TRIM(CHID)//'workingdir.txt')
 #endif
 ENDIF
 
