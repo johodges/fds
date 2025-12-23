@@ -2776,51 +2776,52 @@ INTEGER :: NM,FACE_INDEX
       ENDDO VENT_LOOP
 
       ! Look for interpolated mesh boundaries and ensure that Smokeview leaves these blank (VENT_INDICES=-1).
+      IF ((N_BNDF>0 .AND. M%BNDF_DUMP).AND.(WRITE_SMV)) THEN
+         DO K=1,M%KBAR
+            DO J=1,M%JBAR
+               YY = 0.5_EB*(M%Y(J)+M%Y(J-1))
+               ZZ = 0.5_EB*(M%Z(K)+M%Z(K-1))
+               XX = M%X(0) - 0.001_EB*M%DX(0)
+               CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
+               IF (NOM>0 .AND. VENT_INDICES(J,K,1)<1) VENT_INDICES(J,K,1)=-1
+               IF (M%WALL(M%CELL(M%CELL_INDEX(1,J,K))%WALL_INDEX(-1))%OBST_INDEX>0) VENT_INDICES(J,K,1)=-1
+               XX = M%X(M%IBAR) + 0.001_EB*M%DX(M%IBAR)
+               CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
+               IF (NOM>0 .AND. VENT_INDICES(J,K,2)<1) VENT_INDICES(J,K,2)=-1
+               IF (M%WALL(M%CELL(M%CELL_INDEX(M%IBAR,J,K))%WALL_INDEX(1))%OBST_INDEX>0) VENT_INDICES(J,K,2)=-1
+            ENDDO
+         ENDDO
 
-      DO K=1,M%KBAR
+         DO K=1,M%KBAR
+            DO I=1,M%IBAR
+               XX = 0.5_EB*(M%X(I)+M%X(I-1))
+               ZZ = 0.5_EB*(M%Z(K)+M%Z(K-1))
+               YY = M%Y(0) - 0.001_EB*M%DY(0)
+               CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
+               IF (NOM>0 .AND. VENT_INDICES(I,K,3)<1) VENT_INDICES(I,K,3)=-1
+               IF (M%WALL(M%CELL(M%CELL_INDEX(I,1,K))%WALL_INDEX(-2))%OBST_INDEX>0) VENT_INDICES(I,K,3)=-1
+               YY = M%Y(M%JBAR) + 0.001_EB*M%DY(M%JBAR)
+               CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
+               IF (NOM>0 .AND. VENT_INDICES(I,K,4)<1) VENT_INDICES(I,K,4)=-1
+               IF (M%WALL(M%CELL(M%CELL_INDEX(I,M%JBAR,K))%WALL_INDEX(2))%OBST_INDEX>0) VENT_INDICES(I,K,4)=-1
+            ENDDO
+         ENDDO
+
          DO J=1,M%JBAR
-            YY = 0.5_EB*(M%Y(J)+M%Y(J-1))
-            ZZ = 0.5_EB*(M%Z(K)+M%Z(K-1))
-            XX = M%X(0) - 0.001_EB*M%DX(0)
-            CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
-            IF (NOM>0 .AND. VENT_INDICES(J,K,1)<1) VENT_INDICES(J,K,1)=-1
-            IF (M%WALL(M%CELL(M%CELL_INDEX(1,J,K))%WALL_INDEX(-1))%OBST_INDEX>0) VENT_INDICES(J,K,1)=-1
-            XX = M%X(M%IBAR) + 0.001_EB*M%DX(M%IBAR)
-            CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
-            IF (NOM>0 .AND. VENT_INDICES(J,K,2)<1) VENT_INDICES(J,K,2)=-1
-            IF (M%WALL(M%CELL(M%CELL_INDEX(M%IBAR,J,K))%WALL_INDEX(1))%OBST_INDEX>0) VENT_INDICES(J,K,2)=-1
+            DO I=1,M%IBAR
+               XX = 0.5_EB*(M%X(I)+M%X(I-1))
+               YY = 0.5_EB*(M%Y(J)+M%Y(J-1))
+               ZZ = M%Z(0) - 0.001_EB*M%DZ(0)
+               CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
+               IF (NOM>0 .AND. VENT_INDICES(I,J,5)<1) VENT_INDICES(I,J,5)=-1
+               IF (M%WALL(M%CELL(M%CELL_INDEX(I,J,1))%WALL_INDEX(-3))%OBST_INDEX>0) VENT_INDICES(I,J,5)=-1
+               ZZ = M%Z(M%KBAR) + 0.001_EB*M%DZ(M%KBAR)
+               CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
+               IF (NOM>0 .AND. VENT_INDICES(I,J,6)<1) VENT_INDICES(I,J,6)=-1
+               IF (M%WALL(M%CELL(M%CELL_INDEX(I,J,M%KBAR))%WALL_INDEX(3))%OBST_INDEX>0) VENT_INDICES(I,J,6)=-1
+            ENDDO
          ENDDO
-      ENDDO
-
-      DO K=1,M%KBAR
-         DO I=1,M%IBAR
-            XX = 0.5_EB*(M%X(I)+M%X(I-1))
-            ZZ = 0.5_EB*(M%Z(K)+M%Z(K-1))
-            YY = M%Y(0) - 0.001_EB*M%DY(0)
-            CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
-            IF (NOM>0 .AND. VENT_INDICES(I,K,3)<1) VENT_INDICES(I,K,3)=-1
-            IF (M%WALL(M%CELL(M%CELL_INDEX(I,1,K))%WALL_INDEX(-2))%OBST_INDEX>0) VENT_INDICES(I,K,3)=-1
-            YY = M%Y(M%JBAR) + 0.001_EB*M%DY(M%JBAR)
-            CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
-            IF (NOM>0 .AND. VENT_INDICES(I,K,4)<1) VENT_INDICES(I,K,4)=-1
-            IF (M%WALL(M%CELL(M%CELL_INDEX(I,M%JBAR,K))%WALL_INDEX(2))%OBST_INDEX>0) VENT_INDICES(I,K,4)=-1
-         ENDDO
-      ENDDO
-
-      DO J=1,M%JBAR
-         DO I=1,M%IBAR
-            XX = 0.5_EB*(M%X(I)+M%X(I-1))
-            YY = 0.5_EB*(M%Y(J)+M%Y(J-1))
-            ZZ = M%Z(0) - 0.001_EB*M%DZ(0)
-            CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
-            IF (NOM>0 .AND. VENT_INDICES(I,J,5)<1) VENT_INDICES(I,J,5)=-1
-            IF (M%WALL(M%CELL(M%CELL_INDEX(I,J,1))%WALL_INDEX(-3))%OBST_INDEX>0) VENT_INDICES(I,J,5)=-1
-            ZZ = M%Z(M%KBAR) + 0.001_EB*M%DZ(M%KBAR)
-            CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
-            IF (NOM>0 .AND. VENT_INDICES(I,J,6)<1) VENT_INDICES(I,J,6)=-1
-            IF (M%WALL(M%CELL(M%CELL_INDEX(I,J,M%KBAR))%WALL_INDEX(3))%OBST_INDEX>0) VENT_INDICES(I,J,6)=-1
-         ENDDO
-      ENDDO
+      ENDIF
 
       ! Create EXTERIOR_PATCHes to fill in areas around actual specified vents
 
