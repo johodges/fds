@@ -374,10 +374,33 @@ def dataplot(config_filename, **kwargs):
         y, _ = get_data(E, pp.d1_Dep_Col_Name, start_idx)
 
         flip_axis = str(pp.Flip_Axis).strip().lower() in ['yes', 'true', '1']
+
+        x_scaled = np.asarray(x, dtype=float).copy()
+        y_scaled = np.asarray(y, dtype=float).copy()
+
+        # ------------------------------------------------------------
+        # Apply d1_Start / d1_End to PLOTTED DATA (not just stats)
+        # ------------------------------------------------------------
+        if pp.d1_Start is not None or pp.d1_End is not None:
+            x0 = float(pp.d1_Start) if pp.d1_Start is not None else -np.inf
+            x1 = float(pp.d1_End)   if pp.d1_End   is not None else  np.inf
+
+            mask = (x_scaled >= x0) & (x_scaled <= x1)
+
+            # Preserve shape for multi-column data
+            if x_scaled.ndim == 2:
+                for j in range(x_scaled.shape[1]):
+                    mj = mask[:, j]
+                    x_scaled[:, j] = np.where(mj, x_scaled[:, j], np.nan)
+                    y_scaled[:, j] = np.where(mj, y_scaled[:, j], np.nan)
+            else:
+                x_scaled = np.where(mask, x_scaled, np.nan)
+                y_scaled = np.where(mask, y_scaled, np.nan)
+
         x_scale = float(pp.Scale_Ind or 1.0)
         y_scale = float(pp.Scale_Dep or 1.0)
-        x_scaled = np.asarray(x) / x_scale
-        y_scaled = np.asarray(y) / y_scale
+        x_scaled = x_scaled / x_scale
+        y_scaled = y_scaled / y_scale
 
         if x_scaled.ndim == 2 and y_scaled.ndim == 2 and x_scaled.shape[1] == y_scaled.shape[1]:
             x_plot_list = [x_scaled[:, i] for i in range(x_scaled.shape[1])]
@@ -516,10 +539,32 @@ def dataplot(config_filename, **kwargs):
         x, _ = get_data(M, pp.d2_Ind_Col_Name, start_idx)
         y, _ = get_data(M, pp.d2_Dep_Col_Name, start_idx)
 
+        x_scaled = np.asarray(x, dtype=float).copy()
+        y_scaled = np.asarray(y, dtype=float).copy()
+
+        # ------------------------------------------------------------
+        # Apply d2_Start / d2_End to PLOTTED DATA (model curves)
+        # ------------------------------------------------------------
+        if pp.d2_Start is not None or pp.d2_End is not None:
+            x0 = float(pp.d2_Start) if pp.d2_Start is not None else -np.inf
+            x1 = float(pp.d2_End)   if pp.d2_End   is not None else  np.inf
+
+            mask = (x_scaled >= x0) & (x_scaled <= x1)
+
+            # Preserve shape for multi-column data
+            if x_scaled.ndim == 2:
+                for j in range(x_scaled.shape[1]):
+                    mj = mask[:, j]
+                    x_scaled[:, j] = np.where(mj, x_scaled[:, j], np.nan)
+                    y_scaled[:, j] = np.where(mj, y_scaled[:, j], np.nan)
+            else:
+                x_scaled = np.where(mask, x_scaled, np.nan)
+                y_scaled = np.where(mask, y_scaled, np.nan)
+
         x_scale = float(pp.Scale_Ind or 1.0)
         y_scale = float(pp.Scale_Dep or 1.0)
-        x_scaled = np.asarray(x) / x_scale
-        y_scaled = np.asarray(y) / y_scale
+        x_scaled = x_scaled / x_scale
+        y_scaled = y_scaled / y_scale
 
         if x_scaled.ndim == 2 and y_scaled.ndim == 2 and x_scaled.shape[1] == y_scaled.shape[1]:
             x_plot_list = [x_scaled[:, i] for i in range(x_scaled.shape[1])]
@@ -1687,6 +1732,9 @@ def define_plot_parameters(D, irow, lightweight=False):
         d.d1_Dep_Col_Name   = get('d1_Dep_Col_Name')
         d.d1_Key            = get('d1_Key', '')
         d.d1_Style          = get('d1_Style', '')
+        d.d1_Start          = get('d1_Start', None)
+        d.d1_End            = get('d1_End', None)
+        d.d1_Tick           = get('d1_Tick', None)
         d.d1_Comp_Start     = get('d1_Comp_Start', np.nan)
         d.d1_Comp_End       = get('d1_Comp_End', np.nan)
         d.d1_Dep_Comp_Start = get('d1_Dep_Comp_Start', np.nan)
@@ -1700,6 +1748,9 @@ def define_plot_parameters(D, irow, lightweight=False):
         d.d2_Dep_Col_Name   = get('d2_Dep_Col_Name')
         d.d2_Key            = get('d2_Key', '')
         d.d2_Style          = get('d2_Style', '')
+        d.d2_Start          = get('d2_Start', None)
+        d.d2_End            = get('d2_End', None)
+        d.d2_Tick           = get('d2_Tick', None)
         d.d2_Comp_Start     = get('d2_Comp_Start', np.nan)
         d.d2_Comp_End       = get('d2_Comp_End', np.nan)
         d.d2_Dep_Comp_Start = get('d2_Dep_Comp_Start', np.nan)
@@ -2222,10 +2273,12 @@ def scatplot(saved_data, drange, **kwargs):
         log_M_bar = np.sum(np.log(Predicted_Values) * weight) / np.sum(weight)
 
         # Weighted variance
-        u2 = np.sum(
-            (((np.log(Predicted_Values) - np.log(Measured_Values))
-              - (log_M_bar - log_E_bar)) ** 2) * weight
-        ) / (np.sum(weight) - 1)
+        denom = np.sum(weight) - 1
+        if denom > 0:
+            u2 = np.sum(((np.log(Predicted_Values) - np.log(Measured_Values)
+                          - (log_M_bar - log_E_bar)) ** 2) * weight) / denom
+        else:
+            u2 = 0.0
 
         u = np.sqrt(u2)
 
@@ -2632,8 +2685,12 @@ def statistics_histogram(Measured_Values, Predicted_Values,
     ix = np.arange(x_lim[0], x_lim[1], 1e-3)
     mu = np.mean(ln_M_E)
     sd = np.std(ln_M_E, ddof=0)
-    iy = (1 / (sd * np.sqrt(2 * np.pi))) * np.exp(-(ix - mu) ** 2 / (2 * sd ** 2))
-    ax.plot(ix, iy * np.trapz(n, xcenters), 'k', linewidth=2)
+    if sd == 0:
+        # Degenerate distribution: all mass at mu
+        ax.axvline(mu, color='k', linewidth=2)
+    else:
+        iy = (1 / (sd * np.sqrt(2 * np.pi))) * np.exp(-(ix - mu) ** 2 / (2 * sd ** 2))
+        ax.plot(ix, iy * np.trapz(n, xcenters), 'k', linewidth=2)
 
     ax.set_xlim(x_lim)
     y0, y1 = ax.get_ylim()
