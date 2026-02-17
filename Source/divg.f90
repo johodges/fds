@@ -142,7 +142,7 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
 
       IF (SIM_MODE==LES_MODE .AND. .NOT.TENSOR_DIFFUSIVITY) THEN
          SM=>SPECIES_MIXTURE(N)
-         IF (SM%SC_T_USER>TWO_EPSILON_EB) THEN
+         IF (SM%SC_T_USER>TWENTY_EPSILON_EB) THEN
             RHO_D = RHO_D + RHO_D_TURB*SC_T/SM%SC_T_USER
          ELSE
             RHO_D = RHO_D + RHO_D_TURB
@@ -159,7 +159,7 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
          DO K=0,KBP1
             DO J=0,JBP1
                DO I=0,IBP1
-                  D_Z_MAX(I,J,K) = MAX(D_Z_MAX(I,J,K),RHO_D(I,J,K)/(RHOP(I,J,K)+TWO_EPSILON_EB))
+                  D_Z_MAX(I,J,K) = MAX(D_Z_MAX(I,J,K),RHO_D(I,J,K)/(RHOP(I,J,K)+TWENTY_EPSILON_EB))
                ENDDO
             ENDDO
          ENDDO
@@ -236,7 +236,7 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
 
    ! Ensure RHO_D terms sum to zero over all species.  Gather error into largest mass fraction present.
 
-   IF (SIM_MODE==DNS_MODE .OR. SIM_MODE==LES_MODE) THEN
+   IF (SIM_MODE==DNS_MODE .OR. SIM_MODE==LES_MODE .OR. TENSOR_DIFFUSIVITY) THEN
       ! for VLES and SVLES modes, the diffusivity is the same for all species
       ! so, as long as ZZP is realizable, the sum of diffusive fluxes will be zero
       ! and the flux corrections below are not required
@@ -792,8 +792,8 @@ USE MATH_FUNCTIONS, ONLY: GET_SCALAR_FACE_VALUE
 REAL(EB), POINTER, DIMENSION(:,:,:) :: FX_H_S,FY_H_S,FZ_H_S,RHO_H_S_P,U_DOT_DEL_RHO_H_S
 REAL(EB) :: UN,UN_P,TMP_F_GAS,DU_P,DU_M,DV_P,DV_M,DW_P,DW_M,DU,H_S
 REAL(EB), ALLOCATABLE, DIMENSION(:) :: ZZ_GET
-REAL(EB), DIMENSION(0:3,0:3,0:3) :: U_TEMP,F_TEMP
-REAL(EB), DIMENSION(-1:3,-1:3,-1:3) :: Z_TEMP
+REAL(EB), DIMENSION(0:3,0:3,0:3) :: F_TEMP
+REAL(EB), DIMENSION(-1:3,-1:3,-1:3) :: U_TEMP,Z_TEMP
 INTEGER :: IC,I,J,K,IW
 TYPE(WALL_TYPE), POINTER :: WC
 TYPE(BOUNDARY_COORD_TYPE), POINTER :: BC
@@ -973,8 +973,8 @@ USE PHYSICAL_FUNCTIONS, ONLY: GET_MOLECULAR_WEIGHT
 REAL(EB), POINTER, DIMENSION(:,:,:) :: RHO_Z_P,RHO_RMW
 REAL(EB), POINTER, DIMENSION(:,:,:,:) :: FX_ZZ,FY_ZZ,FZ_ZZ
 REAL(EB) :: ZZ_GET(1:N_TRACKED_SPECIES),MW_G
-REAL(EB), DIMENSION(0:3,0:3,0:3) :: U_TEMP,F_TEMP
-REAL(EB), DIMENSION(-1:3,-1:3,-1:3) :: Z_TEMP
+REAL(EB), DIMENSION(0:3,0:3,0:3) :: F_TEMP
+REAL(EB), DIMENSION(-1:3,-1:3,-1:3) :: U_TEMP,Z_TEMP
 INTEGER :: I,J,K,IW,N !,II,JJ,KK,IOR,IC,IIG,JJG,KKG
 TYPE(WALL_TYPE), POINTER :: WC
 TYPE(BOUNDARY_COORD_TYPE), POINTER :: BC
@@ -1353,12 +1353,12 @@ PREDICT_NORMALS: IF (PREDICTOR) THEN
                CASE(-3); B1%U_NORMAL_S = (W(BC%IIG,BC%JJG,BC%KKG-1) + SF%VEL_GRAD*B1%RDN)
             END SELECT
          ENDIF NEUMANN_IF
-         IF (ABS(SURFACE(WC%SURF_INDEX)%MASS_FLUX_TOTAL)>=TWO_EPSILON_EB) B1%U_NORMAL_S = &
+         IF (ABS(SURFACE(WC%SURF_INDEX)%MASS_FLUX_TOTAL)>=TWENTY_EPSILON_EB) B1%U_NORMAL_S = &
                                                                           B1%U_NORMAL_S*RHOA/B1%RHO_F
          VENT_IF: IF (WC%VENT_INDEX>0) THEN
             VT=>VENTS(WC%VENT_INDEX)
             IF (VT%N_EDDY>0) THEN ! Synthetic Eddy Method
-               IF (SF%PROFILE/=0 .AND. ABS(SF%VEL)>TWO_EPSILON_EB) THEN
+               IF (SF%PROFILE/=0 .AND. ABS(SF%VEL)>TWENTY_EPSILON_EB) THEN
                   PROFILE_FACTOR = ABS(B1%U_NORMAL_0/SF%VEL)
                ELSE
                   PROFILE_FACTOR = 1._EB
@@ -1500,7 +1500,7 @@ IF_PRESSURE_ZONES: IF (N_ZONE>0) THEN
    ! Compute change in background pressure
 
    DO IPZ=1,N_ZONE
-      IF (ABS(PSUM(IPZ)) > TWO_EPSILON_EB) D_PBAR_DT_P(IPZ) = (DSUM(IPZ) - USUM(IPZ))/PSUM(IPZ)
+      IF (ABS(PSUM(IPZ)) > TWENTY_EPSILON_EB) D_PBAR_DT_P(IPZ) = (DSUM(IPZ) - USUM(IPZ))/PSUM(IPZ)
       IF (CORRECTOR) P_ZONE(IPZ)%DPSTAR =  D_PBAR_DT_P(IPZ)
    ENDDO
 
