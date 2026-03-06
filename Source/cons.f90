@@ -282,6 +282,7 @@ LOGICAL :: STORE_FIRE_RESIDENCE=.FALSE.             !< Flag for tracking residen
 LOGICAL :: STORE_LS_SPREAD_RATE=.FALSE.             !< Flag for outputting local level set spread rate magnitude
 LOGICAL :: TEST_NEW_CHAR_MODEL=.FALSE.              !< Flag to envoke new char model
 LOGICAL :: FLUX_LIMITER_MW_CORRECTION=.TRUE.        !< Flag for MW correction ensure consistent equation of state at face
+LOGICAL :: TEST_NEW_KSGS_MODEL=.FALSE.              !< Flag for new subgrid kinetic energy model from Pope model spectrum
 
 ! VTKHDF logical constants
 

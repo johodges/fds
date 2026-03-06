@@ -65,6 +65,7 @@
 \usepackage{scrextend}
 \usepackage{needspace}
 \usepackage[backend=biber, style=phys, sorting=none, backref=true, giveninits=true, maxbibnames=99]{biblatex}
+\ExecuteBibliographyOptions[report]{doi=true, url=true}
 \renewbibmacro{in:}{}
 \DeclareFieldFormat{titlecase}{#1}
 
@@ -73,6 +74,7 @@
 \newcommand{\tct}[1]{\lstinline[basicstyle=\scriptsize\ttfamily]!#1!}
 
 \usepackage{siunitx}
+
 
 \usepackage{listings}
 \usepackage{textcomp}
@@ -280,8 +282,8 @@ http://dx.doi.org/10.6028/NIST.SP.#1
 \newcommand{\dx}{\delta x}
 \newcommand{\dy}{\delta y}
 \newcommand{\dz}{\delta z}
-\newcommand{\degF}{$^\circ$F}
-\newcommand{\degC}{$^\circ$C}
+\newcommand{\degF}{\textdegree F}
+\newcommand{\degC}{\textdegree C}
 \newcommand{\x}{x}
 \newcommand{\y}{y}
 \newcommand{\z}{z}
