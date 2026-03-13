@@ -190,6 +190,7 @@ CALL PROC_HVAC
 
 ! Write the Smokeview (.smv) file using parallel MPI writes
 
+CALL ADD_EXTERIOR_VENTS
 CALL WRITE_SMOKEVIEW_FILE
 
 ! Stop all the processes if this is just a set-up run

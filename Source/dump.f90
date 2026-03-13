@@ -1492,7 +1492,7 @@ DEALLOCATE(PATCH_DUMMY)
 END SUBROUTINE REALLOCATE_PATCH
 
 
-!> \brief Parallel write of the Smokeview (.smv) file
+!> \brief Write information into the Smokeview (.smv) file
 
 SUBROUTINE WRITE_SMOKEVIEW_FILE
 
@@ -1504,7 +1504,7 @@ USE HVAC_ROUTINES, ONLY: N_DUCT_QUANTITY,N_NODE_QUANTITY, DUCT_QUANTITY_ARRAY,NO
 USE TRAN, ONLY: TRAN_TYPE,TRANS
 USE MISC_FUNCTIONS, ONLY : ACCUMULATE_STRING
 INTEGER :: N,NN,I,J,K,NM,NX,NY,NZ,NIN,NXL,NYL,NZL,COLOR_INDEX,IZERO,STATE_INDEX,SURF_INDEX,&
-            TYPE_INDEX,HI1,HI2,VI1,VI2,FACE_INDEX,VRGB(3),N_CVENT
+            TYPE_INDEX,HI1,HI2,VI1,VI2,VRGB(3),N_CVENT
 INTEGER, ALLOCATABLE, DIMENSION(:,:,:) :: VENT_INDICES
 REAL(EB) :: X1,Y1,Z1,X2,Y2,Z2,XX,YY,ZZ,PERT1(4),PERT2(4),XMIN,YMIN,ZMIN,XA,YA,ZA
 TYPE SEGMENT_TYPE
@@ -1518,7 +1518,6 @@ TYPE (TRAN_TYPE), POINTER :: T
 REAL(EB), ALLOCATABLE, DIMENSION(:) :: XLEVEL,YLEVEL,ZLEVEL
 LOGICAL :: EX, FOUND_GEOM
 CHARACTER(MESSAGE_LENGTH) :: MESSAGE
-TYPE(GEOMETRY_TYPE), POINTER :: G
 INTEGER :: IG,IS_TERRAIN_INT
 INTEGER :: II,JJ,IIO,JJO,KKO,NOM,IW,IW1,IW2,MESH_NEIGHBOR(6)
 INTEGER :: N_NODE_OUT, N_DUCT_OUT
@@ -2305,131 +2304,6 @@ MESH_LOOP: DO NM=1,NMESHES
       IF (VT%RADIUS>0._EB) N_CVENT=N_CVENT+1
    ENDDO
 
-   ! Create EXTERIOR_PATCHes with which Smokeview colors, textures, or contours exterior mesh boundaries.
-
-   ALLOCATE(M%EXTERIOR_PATCH(10)) ; M%N_EXTERIOR_PATCH = 0  ! The size of EXTERIOR_PATCH will expand if need be.
-   ALLOCATE(VENT_INDICES(MAX(M%IBAR,M%JBAR),MAX(M%JBAR,M%KBAR),6)) ; VENT_INDICES = 0
-
-   VENT_LOOP: DO N=1,M%N_VENT
-
-      VT=>M%VENTS(N)
-
-      IF (VT%RADIUS>0._EB) CYCLE VENT_LOOP
-
-      FACE_INDEX = 0
-      IF (VT%I1==0      .AND. VT%I2==0     ) FACE_INDEX = 1
-      IF (VT%I1==M%IBAR .AND. VT%I2==M%IBAR) FACE_INDEX = 2
-      IF (VT%J1==0      .AND. VT%J2==0     ) FACE_INDEX = 3
-      IF (VT%J1==M%JBAR .AND. VT%J2==M%JBAR) FACE_INDEX = 4
-      IF (VT%K1==0      .AND. VT%K2==0     ) FACE_INDEX = 5
-      IF (VT%K1==M%KBAR .AND. VT%K2==M%KBAR) FACE_INDEX = 6
-
-      SELECT CASE(FACE_INDEX)  ! Get vent cell indices
-         CASE(0)
-            CYCLE VENT_LOOP
-         CASE(1:2)
-            HI1 = MAX(1,VT%J1+1)
-            HI2 = MIN(M%JBAR,VT%J2)
-            VI1 = MAX(1,VT%K1+1)
-            VI2 = MIN(M%KBAR,VT%K2)
-         CASE(3:4)
-            HI1 = MAX(1,VT%I1+1)
-            HI2 = MIN(M%IBAR,VT%I2)
-            VI1 = MAX(1,VT%K1+1)
-            VI2 = MIN(M%KBAR,VT%K2)
-         CASE(5:6)
-            HI1 = MAX(1,VT%I1+1)
-            HI2 = MIN(M%IBAR,VT%I2)
-            VI1 = MAX(1,VT%J1+1)
-            VI2 = MIN(M%JBAR,VT%J2)
-      END SELECT
-
-      IF (VT%BOUNDARY_TYPE==MIRROR_BOUNDARY   .OR. &
-          VT%BOUNDARY_TYPE==OPEN_BOUNDARY     .OR. &
-          VT%BOUNDARY_TYPE==PERIODIC_BOUNDARY .OR. &
-          VT%TYPE_INDICATOR==2) THEN  ! Render this vent invisible in Smokeview
-         WHERE (VENT_INDICES(HI1:HI2,VI1:VI2,FACE_INDEX)==0) VENT_INDICES(HI1:HI2,VI1:VI2,FACE_INDEX) = -1
-      ELSE  ! Tag user-specified vents
-         WHERE (VENT_INDICES(HI1:HI2,VI1:VI2,FACE_INDEX)==0) VENT_INDICES(HI1:HI2,VI1:VI2,FACE_INDEX) = N
-         IF (.NOT.VT%DRAW) THEN  ! a dummy vent will be created and drawn rather than the actual vent.
-            VT%COLOR_INDICATOR =  8
-            VT%TYPE_INDICATOR  = -2
-            VT%TRANSPARENCY    =  0._EB
-         ENDIF
-      ENDIF
-
-   ENDDO VENT_LOOP
-
-   ! Look for interpolated mesh boundaries and ensure that Smokeview leaves these blank (VENT_INDICES=-1).
-
-   DO K=1,M%KBAR
-      DO J=1,M%JBAR
-         YY = 0.5_EB*(M%Y(J)+M%Y(J-1))
-         ZZ = 0.5_EB*(M%Z(K)+M%Z(K-1))
-         XX = M%X(0) - 0.001_EB*M%DX(0)
-         CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
-         IF (NOM>0 .AND. VENT_INDICES(J,K,1)<1) VENT_INDICES(J,K,1)=-1
-         IF (.NOT.SETUP_ONLY) THEN
-            IF (M%WALL(M%CELL(M%CELL_INDEX(1,J,K))%WALL_INDEX(-1))%OBST_INDEX>0) VENT_INDICES(J,K,1)=-1
-         ENDIF
-         XX = M%X(M%IBAR) + 0.001_EB*M%DX(M%IBAR)
-         CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
-         IF (NOM>0 .AND. VENT_INDICES(J,K,2)<1) VENT_INDICES(J,K,2)=-1
-         IF (.NOT.SETUP_ONLY) THEN
-            IF (M%WALL(M%CELL(M%CELL_INDEX(M%IBAR,J,K))%WALL_INDEX(1))%OBST_INDEX>0) VENT_INDICES(J,K,2)=-1
-         ENDIF
-      ENDDO
-   ENDDO
-
-   DO K=1,M%KBAR
-      DO I=1,M%IBAR
-         XX = 0.5_EB*(M%X(I)+M%X(I-1))
-         ZZ = 0.5_EB*(M%Z(K)+M%Z(K-1))
-         YY = M%Y(0) - 0.001_EB*M%DY(0)
-         CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
-         IF (NOM>0 .AND. VENT_INDICES(I,K,3)<1) VENT_INDICES(I,K,3)=-1
-         IF (.NOT.SETUP_ONLY) THEN
-            IF (M%WALL(M%CELL(M%CELL_INDEX(I,1,K))%WALL_INDEX(-2))%OBST_INDEX>0) VENT_INDICES(I,K,3)=-1
-         ENDIF
-         YY = M%Y(M%JBAR) + 0.001_EB*M%DY(M%JBAR)
-         CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
-         IF (NOM>0 .AND. VENT_INDICES(I,K,4)<1) VENT_INDICES(I,K,4)=-1
-         IF (.NOT.SETUP_ONLY) THEN
-            IF (M%WALL(M%CELL(M%CELL_INDEX(I,M%JBAR,K))%WALL_INDEX(2))%OBST_INDEX>0) VENT_INDICES(I,K,4)=-1
-         ENDIF
-      ENDDO
-   ENDDO
-
-   DO J=1,M%JBAR
-      DO I=1,M%IBAR
-         XX = 0.5_EB*(M%X(I)+M%X(I-1))
-         YY = 0.5_EB*(M%Y(J)+M%Y(J-1))
-         ZZ = M%Z(0) - 0.001_EB*M%DZ(0)
-         CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
-         IF (NOM>0 .AND. VENT_INDICES(I,J,5)<1) VENT_INDICES(I,J,5)=-1
-         IF (.NOT.SETUP_ONLY) THEN
-            IF (M%WALL(M%CELL(M%CELL_INDEX(I,J,1))%WALL_INDEX(-3))%OBST_INDEX>0) VENT_INDICES(I,J,5)=-1
-         ENDIF
-         ZZ = M%Z(M%KBAR) + 0.001_EB*M%DZ(M%KBAR)
-         CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
-         IF (NOM>0 .AND. VENT_INDICES(I,J,6)<1) VENT_INDICES(I,J,6)=-1
-         IF (.NOT.SETUP_ONLY) THEN
-            IF (M%WALL(M%CELL(M%CELL_INDEX(I,J,M%KBAR))%WALL_INDEX(3))%OBST_INDEX>0) VENT_INDICES(I,J,6)=-1
-         ENDIF
-      ENDDO
-   ENDDO
-
-   ! Create EXTERIOR_PATCHes to fill in areas around actual specified vents
-
-   CALL DUMMY_VENTS(1,M%JBAR,M%KBAR)
-   CALL DUMMY_VENTS(2,M%JBAR,M%KBAR)
-   CALL DUMMY_VENTS(3,M%IBAR,M%KBAR)
-   CALL DUMMY_VENTS(4,M%IBAR,M%KBAR)
-   CALL DUMMY_VENTS(5,M%IBAR,M%JBAR)
-   CALL DUMMY_VENTS(6,M%IBAR,M%JBAR)
-
-   DEALLOCATE(VENT_INDICES)
-
    ! Write out information about vents to Smokeview file
 
    CALL EOL
@@ -2606,14 +2480,161 @@ MYSTR=' '; CALL ACCUMULATE_STRING(STRING_LENGTH,MYSTR,SMVSTR,SMVSTR_T_LEN,SMVSTR
 END SUBROUTINE EOL
 
 
+!> \brief Increase size of array holding mesh wire frame coordinates
+
+SUBROUTINE RE_ALLOCATE_SEGMENTS
+
+USE MEMORY_FUNCTIONS, ONLY : ChkMemErr
+TYPE(SEGMENT_TYPE), ALLOCATABLE, DIMENSION(:) :: DUMMY_SEGMENT
+INTEGER :: IZERO
+
+ALLOCATE(DUMMY_SEGMENT(N_SEGMENTS_MAX),STAT=IZERO)
+CALL ChkMemErr('DUMP','DUMMY_SEGMENT',IZERO)
+DUMMY_SEGMENT(1:N_SEGMENTS_MAX) = SEGMENT(1:N_SEGMENTS_MAX)
+
+DEALLOCATE(SEGMENT)
+ALLOCATE(SEGMENT(N_SEGMENTS_MAX+100),STAT=IZERO)
+CALL ChkMemErr('DUMP','SEGMENT',IZERO)
+SEGMENT(1:N_SEGMENTS_MAX) = DUMMY_SEGMENT(1:N_SEGMENTS_MAX)
+N_SEGMENTS_MAX = N_SEGMENTS_MAX + 100
+
+DEALLOCATE(DUMMY_SEGMENT)
+
+END SUBROUTINE RE_ALLOCATE_SEGMENTS
+
+END SUBROUTINE WRITE_SMOKEVIEW_FILE
+
+! Create EXTERIOR_PATCHes with which Smokeview colors, textures, or contours exterior mesh boundaries.
+SUBROUTINE ADD_EXTERIOR_VENTS
+INTEGER :: NM,FACE_INDEX
+
+MESH_LOOP: DO NM=1,NMESHES
+
+   IF (PROCESS(NM)/=MY_RANK) CYCLE
+   M => MESHES(NM)
+
+   ALLOCATE(M%EXTERIOR_PATCH(10)) ; M%N_EXTERIOR_PATCH = 0 ! The size of EXTERIOR_PATCH will expand if need be.
+   ALLOCATE(VENT_INDICES(MAX(M%IBAR,M%JBAR),MAX(M%JBAR,M%KBAR),6)) ; VENT_INDICES = 0
+
+   VENT_LOOP: DO N=1,M%N_VENT
+
+      VT=>M%VENTS(N)
+      IF (VT%RADIUS>0._EB) CYCLE VENT_LOOP
+
+      FACE_INDEX = 0
+      IF (VT%I1==0      .AND. VT%I2==0     ) FACE_INDEX = 1
+      IF (VT%I1==M%IBAR .AND. VT%I2==M%IBAR) FACE_INDEX = 2
+      IF (VT%J1==0      .AND. VT%J2==0     ) FACE_INDEX = 3
+      IF (VT%J1==M%JBAR .AND. VT%J2==M%JBAR) FACE_INDEX = 4
+      IF (VT%K1==0      .AND. VT%K2==0     ) FACE_INDEX = 5
+      IF (VT%K1==M%KBAR .AND. VT%K2==M%KBAR) FACE_INDEX = 6
+
+      SELECT CASE(FACE_INDEX)  ! Get vent cell indices
+         CASE(0)
+            CYCLE VENT_LOOP
+         CASE(1:2)
+            HI1 = MAX(1,VT%J1+1)
+            HI2 = MIN(M%JBAR,VT%J2)
+            VI1 = MAX(1,VT%K1+1)
+            VI2 = MIN(M%KBAR,VT%K2)
+         CASE(3:4)
+            HI1 = MAX(1,VT%I1+1)
+            HI2 = MIN(M%IBAR,VT%I2)
+            VI1 = MAX(1,VT%K1+1)
+            VI2 = MIN(M%KBAR,VT%K2)
+         CASE(5:6)
+            HI1 = MAX(1,VT%I1+1)
+            HI2 = MIN(M%IBAR,VT%I2)
+            VI1 = MAX(1,VT%J1+1)
+            VI2 = MIN(M%JBAR,VT%J2)
+      END SELECT
+
+      IF (VT%BOUNDARY_TYPE==MIRROR_BOUNDARY   .OR. &
+          VT%BOUNDARY_TYPE==OPEN_BOUNDARY     .OR. &
+          VT%BOUNDARY_TYPE==PERIODIC_BOUNDARY .OR. &
+          VT%TYPE_INDICATOR==2) THEN  ! Render this vent invisible in Smokeview
+         WHERE (VENT_INDICES(HI1:HI2,VI1:VI2,FACE_INDEX)==0) VENT_INDICES(HI1:HI2,VI1:VI2,FACE_INDEX) = -1
+      ELSE  ! Tag user-specified vents
+         WHERE (VENT_INDICES(HI1:HI2,VI1:VI2,FACE_INDEX)==0) VENT_INDICES(HI1:HI2,VI1:VI2,FACE_INDEX) = N
+         IF (.NOT.VT%DRAW) THEN  ! a dummy vent will be created and drawn rather than the actual vent.
+            VT%COLOR_INDICATOR =  8
+            VT%TYPE_INDICATOR  = -2
+            VT%TRANSPARENCY    =  0._EB
+         ENDIF
+      ENDIF
+
+   ENDDO VENT_LOOP
+
+   ! Look for interpolated mesh boundaries and ensure that Smokeview leaves these blank (VENT_INDICES=-1).
+   IF ((N_BNDF>0 .AND. M%BNDF_DUMP).AND.(WRITE_SMV)) THEN
+      DO K=1,M%KBAR
+         DO J=1,M%JBAR
+            YY = 0.5_EB*(M%Y(J)+M%Y(J-1))
+            ZZ = 0.5_EB*(M%Z(K)+M%Z(K-1))
+            XX = M%X(0) - 0.001_EB*M%DX(0)
+            CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
+            IF (NOM>0 .AND. VENT_INDICES(J,K,1)<1) VENT_INDICES(J,K,1)=-1
+            IF (M%WALL(M%CELL(M%CELL_INDEX(1,J,K))%WALL_INDEX(-1))%OBST_INDEX>0) VENT_INDICES(J,K,1)=-1
+            XX = M%X(M%IBAR) + 0.001_EB*M%DX(M%IBAR)
+            CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
+            IF (NOM>0 .AND. VENT_INDICES(J,K,2)<1) VENT_INDICES(J,K,2)=-1
+            IF (M%WALL(M%CELL(M%CELL_INDEX(M%IBAR,J,K))%WALL_INDEX(1))%OBST_INDEX>0) VENT_INDICES(J,K,2)=-1
+         ENDDO
+      ENDDO
+
+      DO K=1,M%KBAR
+         DO I=1,M%IBAR
+            XX = 0.5_EB*(M%X(I)+M%X(I-1))
+            ZZ = 0.5_EB*(M%Z(K)+M%Z(K-1))
+            YY = M%Y(0) - 0.001_EB*M%DY(0)
+            CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
+            IF (NOM>0 .AND. VENT_INDICES(I,K,3)<1) VENT_INDICES(I,K,3)=-1
+            IF (M%WALL(M%CELL(M%CELL_INDEX(I,1,K))%WALL_INDEX(-2))%OBST_INDEX>0) VENT_INDICES(I,K,3)=-1
+            YY = M%Y(M%JBAR) + 0.001_EB*M%DY(M%JBAR)
+            CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
+            IF (NOM>0 .AND. VENT_INDICES(I,K,4)<1) VENT_INDICES(I,K,4)=-1
+            IF (M%WALL(M%CELL(M%CELL_INDEX(I,M%JBAR,K))%WALL_INDEX(2))%OBST_INDEX>0) VENT_INDICES(I,K,4)=-1
+         ENDDO
+      ENDDO
+
+      DO J=1,M%JBAR
+         DO I=1,M%IBAR
+            XX = 0.5_EB*(M%X(I)+M%X(I-1))
+            YY = 0.5_EB*(M%Y(J)+M%Y(J-1))
+            ZZ = M%Z(0) - 0.001_EB*M%DZ(0)
+            CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
+            IF (NOM>0 .AND. VENT_INDICES(I,J,5)<1) VENT_INDICES(I,J,5)=-1
+            IF (M%WALL(M%CELL(M%CELL_INDEX(I,J,1))%WALL_INDEX(-3))%OBST_INDEX>0) VENT_INDICES(I,J,5)=-1
+            ZZ = M%Z(M%KBAR) + 0.001_EB*M%DZ(M%KBAR)
+            CALL SEARCH_OTHER_MESHES(XX,YY,ZZ,NOM,IIO,JJO,KKO)
+            IF (NOM>0 .AND. VENT_INDICES(I,J,6)<1) VENT_INDICES(I,J,6)=-1
+            IF (M%WALL(M%CELL(M%CELL_INDEX(I,J,M%KBAR))%WALL_INDEX(3))%OBST_INDEX>0) VENT_INDICES(I,J,6)=-1
+         ENDDO
+      ENDDO
+   ENDIF
+
+   ! Create EXTERIOR_PATCHes to fill in areas around actual specified vents
+
+   CALL DUMMY_VENTS(1,M%JBAR,M%KBAR,NM)
+   CALL DUMMY_VENTS(2,M%JBAR,M%KBAR,NM)
+   CALL DUMMY_VENTS(3,M%IBAR,M%KBAR,NM)
+   CALL DUMMY_VENTS(4,M%IBAR,M%KBAR,NM)
+   CALL DUMMY_VENTS(5,M%IBAR,M%JBAR,NM)
+   CALL DUMMY_VENTS(6,M%IBAR,M%JBAR,NM)
+
+   DEALLOCATE(VENT_INDICES)
+ENDDO MESH_LOOP
+
+CONTAINS
+
 !> \brief For exterior mesh face, FI, create EXTERIOR_PATCHes for Smokeview
 !> \param FI Face Index, 1-6, where 1 refers to lower \f$ x \f$ mesh boundary, 2 upper, etc.
 !> \param N1 Number of cells in the first coordinate direction
 !> \param N2 Number of cells in the second coordinate direction
 
-SUBROUTINE DUMMY_VENTS(FI,N1,N2)
+SUBROUTINE DUMMY_VENTS(FI,N1,N2,NM)
 
-INTEGER, INTENT(IN) :: N1,N2,FI
+INTEGER, INTENT(IN) :: N1,N2,FI,NM
 INTEGER :: I,J,II,JJ,ISTP,JSTP,VENT_INDEX
 
 JLOOP: DO J=1,N2
@@ -2667,30 +2688,7 @@ ENDDO JLOOP
 
 END SUBROUTINE DUMMY_VENTS
 
-
-!> \brief Increase size of array holding mesh wire frame coordinates
-
-SUBROUTINE RE_ALLOCATE_SEGMENTS
-
-USE MEMORY_FUNCTIONS, ONLY : ChkMemErr
-TYPE(SEGMENT_TYPE), ALLOCATABLE, DIMENSION(:) :: DUMMY_SEGMENT
-INTEGER :: IZERO
-
-ALLOCATE(DUMMY_SEGMENT(N_SEGMENTS_MAX),STAT=IZERO)
-CALL ChkMemErr('DUMP','DUMMY_SEGMENT',IZERO)
-DUMMY_SEGMENT(1:N_SEGMENTS_MAX) = SEGMENT(1:N_SEGMENTS_MAX)
-
-DEALLOCATE(SEGMENT)
-ALLOCATE(SEGMENT(N_SEGMENTS_MAX+100),STAT=IZERO)
-CALL ChkMemErr('DUMP','SEGMENT',IZERO)
-SEGMENT(1:N_SEGMENTS_MAX) = DUMMY_SEGMENT(1:N_SEGMENTS_MAX)
-N_SEGMENTS_MAX = N_SEGMENTS_MAX + 100
-
-DEALLOCATE(DUMMY_SEGMENT)
-
-END SUBROUTINE RE_ALLOCATE_SEGMENTS
-
-END SUBROUTINE WRITE_SMOKEVIEW_FILE
+END SUBROUTINE ADD_EXTERIOR_VENTS
 
 
 !> \brief Status files are used to indicate if FDS has completed
