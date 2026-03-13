@@ -1493,7 +1493,7 @@ DEALLOCATE(PATCH_DUMMY)
 END SUBROUTINE REALLOCATE_PATCH
 
 
-!> \brief Write information into the Smokeview (.smv) file
+!> \brief Parallel write of the Smokeview (.smv) file
 
 SUBROUTINE WRITE_SMOKEVIEW_FILE
 
