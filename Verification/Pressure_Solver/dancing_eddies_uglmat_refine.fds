@@ -1,7 +1,9 @@
-&HEAD CHID='dancing_eddies_uglmat', TITLE='Simple 2D Tunnel test of UGLMAT solver'/ 
+&HEAD CHID='dancing_eddies_uglmat_refine', TITLE='Test of UGLMAT solver with mesh refinement'/
 
-&MULT ID='mesh',DX=0.075,I_UPPER=3 /
-&MESH IJK=75,1,40, XB=0.0,0.075,-0.001,0.001,-0.02,0.020, MULT_ID='mesh' /
+&MESH ID='Mesh-1',IJK=76,1,40, XB=0.000,0.076,-0.001,0.001,-0.02,0.020 /
+&MESH ID='Mesh-2',IJK=76,1,40, XB=0.076,0.152,-0.001,0.001,-0.02,0.020 /
+&MESH ID='Mesh-3',IJK=38,1,20, XB=0.152,0.228,-0.001,0.001,-0.02,0.020 /
+&MESH ID='Mesh-4',IJK=38,1,20, XB=0.228,0.304,-0.001,0.001,-0.02,0.020 /
 
 &TIME T_END=2.0 /
 
@@ -19,8 +21,8 @@
 
 &SURF ID='BLOW', VEL=-0.5 /
 
-&VENT PBX=0.0, SURF_ID='BLOW' /
-&VENT PBX=0.3, SURF_ID='OPEN' /
+&VENT DB='XMIN', SURF_ID='BLOW' /
+&VENT DB='XMAX', SURF_ID='OPEN' /
 
 &SLCF PBY=0.,QUANTITY='VELOCITY',VECTOR=.TRUE. /
 &SLCF PBY=0.,QUANTITY='H' /
