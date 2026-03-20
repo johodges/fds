@@ -1,6 +1,9 @@
 #!/bin/bash
 
 $QFDS -p 4 -d Adaptive_Mesh_Refinement random_meshes.fds
+# $QFDS -p 2 -d Adaptive_Mesh_Refinement ns2d_16_emb_1to1_refinement.fds
+# $QFDS -p 2 -d Adaptive_Mesh_Refinement ns2d_16_emb_1to2_refinement.fds
+# $QFDS -p 13 -d Adaptive_Mesh_Refinement ns2d_16_int_1to2_refinement.fds
 
 $QFDS -d Aerosols aerosol_agglomeration.fds
 $QFDS -d Aerosols aerosol_agglomeration_2.fds
@@ -17,10 +20,10 @@ $QFDS -d Aerosols propane_flame_deposition_thermophoretic.fds
 $QFDS -d Aerosols propane_flame_deposition_turbulent.fds
 $QFDS -d Aerosols soot_oxidation_wall.fds
 
-$QFDS -p 36 -d Atmospheric_Effects atmospheric_boundary_layer_1.fds
-$QFDS -p 36 -d Atmospheric_Effects atmospheric_boundary_layer_2.fds
-$QFDS -p 36 -d Atmospheric_Effects atmospheric_boundary_layer_3.fds
-$QFDS -p 36 -d Atmospheric_Effects atmospheric_boundary_layer_4.fds
+$QFDS -p 16 -d Atmospheric_Effects atmospheric_boundary_layer_1.fds
+$QFDS -p 16 -d Atmospheric_Effects atmospheric_boundary_layer_2.fds
+$QFDS -p 16 -d Atmospheric_Effects atmospheric_boundary_layer_3.fds
+$QFDS -p 16 -d Atmospheric_Effects atmospheric_boundary_layer_4.fds
 $QFDS -d Atmospheric_Effects lee_waves.fds
 $QFDS -d Atmospheric_Effects stack_effect.fds
 $QFDS -d Atmospheric_Effects lapse_rate.fds
@@ -48,6 +51,32 @@ $QFDS -d Chemistry ign_delay_Ethylene_TianfengLu_T1100K_Phi1p0.fds
 $QFDS -d Chemistry ign_delay_Propane_USC_T1100K_Phi1p0.fds
 $QFDS -d Chemistry ign_delay_Propane_Z66_T1100K_Phi1p0.fds
 $QFDS -d Chemistry ign_delay_nHeptane_Chalmers_T1100K_Phi1p0.fds
+
+$QFDS -p 24 -d Chemistry load_bal_methane_smooke_serial.fds
+$QFDS -p 24 -d Chemistry load_bal_methane_smooke_parallel.fds
+$QFDS -p 6  -d Chemistry load_bal_propane_2step_arrhenius_serial.fds
+$QFDS -p 6  -d Chemistry load_bal_propane_2step_arrhenius_parallel.fds
+$QFDS -p 6  -d Chemistry load_bal_methane_2step_fast_serial.fds
+$QFDS -p 6  -d Chemistry load_bal_methane_2step_fast_parallel.fds
+
+$QFDS -d Chemistry EDC_OneCFDStep_Methane_grimech30_Zeta1p0.fds
+$QFDS -d Chemistry EDC_OneCFDStep_Methane_grimech30_Zeta0p75.fds
+$QFDS -d Chemistry EDC_OneCFDStep_Methane_grimech30_Zeta0p5.fds
+$QFDS -d Chemistry EDC_OneCFDStep_Methane_grimech30_Zeta0p25.fds
+$QFDS -d Chemistry EDC_OneCFDStep_Methane_grimech30_Zeta0p0.fds
+$QFDS -d Chemistry EDC_MultiCFDStep_Methane_grimech30_Zeta1p0.fds
+$QFDS -d Chemistry EDC_MultiCFDStep_Methane_grimech30_Zeta0p75.fds
+$QFDS -d Chemistry EDC_MultiCFDStep_Methane_grimech30_Zeta0p5.fds
+$QFDS -d Chemistry EDC_MultiCFDStep_Methane_grimech30_Zeta0p25.fds
+$QFDS -d Chemistry EDC_MultiCFDStep_Methane_grimech30_Zeta0p0.fds
+$QFDS -d Chemistry EDC_OneCFDStep_Methane_grimech30_taumix0p1.fds
+$QFDS -d Chemistry EDC_OneCFDStep_Methane_grimech30_taumix0p01.fds
+$QFDS -d Chemistry EDC_OneCFDStep_Methane_grimech30_taumix0p001.fds
+$QFDS -d Chemistry EDC_OneCFDStep_Methane_grimech30_taumix0p0001.fds
+$QFDS -d Chemistry EDC_OneCFDStep_Methane_grimech30_taumix0p00001.fds
+
+$QFDS -p 24 -d Chemistry EDC_load_bal_methane_smooke_serial.fds
+$QFDS -p 24 -d Chemistry EDC_load_bal_methane_smooke_parallel.fds
 
 $QFDS -d Complex_Geometry geom_channel.fds
 $QFDS -d Complex_Geometry geom_channel2.fds
@@ -99,6 +128,7 @@ $QFDS -d Complex_Geometry shunn3_64_cc_exp_gdv.fds
 $QFDS -d Complex_Geometry shunn3_128_cc_exp_gdv.fds
 $QFDS -d Complex_Geometry shunn3_256_cc_exp_gdv.fds
 $QFDS -o 2 -d Complex_Geometry shunn3_320_cc_exp_gdv.fds
+$QFDS -d Complex_Geometry t34_scaling.fds
 
 $QFDS -d Complex_Geometry geom_poiseuille_N10a_theta0_stm.fds
 $QFDS -d Complex_Geometry geom_poiseuille_N20a_theta0_stm.fds
@@ -147,6 +177,7 @@ $QFDS -p 5 -d Complex_Geometry geom_stretched_grid.fds
 $QFDS -p 3 -d Complex_Geometry thin_object_mass.fds
 
 $QFDS -d Controls activate_vents.fds
+$QFDS -d Controls bi_dir.fds
 $QFDS -d Controls control_test.fds
 $QFDS -d Controls control_test_2.fds
 $QFDS -d Controls create_remove.fds
@@ -157,6 +188,11 @@ $QFDS -d Controls rms_cov_corr.fds
 $QFDS -d Controls rms_example.fds
 $QFDS -d Controls special_time_ramps.fds
 $QFDS -p 4 -d Controls spreading_fire.fds
+# if [ "$QUEUE" == "" ]; then
+#     QUEUE='batch'
+# fi
+# sbatch --partition=$QUEUE $FIREMODELS/fds/Verification/Controls/ext_heartbeat_std_curve_slurm.sh
+# $QFDS -d Controls ext_heartbeat_std_curve.fds
 
 $QFDS -d Detectors aspiration_detector.fds
 $QFDS -p 8 -d Detectors beam_detector.fds
@@ -199,7 +235,6 @@ $QFDS -d Fires HoC_NonIdeal.fds
 $QFDS -d Fires simple_test.fds
 $QFDS -d Fires tmp_lower_limit_simple.fds
 $QFDS -d Fires tmp_lower_limit_default.fds
-$QFDS -d Fires tmp_lower_limit_dt_p001.fds
 $QFDS -d Fires tunnel_const_gamma.fds
 $QFDS -d Fires tunnel_linear_cp.fds
 $QFDS -p 8 -d Fires circular_burner.fds
@@ -287,8 +322,17 @@ $QFDS -d Heat_Transfer ht3d_slab.fds
 $QFDS -d Heat_Transfer ht3d_sphere_24.fds
 $QFDS -p 4 -d Heat_Transfer ht3d_sphere_48.fds
 $QFDS -p 64 -d Heat_Transfer ht3d_sphere_96.fds
+$QFDS -d Heat_Transfer back_wall.fds
 $QFDS -p 4 -d Heat_Transfer back_wall_test.fds
 $QFDS -p 3 -d Heat_Transfer back_wall_test_2.fds
+$QFDS -d Heat_Transfer SFPE_Case_1.fds
+$QFDS -d Heat_Transfer SFPE_Case_2.fds
+$QFDS -d Heat_Transfer SFPE_Case_6.fds
+$QFDS -d Heat_Transfer SFPE_Case_7.fds
+$QFDS -d Heat_Transfer SFPE_Case_8.fds
+$QFDS -d Heat_Transfer SFPE_Case_9.fds
+$QFDS -d Heat_Transfer SFPE_Case_13.fds
+$QFDS -p 8 -d Heat_Transfer SFPE_Case_16.fds
 $QFDS -d Heat_Transfer thermocouple_time_constant.fds
 
 $QFDS -d HVAC ashrae7_fixed_flow.fds
@@ -303,6 +347,7 @@ $QFDS -d HVAC HVAC_damper.fds
 $QFDS -d HVAC HVAC_energy_pressure.fds
 $QFDS -d HVAC HVAC_filter.fds
 $QFDS -d HVAC HVAC_flow_loss.fds
+$QFDS -d HVAC HVAC_geom.fds
 $QFDS -d HVAC HVAC_mass_conservation.fds
 $QFDS -d HVAC HVAC_mass_transport.fds
 $QFDS -d HVAC HVAC_mass_transport_1.fds
@@ -327,6 +372,7 @@ $QFDS -d HVAC leak_test_2.fds
 $QFDS -d HVAC leak_enthalpy.fds
 $QFDS -p 2 -d HVAC leak_test_3.fds
 $QFDS -d HVAC leak_test_4.fds
+$QFDS -d HVAC leak_geom.fds
 $QFDS -d HVAC HVAC_leak_exponent.fds
 $QFDS -p 8 -d HVAC HVAC_leak_exponent_2.fds
 
@@ -337,6 +383,8 @@ $QFDS -d Miscellaneous mesh_transformation.fds
 $QFDS -d Miscellaneous obst_sphere.fds
 $QFDS -d Miscellaneous obst_cylinder.fds
 $QFDS -d Miscellaneous obst_cone.fds
+$QFDS -d Miscellaneous obst_multi.fds
+$QFDS -d Miscellaneous obst_single.fds
 $QFDS -d Miscellaneous obst_rotbox.fds
 $QFDS -d Miscellaneous obst_sphere_mass_flux.fds
 $QFDS -d Miscellaneous obst_cylinder_mass_flux.fds
@@ -367,23 +415,34 @@ $QFDS -d Pressure_Effects isentropic.fds
 $QFDS -d Pressure_Effects isentropic2.fds
 $QFDS -d Pressure_Effects pressure_boundary.fds
 $QFDS -d Pressure_Effects pressure_rise.fds
+$QFDS -p 8 -d Pressure_Effects thick_orifice_5cm.fds
 $QFDS -d Pressure_Effects zone_break_fast.fds
 $QFDS -d Pressure_Effects zone_break_slow.fds
 $QFDS -d Pressure_Effects zone_break_fast_ulmat.fds
 $QFDS -d Pressure_Effects zone_break_slow_ulmat.fds
 $QFDS -p 4 -d Pressure_Effects zone_break_fast_uglmat.fds
+$QFDS -p 4 -d Pressure_Effects zone_break_fast_uglmat_hypre.fds
 $QFDS -p 2 -d Pressure_Effects zone_shape.fds
 $QFDS -p 8 -d Pressure_Effects zone_shape_2.fds
 $QFDS -d Pressure_Effects obst_coarse_fine_interface.fds
 
 $QFDS -d Pressure_Solver dancing_eddies_1mesh.fds
 $QFDS -d Pressure_Solver opening_ulmat.fds
-$QFDS -p 4 -d Pressure_Solver dancing_eddies_uglmat.fds
+$QFDS -p 5 -d Pressure_Solver dancing_eddies_embed.fds
+$QFDS -p 4 -d Pressure_Solver dancing_eddies_ulmat.fds
+$QFDS -p 4 -d Pressure_Solver dancing_eddies_ulmat_hypre.fds
+$QFDS -p 4 -d Pressure_Solver dancing_eddies_uglmat_pardiso.fds
+$QFDS -p 4 -d Pressure_Solver dancing_eddies_uglmat_hypre.fds
+$QFDS -p 4 -d Pressure_Solver dancing_eddies_uglmat_refine.fds
 $QFDS -p 4 -d Pressure_Solver dancing_eddies_tight.fds
 $QFDS -p 4 -d Pressure_Solver dancing_eddies_tight_no_precon.fds
 $QFDS -p 4 -d Pressure_Solver dancing_eddies_default.fds
 $QFDS -p 8 -d Pressure_Solver duct_flow.fds
-$QFDS -p 8 -d Pressure_Solver duct_flow_uglmat.fds
+$QFDS -p 8 -d Pressure_Solver duct_flow_ulmat.fds
+$QFDS -p 8 -d Pressure_Solver duct_flow_ulmat_hypre.fds
+$QFDS -p 8 -d Pressure_Solver duct_flow_uglmat_pardiso.fds
+$QFDS -p 8 -d Pressure_Solver duct_flow_uglmat_hypre.fds
+$QFDS -p 8 -d Pressure_Solver duct_flow_uglmat_refine.fds
 $QFDS -p 5 -d Pressure_Solver hallways.fds
 $QFDS -p 8 -d Pressure_Solver tunnel_demo.fds
 $QFDS -p 8 -d Pressure_Solver tunnel_demo_glmat.fds
@@ -394,8 +453,16 @@ $QFDS -p 8 -d Pressure_Solver pressure_iteration3d_uglmat.fds
 $QFDS -p 16 -d Pressure_Solver random_obstructions_fft.fds
 $QFDS -p 4 -d Pressure_Solver stairwell.fds
 $QFDS -p 2 -d Pressure_Solver ulmat_2zone.fds
+$QFDS -p 4 -d Pressure_Solver obst_activation_default.fds
 $QFDS -p 4 -d Pressure_Solver obst_activation_ulmat.fds
+$QFDS -p 4 -d Pressure_Solver obst_activation_default_gases.fds
 
+$QFDS -d Pyrolysis anca-couce-fig1_10K.fds
+$QFDS -d Pyrolysis anca-couce-fig1_5K.fds
+$QFDS -d Pyrolysis anca-couce-fig1_2p5K.fds
+$QFDS -d Pyrolysis anca-couce-fig2_10K.fds
+$QFDS -d Pyrolysis anca-couce-fig2_5K.fds
+$QFDS -d Pyrolysis anca-couce-fig2_2p5K.fds
 $QFDS -d Pyrolysis cable_11_insulation_mcc.fds
 $QFDS -d Pyrolysis cable_23_insulation_mcc.fds
 $QFDS -d Pyrolysis cable_701_insulation_mcc.fds
@@ -403,6 +470,9 @@ $QFDS -d Pyrolysis cable_11_jacket_mcc.fds
 $QFDS -d Pyrolysis cable_23_jacket_mcc.fds
 $QFDS -d Pyrolysis cable_701_jacket_mcc.fds
 $QFDS -d Pyrolysis cell_burn_away.fds
+$QFDS -d Pyrolysis cellulose_TGA_1KPM_Air.fds
+$QFDS -d Pyrolysis cellulose_TGA_3KPM_Air.fds
+$QFDS -d Pyrolysis cellulose_TGA_5KPM_Air.fds
 $QFDS -d Pyrolysis birch_tga_1step_2.fds
 $QFDS -d Pyrolysis birch_tga_1step_20.fds
 $QFDS -d Pyrolysis enthalpy.fds
@@ -413,6 +483,7 @@ $QFDS -d Pyrolysis part_baking_soda_420K.fds
 $QFDS -d Pyrolysis part_baking_soda_450K.fds
 $QFDS -d Pyrolysis part_baking_soda_500K.fds
 $QFDS -d Pyrolysis pine_wood_TGA_exp03_1C.fds
+$QFDS -d Pyrolysis pine_wood_TGA_exp03_3C.fds
 $QFDS -d Pyrolysis pine_wood_TGA_exp13_1C.fds
 $QFDS -d Pyrolysis pine_wood_TGA_exp13_3C.fds
 $QFDS -d Pyrolysis pine_wood_TGA_exp14_1C.fds
@@ -420,7 +491,9 @@ $QFDS -d Pyrolysis pine_wood_TGA_exp14_3C.fds
 $QFDS -d Pyrolysis pine_wood_TGA_exp15_1C.fds
 $QFDS -d Pyrolysis pine_wood_TGA_exp15_3C.fds
 $QFDS -d Pyrolysis pine_wood_TGA_exp16_1C.fds
+$QFDS -d Pyrolysis pine_wood_TGA_exp16_3C.fds
 $QFDS -d Pyrolysis pine_wood_TGA_exp17_1C.fds
+$QFDS -d Pyrolysis pine_wood_TGA_exp17_3C.fds
 $QFDS -d Pyrolysis pyrolysis_1.fds
 $QFDS -d Pyrolysis pyrolysis_2.fds
 $QFDS -d Pyrolysis specified_hrr.fds
@@ -575,10 +648,17 @@ $QFDS -d Species propane_flame_2reac_simple.fds
 $QFDS -d Species multiple_reac_hrrpua.fds
 $QFDS -d Species multiple_reac_n_simple.fds
 $QFDS -d Species reactionrate_arrhenius_0order_1step.fds
+$QFDS -d Species reactionrate_arrhenius_0order_1step_cvode.fds
 $QFDS -d Species reactionrate_arrhenius_2order_1step.fds
+$QFDS -d Species reactionrate_arrhenius_2order_1step_cvode.fds
 $QFDS -d Species reactionrate_arrhenius_1p75order_2step.fds
+$QFDS -d Species reactionrate_arrhenius_1p75order_2step_cvode.fds
 $QFDS -d Species reactionrate_arrhenius_1p75order_2stepr.fds
+$QFDS -d Species reactionrate_arrhenius_1p75order_2stepr_cvode.fds
 $QFDS -d Species reactionrate_arrhenius_equilibrium.fds
+$QFDS -d Species reactionrate_arrhenius_equilibrium_cvode.fds
+$QFDS -d Species reactionrate_arrhenius_jones_lindstedt.fds
+$QFDS -d Species reactionrate_arrhenius_jones_lindstedt_cvode.fds
 $QFDS -d Species reactionrate_EDC_1step_CH4_nonmix.fds
 $QFDS -d Species reactionrate_EDC_flim_1step_C3H8.fds
 $QFDS -d Species reactionrate_EDC_flim_1step_CH4.fds
@@ -694,10 +774,6 @@ $QFDS -d Scalar_Analytical_Solution compression_wave_FL4_16.fds
 $QFDS -d Scalar_Analytical_Solution compression_wave_FL4_32.fds
 $QFDS -d Scalar_Analytical_Solution compression_wave_FL4_64.fds
 $QFDS -d Scalar_Analytical_Solution compression_wave_FL4_128.fds
-$QFDS -d Scalar_Analytical_Solution compression_wave_FL5_16.fds
-$QFDS -d Scalar_Analytical_Solution compression_wave_FL5_32.fds
-$QFDS -d Scalar_Analytical_Solution compression_wave_FL5_64.fds
-$QFDS -d Scalar_Analytical_Solution compression_wave_FL5_128.fds
 $QFDS -d Scalar_Analytical_Solution move_slug.fds
 $QFDS -d Scalar_Analytical_Solution move_slug_fl1.fds
 $QFDS -d Scalar_Analytical_Solution shunn3_32.fds
@@ -743,10 +819,6 @@ $QFDS      -d Scalar_Analytical_Solution soborot_superbee_cos_wave_16.fds
 $QFDS      -d Scalar_Analytical_Solution soborot_superbee_cos_wave_32.fds
 $QFDS      -d Scalar_Analytical_Solution soborot_superbee_cos_wave_64.fds
 $QFDS -p 4 -d Scalar_Analytical_Solution soborot_superbee_cos_wave_128.fds
-$QFDS      -d Scalar_Analytical_Solution soborot_mp5_cos_wave_16.fds
-$QFDS      -d Scalar_Analytical_Solution soborot_mp5_cos_wave_32.fds
-$QFDS      -d Scalar_Analytical_Solution soborot_mp5_cos_wave_64.fds
-$QFDS -p 4 -d Scalar_Analytical_Solution soborot_mp5_cos_wave_128.fds
 
 $QFDS -o 1 -d Thread_Check race_test_1.fds
 $QFDS -o 4 -d Thread_Check race_test_4.fds
@@ -807,6 +879,8 @@ $QFDS -d WUI LS_ellipse_0ms_00deg.fds
 $QFDS -d WUI LS_ellipse_5ms_00deg.fds
 $QFDS -d WUI LS_ellipse_0ms_30deg.fds
 $QFDS -d WUI LS_ellipse_5ms_30deg.fds
+$QFDS -d WUI LS_wind_ramp_lin.fds
+$QFDS -d WUI LS_wind_ramp_quad.fds
 $QFDS -d WUI LS4_ember_ignition.fds
 $QFDS -d WUI LS4_ember_yield.fds
 $QFDS -d WUI Morvan_TGA.fds
@@ -829,6 +903,8 @@ $QFDS -d WUI part_drag_prof_wx.fds
 $QFDS -d WUI part_drag_prof_wy.fds
 $QFDS -d WUI part_drag_prof_wz.fds
 $QFDS -d WUI part_drag_stretched.fds
+$QFDS -d WUI part_spec_prof.fds
+$QFDS -d WUI part_temp_prof.fds
 $QFDS -d WUI pine_needles.fds
 $QFDS -d WUI radiation_gas-veg_consistency_gas.fds
 $QFDS -d WUI radiation_gas-veg_consistency_veg.fds

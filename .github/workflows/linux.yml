@@ -34,38 +34,27 @@ jobs:
     - uses: rscohn2/setup-oneapi@v0
       with:
         components: |
-          ifx
-          impi
-          mkl
+          ifx@2025.3.0
+          impi@2021.17.1
+          mkl@2025.3.0
+        prune: false       
+         
+    - uses: actions/checkout@v6
 
-    - uses: actions/checkout@v4
     - name: build fds debug
       run: |
         source /opt/intel/oneapi/setvars.sh
         cd ./Build/impi_intel_linux_db
-        sh ./make_fds.sh
+        ./make_fds.sh
         ./fds_impi_intel_linux_db
+
     - name: build fds release
       run: |
         source /opt/intel/oneapi/setvars.sh
         cd ./Build/impi_intel_linux
-        sh ./make_fds.sh
+        ./make_fds.sh
         ./fds_impi_intel_linux
 
-    # Setup python
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.9'
-        cache: 'pip' # caching pip dependencies
-    - run: pip install -r .github/requirements.txt
-
-    # Run Hello World test
-    - name: Python test
-      run: |
-        echo $GITHUB_WORKSPACE
-        cd $GITHUB_WORKSPACE/Utilities/Python
-        python hello_world.py
-        python FDS_verification_script.py
 
   linux-gnu-openmpi:
     # build on ubuntu using gfortran with openmpi and mkl based on
@@ -82,18 +71,46 @@ jobs:
     - uses: rscohn2/setup-oneapi@v0
       with:
         components: |
-          mkl
+          mkl@2025.1.0
+        prune: false  
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: build fds debug
       run: |
         source /opt/intel/oneapi/setvars.sh
         cd ./Build/ompi_gnu_linux_db
-        sh ./make_fds.sh
+        ./make_fds.sh
         ./fds_ompi_gnu_linux_db
     - name: build fds release
       run: |
         source /opt/intel/oneapi/setvars.sh
         cd ./Build/ompi_gnu_linux
-        sh ./make_fds.sh
+        ./make_fds.sh
         ./fds_ompi_gnu_linux
+
+
+  linux-python-helloworld:
+    # Run Hello World test
+
+    name: linux python helloworld
+    runs-on: [ubuntu-latest]
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.9'
+        cache: 'pip' # caching pip dependencies
+    - run: |
+        echo $GITHUB_WORKSPACE
+        cd $GITHUB_WORKSPACE/Utilities/Python
+        source setup_python_env.sh --batchmode
+
+    - name: Python test
+      run: |
+        echo $GITHUB_WORKSPACE
+        cd $GITHUB_WORKSPACE/Utilities/Python
+        source $GITHUB_WORKSPACE/.github/fds_python_env/bin/activate
+        python hello_world.py
+        : # python FDS_verification_script.py

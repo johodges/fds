@@ -4,7 +4,7 @@
 
 &TIME T_END=10. /
 
-&DUMP FLUSH_FILE_BUFFERS=T, NFRAMES=100 /
+&DUMP NFRAMES=100 /
 
 &SPEC ID='NITROGEN' /
 
@@ -45,30 +45,3 @@
 &DEVC XB=-1,1,-1,1,0,2, QUANTITY='CHI_R', SPATIAL_STATISTIC='MAX', ID='chi_r_max' /
 
 &TAIL /
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

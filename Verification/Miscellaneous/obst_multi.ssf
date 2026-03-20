@@ -1,0 +1,17 @@
+// put rendered files in specified directory
+
+RENDERDIR
+ ..\..\Manuals\FDS_User_Guide\SCRIPT_FIGURES
+
+KEYBOARD
+ O
+KEYBOARD
+ O
+RENDERONCE
+ obst_multi
+LOADSMV
+ obst_single.smv
+KEYBOARD
+ q
+RENDERONCE
+ obst_single

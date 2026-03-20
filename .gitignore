@@ -45,6 +45,7 @@ Manuals/*/*Guide.pdf
 *.sf
 *.bf
 *.s3d
+*.s3dd
 *.q
 *.sz
 *.smv
@@ -99,3 +100,18 @@ Validation/*/FDS_Output_Files/*.csv
 
 # Verification script generated fds files
 Verification/Timing_Benchmarks/t*.fds
+
+# Local cmake configuration
+CMakeUserPresets.json
+Build/cmakeb/
+.vscode/
+
+# Anything stored in your repo with UNTRACKED in its directory name
+# will not be wiped out if you do `git clean -dXf` (note capital X!)
+
+# Ignore any directory that has "UNTRACKED" in its name, recursively
+*UNTRACKED*/
+
+# Ignore everything under such directories
+*UNTRACKED*/**
+

@@ -13,7 +13,7 @@
 
 &SURF ID                   = 'foliage'
       MATL_ID              = 'dry foliage'
-      MOISTURE_FRACTION    = 0.00
+      MOISTURE_CONTENT    = 0.00
       SURFACE_VOLUME_RATIO = 3940.
       LENGTH               = 0.20
       GEOMETRY             = 'CYLINDRICAL' /
@@ -79,6 +79,7 @@
 &VENT MB='ZMAX',SURF_ID='OPEN' /
 
 &DEVC XB=-0.5, 0.5,-0.5,0.5,0.0,3.0, QUANTITY='MPUV', PART_ID='foliage part', ID='mass foliage', SPATIAL_STATISTIC='VOLUME INTEGRAL'  /
+&DEVC XB=-0.5, 0.5,-0.5,0.5,0.0,3.0, QUANTITY='OXIDATIVE HRRPUA', PART_ID='foliage part', ID='char hrr', SPATIAL_STATISTIC='SURFACE INTEGRAL'  /
 
 &TAIL /
 

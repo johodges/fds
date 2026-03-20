@@ -73,16 +73,17 @@ echo "-v - show script run by qfds.sh for each validation case"
 echo "-V - show qfds.sh command line for each validation case"
 echo "-w walltime - default: empty, PBS: hh:mm:ss, SLURM: dd-hh:mm:ss"
 echo "-x - do not copy FDS input files"
-echo "-y - overwrite existing files"
+echo "-y - remove existing files"
+echo "-z - overwrite existing files"
 exit
 }
 
 DEBUG=
-while getopts 'bCe:EhIj:m:o:Oq:r:suvVw:xy' OPTION
+while getopts 'bCe:EhIj:m:o:Oq:r:suvVw:xyz' OPTION
 do
 case $OPTION in
   b)
-   DEBUG="-b "
+   DEBUG="-T db "
    ;;
   C)
    CHECK=1
@@ -141,7 +142,12 @@ case $OPTION in
    export DONOTCOPY=1
    ;;   
   y)
+   export DELETEFILES=1
+   export OVERWRITE=
+   ;;   
+  z)
    export OVERWRITE=1
+   export DELETEFILES=
    ;;   
 esac
 done
@@ -174,14 +180,13 @@ if [ ! $STOPFDS ] ; then
   # Check for existence of $INDIR (Current_Results) directory
   if [ -d "$INDIR" ]; then
       # Check for files in $INDIR (Current_Results) directory
-      if [[ "$(ls -A $INDIR)" && ! $OVERWRITE ]]; then
-          echo "Directory $INDIR already exists with files."
-          echo "Use the -y option to overwrite files."
+      if [[ "$(ls -A $INDIR)" && "$OVERWRITE" == "" && "$DELETEFILES" == "" ]]; then
+          echo "The directory $INDIR already exists with files."
+          echo "Use the -y option to REMOVE existing files or -z to OVERWRITE existing files"
           echo "Exiting."
           exit
-      elif [[ "$(ls -A $INDIR)" && $OVERWRITE ]]; then
-        # Continue along
-        :
+      elif [[ "$(ls -A $INDIR)" && "$DELETEFILES" == "1" ]]; then
+          rm $INDIR/*
       fi
   # Create $INDIR (Current_Results) directory if it doesn't exist
   else
@@ -191,5 +196,9 @@ fi
 
 if [ ! $DONOTCOPY ] ; then
   # Copy FDS input files to $INDIR (Current_Results) directory
-  cp $BASEDIR/FDS_Input_Files/*.fds $BASEDIR/FDS_Input_Files/*.txt $BASEDIR/$INDIR
+  cp $BASEDIR/FDS_Input_Files/*.fds $BASEDIR/$INDIR
+  HAVE_TXT=`git ls-files $BASEDIR/FDS_Input_Files/*.txt`
+  if [ "$HAVE_TXT" != "" ]; then
+    cp $BASEDIR/FDS_Input_Files/*.txt $BASEDIR/$INDIR
+  fi
 fi

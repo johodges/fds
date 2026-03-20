@@ -6,8 +6,7 @@ MODULE TURBULENCE
 USE PRECISION_PARAMETERS
 USE GLOBAL_CONSTANTS
 USE MESH_POINTERS
-USE MESH_VARIABLES
-USE COMP_FUNCTIONS
+USE COMP_FUNCTIONS, ONLY: GET_FILE_NUMBER,SHUTDOWN
 
 IMPLICIT NONE (TYPE,EXTERNAL)
 PRIVATE
@@ -16,10 +15,8 @@ PUBLIC :: INIT_TURB_ARRAYS, VARDEN_DYNSMAG, &
           WALL_MODEL, COMPRESSION_WAVE, TENSOR_DIFFUSIVITY_MODEL, &
           SYNTHETIC_TURBULENCE, SYNTHETIC_EDDY_SETUP, TEST_FILTER, &
           TWOD_VORTEX_CERFACS, TWOD_VORTEX_UMD, TWOD_SOBOROT_UMD, &
-          LOGLAW_HEAT_FLUX_MODEL, &
           NS_ANALYTICAL_SOLUTION, NS_U_EXACT, NS_V_EXACT, NS_H_EXACT, SANDIA_DAT, SPECTRAL_OUTPUT, SANDIA_OUT, &
-          FILL_EDGES, NATURAL_CONVECTION_MODEL, FORCED_CONVECTION_MODEL, RAYLEIGH_HEAT_FLUX_MODEL, &
-          WALE_VISCOSITY, TAU_WALL_IJ, RAYLEIGH_MASS_FLUX_MODEL, FM_HEAT_FLUX_MODEL, TEST_FILTER_LOCAL
+          FILL_EDGES, WALE_VISCOSITY, TAU_WALL_IJ, TEST_FILTER_LOCAL, K_SGS_POPE
 
 
 CONTAINS
@@ -102,7 +99,7 @@ INTEGER, INTENT(IN) :: NM,RK_STAGE
 REAL(EB), INTENT(IN) :: T
 INTEGER :: I,J,K
 REAL(EB) :: UP,WP
-REAL(EB), POINTER, DIMENSION(:,:,:) :: UU=>NULL(),WW=>NULL(),RHOP=>NULL()
+REAL(EB), POINTER, DIMENSION(:,:,:) :: UU,WW,RHOP
 REAL(EB), PARAMETER :: AA=2._EB
 
 CALL POINT_TO_MESH(NM)
@@ -397,7 +394,7 @@ ENDDO
 V=0._EB
 VS=0._EB
 
-DO K=-0,KBP1
+DO K=0,KBP1
    DO J=0,JBP1
       DO I=0,IBP1
          W(I,J,K) = -WSCAL*(XC(I)-XCLOC)
@@ -443,7 +440,7 @@ INTEGER, INTENT(IN) :: NM
 REAL(EB) :: TEMP_TERM,DUDY,DUDZ,DVDX,DVDZ,DWDX,DWDY,ONTHDIV
 INTEGER :: I,J,K
 
-REAL(EB), POINTER, DIMENSION(:,:,:) :: UU,VV,WW,UP,VP,WP,RHOP,RHOPHAT
+REAL(EB), POINTER, DIMENSION(:,:,:) :: UU,VV,WW,UP,VP,WP,RHOP,RHOPHAT,RHOPTMP
 REAL(EB), POINTER, DIMENSION(:,:,:) :: S11,S22,S33,S12,S13,S23,SS
 REAL(EB), POINTER, DIMENSION(:,:,:) :: SHAT11,SHAT22,SHAT33,SHAT12,SHAT13,SHAT23,SSHAT
 REAL(EB), POINTER, DIMENSION(:,:,:) :: BETA11,BETA22,BETA33,BETA12,BETA13,BETA23
@@ -620,7 +617,9 @@ WORK9=BETA23; CALL TEST_FILTER(BETAHAT23,WORK9)
 ! test filter the density
 
 RHOPHAT => WORK7
-CALL TEST_FILTER(RHOPHAT,RHOP)
+RHOPTMP => WORK1
+RHOPTMP(0:IBP1,0:JBP1,0:KBP1) = RHOP(0:IBP1,0:JBP1,0:KBP1)
+CALL TEST_FILTER(RHOPHAT,RHOPTMP)
 
 ! calculate the Mij tensor
 
@@ -700,7 +699,7 @@ DO K = 1,KBAR
          ! calculate the effective viscosity
 
          ! handle the case where we divide by zero, note MMHAT is positive semi-definite
-         IF (MMHAT(I,J,K)<=TWO_EPSILON_EB) THEN
+         IF (MMHAT(I,J,K)<=TWENTY_EPSILON_EB) THEN
             CSD2(I,J,K) = 0._EB
          ELSE
             CSD2(I,J,K) = MLHAT(I,J,K)/MMHAT(I,J,K) ! (Cs*Delta)**2
@@ -750,12 +749,12 @@ RUV => TURB_WORK7
 RUW => TURB_WORK8
 RVW => TURB_WORK9
 
-RUU = RHOP*UP*UP
-RVV = RHOP*VP*VP
-RWW = RHOP*WP*WP
-RUV = RHOP*UP*VP
-RUW = RHOP*UP*WP
-RVW = RHOP*VP*WP
+RUU(0:IBP1,0:JBP1,0:KBP1) = RHOP(0:IBP1,0:JBP1,0:KBP1)*UP(0:IBP1,0:JBP1,0:KBP1)*UP(0:IBP1,0:JBP1,0:KBP1)
+RVV(0:IBP1,0:JBP1,0:KBP1) = RHOP(0:IBP1,0:JBP1,0:KBP1)*VP(0:IBP1,0:JBP1,0:KBP1)*VP(0:IBP1,0:JBP1,0:KBP1)
+RWW(0:IBP1,0:JBP1,0:KBP1) = RHOP(0:IBP1,0:JBP1,0:KBP1)*WP(0:IBP1,0:JBP1,0:KBP1)*WP(0:IBP1,0:JBP1,0:KBP1)
+RUV(0:IBP1,0:JBP1,0:KBP1) = RHOP(0:IBP1,0:JBP1,0:KBP1)*UP(0:IBP1,0:JBP1,0:KBP1)*VP(0:IBP1,0:JBP1,0:KBP1)
+RUW(0:IBP1,0:JBP1,0:KBP1) = RHOP(0:IBP1,0:JBP1,0:KBP1)*UP(0:IBP1,0:JBP1,0:KBP1)*WP(0:IBP1,0:JBP1,0:KBP1)
+RVW(0:IBP1,0:JBP1,0:KBP1) = RHOP(0:IBP1,0:JBP1,0:KBP1)*VP(0:IBP1,0:JBP1,0:KBP1)*WP(0:IBP1,0:JBP1,0:KBP1)
 
 ! extrapolate to ghost cells
 
@@ -788,9 +787,9 @@ RU => TURB_WORK1 ! will be overwritten by RU_HAT
 RV => TURB_WORK2
 RW => TURB_WORK3
 
-RU = RHOP*UP
-RV = RHOP*VP
-RW = RHOP*WP
+RU(0:IBP1,0:JBP1,0:KBP1) = RHOP(0:IBP1,0:JBP1,0:KBP1)*UP(0:IBP1,0:JBP1,0:KBP1)
+RV(0:IBP1,0:JBP1,0:KBP1) = RHOP(0:IBP1,0:JBP1,0:KBP1)*VP(0:IBP1,0:JBP1,0:KBP1)
+RW(0:IBP1,0:JBP1,0:KBP1) = RHOP(0:IBP1,0:JBP1,0:KBP1)*WP(0:IBP1,0:JBP1,0:KBP1)
 
 ! extrapolate to ghost cells
 
@@ -1156,7 +1155,7 @@ SD2 = ONSI*(S2*S2 + O2*O2) + TWTH*S2*O2 + 2._EB*IV_SO
 IF (SD2 < 0.0) SD2 = 0._EB
 
 DENOM = S2**2.5_EB + SD2**1.25_EB
-IF (DENOM>TWO_EPSILON_EB) THEN
+IF (DENOM>TWENTY_EPSILON_EB) THEN
    NU_T = (C_WALE*DELTA)**2 * SD2**1.5_EB / DENOM
 ELSE
    NU_T = 0._EB
@@ -1166,7 +1165,7 @@ END SUBROUTINE WALE_VISCOSITY
 
 
 SUBROUTINE WALL_MODEL(SLIP_FACTOR,U_TAU,Y_PLUS,NU,S,Y_EXTERNAL_POINT,U_EXTERNAL_POINT,&
-                      Y_FORCING_POINT,U_FORCING_POINT,DUDY_FORCING_POINT,GAS_BURNER)
+                      Y_FORCING_POINT,U_FORCING_POINT,DUDY_FORCING_POINT)
 
 REAL(EB), INTENT(OUT) :: SLIP_FACTOR,U_TAU,Y_PLUS
 ! S is the "sandgrain" roughness length scale (Pope's notation)
@@ -1174,7 +1173,6 @@ REAL(EB), INTENT(OUT) :: SLIP_FACTOR,U_TAU,Y_PLUS
 ! Y_FORCING_POINT  is the distance from the wall to the "forcing point" where the forced velocity lives
 REAL(EB), INTENT(IN) :: NU,S,Y_EXTERNAL_POINT,U_EXTERNAL_POINT
 REAL(EB), OPTIONAL, INTENT(IN) :: Y_FORCING_POINT
-LOGICAL, OPTIONAL, INTENT(IN) :: GAS_BURNER
 REAL(EB), OPTIONAL, INTENT(OUT) :: U_FORCING_POINT,DUDY_FORCING_POINT
 
 REAL(EB), PARAMETER :: B=5.2_EB,BTILDE_MAX=9.5_EB ! BTILDE_ROUGH=8.5 set in GLOBAL_CONSTANTS; see Pope (2000) pp. 294,297,298
@@ -1262,14 +1260,7 @@ LES_IF: IF (SIM_MODE/=DNS_MODE) THEN
    ! DUDY = (u-u0)/dy = (u-SF*u)/dy = u/dy*(1-SF) => SF = 1 - DUDY*dy/u
    ! In this routine, DUDY is sampled from the wall model at the location y_cell_center.
 
-   SLIP_FACTOR = 1._EB-DUDY*DY/(ABS(U)+EPS) ! No limit on a porous gas burner
-   IF (.NOT.PRESENT(GAS_BURNER)) THEN
-      !SLIP_FACTOR = MAX(-1._EB,MIN(1._EB,SLIP_FACTOR))
-   ELSE
-      IF (.NOT.GAS_BURNER) THEN 
-         !SLIP_FACTOR = MAX(-1._EB,MIN(1._EB,SLIP_FACTOR)) ! -1.0 <= SLIP_FACTOR <= 1.0
-      ENDIF
-   ENDIF
+   SLIP_FACTOR = MAX(-1._EB,MIN(1._EB,1._EB-DUDY*DY/(ABS(U)+EPS))) ! -1.0 <= SLIP_FACTOR <= 1.0
 
 ENDIF LES_IF
 
@@ -1292,362 +1283,14 @@ ENDIF
 END SUBROUTINE WALL_MODEL
 
 
-!> \brief Calculate the Nusselt number for natural/free convection
-!> \param NUSSELT Nusselt number
-!> \param RA Rayleigh number
-!> \param SF Pointer to SURFACE derived type variable
-!> \param IOR Index of the surface orientation
-!> \param DELTA_TMP Temperature difference between gas and surface (K)
-
-SUBROUTINE NATURAL_CONVECTION_MODEL(NUSSELT,RA,SF,IOR,DELTA_TMP)
-
-REAL(EB), INTENT(OUT) :: NUSSELT
-REAL(EB), INTENT(IN) :: RA,DELTA_TMP
-INTEGER, INTENT(IN) :: IOR
-TYPE(SURFACE_TYPE), POINTER, INTENT(IN) :: SF
-
-SELECT CASE(SF%GEOMETRY)
-   CASE (SURF_CARTESIAN)
-      SELECT CASE(ABS(IOR))
-         CASE(0:2)
-            NUSSELT = (0.825_EB + 0.324_EB*RA**ONSI)**2  ! Incropera and DeWitt, 7th edition, Eq. 9.26
-         CASE(3)
-            IF ((IOR==3.AND.DELTA_TMP<0._EB) .OR. (IOR==-3.AND.DELTA_TMP>=0._EB)) THEN
-               IF (RA<1.E7_EB) THEN
-                  NUSSELT = 0.54_EB*RA**0.25_EB  ! Incropera and DeWitt, 7th edition, Eq. 9.30
-               ELSE
-                  NUSSELT = 0.15_EB*RA**ONTH     ! Incropera and DeWitt, 7th edition, Eq. 9.31
-               ENDIF
-            ELSE
-               NUSSELT = 0.52_EB*RA**0.2     ! Incropera and DeWitt, 7th edition, Eq. 9.32
-            ENDIF
-      END SELECT
-   CASE (SURF_CYLINDRICAL,SURF_INNER_CYLINDRICAL)  ! Simplification of Eq. 9.34, Incropera and DeWitt, 7th edition
-      IF (SF%HORIZONTAL) THEN
-         NUSSELT = (0.6_EB + 0.321_EB*RA**ONSI)**2   ! Incropera and DeWitt, 7th edition, Eq. 9.34
-      ELSE
-         NUSSELT = (0.825_EB + 0.324_EB*RA**ONSI)**2 ! Incropera and DeWitt, 7th edition, Eq. 9.26
-      ENDIF
-   CASE (SURF_SPHERICAL)
-      NUSSELT = 2._EB + 0.454_EB*RA**0.25_EB  ! Incropera and DeWitt, 7th edition, Eq. 9.35
-END SELECT
-
-END SUBROUTINE NATURAL_CONVECTION_MODEL
-
-
-!> \brief Calculate the heat transfer coefficient for forced convection
-!> \param NUSSELT Nusselt number
-!> \param RE Reynolds number
-!> \param PR_ONTH_IN Prandtl number to the 1/3 power
-!> \param SURF_GEOMETRY_INDEX Indicator of the surface geometry
-!> \param NUSSELT_C0 Constant in Nusselt number correlation
-!> \param NUSSELT_C1 Constant in Nusselt number correlation
-!> \param NUSSELT_C2 Constant in Nusselt number correlation
-!> \param NUSSELT_M Exponent in Nusselt number correlation
-
-SUBROUTINE FORCED_CONVECTION_MODEL(NUSSELT,RE,PR_ONTH_IN,SURF_GEOMETRY_INDEX,NUSSELT_C0,NUSSELT_C1,NUSSELT_C2,NUSSELT_M)
-
-REAL(EB), INTENT(OUT) :: NUSSELT
-REAL(EB), INTENT(IN) :: RE,PR_ONTH_IN
-REAL(EB), INTENT(IN), OPTIONAL :: NUSSELT_C0,NUSSELT_C1,NUSSELT_C2,NUSSELT_M
-INTEGER, INTENT(IN) :: SURF_GEOMETRY_INDEX
-
-
-IF (PRESENT(NUSSELT_C0)) THEN ! User has defined a custom Nusselt correlation
-   NUSSELT = NUSSELT_C0+(NUSSELT_C1*RE**NUSSELT_M-NUSSELT_C2)*PR_ONTH_IN
-ELSE
-   SELECT CASE(SURF_GEOMETRY_INDEX)
-      CASE (SURF_CARTESIAN)
-         NUSSELT = 0.0296_EB*RE**0.8_EB*PR_ONTH_IN  ! Incropera and DeWitt, 7th, Eq. 7.36, Table 7.7
-      CASE (SURF_CYLINDRICAL,SURF_INNER_CYLINDRICAL)
-         ! Incropera and DeWitt, 7th, Eq. 7.52
-         IF (RE >= 40000._EB) THEN
-            NUSSELT = 0.027_EB*RE**0.805_EB*PR_ONTH_IN
-         ELSEIF (RE >= 4000._EB) THEN
-            NUSSELT = 0.193_EB*RE**0.618_EB*PR_ONTH_IN
-         ELSEIF (RE >= 40._EB) THEN
-            NUSSELT = 0.683_EB*RE**0.466_EB*PR_ONTH_IN
-         ELSEIF (RE >= 4._EB) THEN
-            NUSSELT = 0.911_EB*RE**0.385_EB*PR_ONTH_IN
-         ELSE
-            NUSSELT = 0.989_EB*RE**0.330_EB*PR_ONTH_IN
-         ENDIF
-      CASE (SURF_SPHERICAL)
-         NUSSELT = 2._EB + 0.6_EB*SQRT(RE)*PR_ONTH_IN  ! Incropera and DeWitt, 7th, Eq. 7.57
-   END SELECT
-ENDIF
-
-END SUBROUTINE FORCED_CONVECTION_MODEL
-
-
-SUBROUTINE RAYLEIGH_HEAT_FLUX_MODEL(H,Z_STAR,REGIME,DZ,TMP_W,TMP_G,K_G,RHO_G,CP_G,MU_G,VEL_G,UIMP)
-
-!!!!! EXPERIMENTAL !!!!!
-
-! Rayleigh number scaling in nondimensional thermal wall units
-!
-! The formulation is based on the discussion of natural convection systems in
-! J.P. Holman, Heat Transfer, 7th Ed., McGraw-Hill, 1990, p. 346.
-
-REAL(EB), INTENT(OUT) :: H,Z_STAR
-REAL(EB), INTENT(IN) :: DZ,TMP_W,TMP_G,K_G,RHO_G,CP_G,MU_G,VEL_G,UIMP
-REAL(EB) :: NUSSELT,Q,ZC,NU_G,ALPHA_G,PR_G,D_STAR_FORCED,D_STAR_NATURAL,D_STAR_IMPACT,THETA_NATURAL,THETA_FORCED,THETA_IMPACT,&
-            Q_OLD,ERROR,DTMP,EXPON_D_IMPACT,EXPON_L_IMPACT,EXPON_T_IMPACT !,DTDN(3)
-INTEGER, INTENT(OUT) :: REGIME
-INTEGER :: ITER
-INTEGER, PARAMETER :: MAX_ITER=10,NATURAL=1,FORCED=2,IMPACT=3
-REAL(EB), PARAMETER :: EIGHT_NINETHS = 8._EB/9._EB
-
-REAL(EB), PARAMETER :: Z_L_NATURAL = 3.2_EB, Z_T_NATURAL=17._EB
-REAL(EB), PARAMETER :: C_L_NATURAL = Z_L_NATURAL**(-0.8_EB), C_T_NATURAL = C_L_NATURAL*Z_T_NATURAL**(0.8_EB-1._EB)
-
-REAL(EB), PARAMETER :: Z_L_FORCED = 8._EB, Z_T_FORCED = 80._EB
-REAL(EB), PARAMETER :: C_L_FORCED = Z_L_FORCED**(-2._EB/3._EB), C_T_FORCED = C_L_FORCED * Z_T_FORCED**(2._EB/3._EB-8._EB/9._EB)
-
-REAL(EB), PARAMETER :: GAMMA_IMPACT = 1._EB
-REAL(EB), PARAMETER :: M_L_IMPACT = 0.87_EB, M_T_IMPACT = 0.87_EB
-REAL(EB), PARAMETER :: Z_L_IMPACT = 12._EB, Z_T_IMPACT = 1.E20_EB
-REAL(EB) :: C_L_IMPACT, C_T_IMPACT
-
-IF (ABS(TMP_W-TMP_G)<TWO_EPSILON_EB) THEN
-   H = 0._EB
-   Z_STAR = 0._EB
-   REGIME = 0
-   RETURN
-ENDIF
-
-ZC = 0.5_EB*DZ
-NU_G = MU_G/RHO_G
-ALPHA_G = K_G/(RHO_G*CP_G)
-PR_G = NU_G/ALPHA_G
-
-THETA_NATURAL = 0.5_EB*(TMP_W+TMP_G)*K_G*ALPHA_G*NU_G/(GRAV+TWO_EPSILON_EB)
-THETA_FORCED  =     ABS(TMP_W-TMP_G)*K_G*ALPHA_G/(VEL_G+TWO_EPSILON_EB)
-THETA_IMPACT  =     ABS(TMP_W-TMP_G)*K_G*(ALPHA_G/(UIMP +TWO_EPSILON_EB))**GAMMA_IMPACT
-
-EXPON_D_IMPACT = 1._EB/(1._EB+GAMMA_IMPACT)
-EXPON_L_IMPACT = M_L_IMPACT/(1._EB+M_L_IMPACT) * (1._EB+GAMMA_IMPACT)
-EXPON_T_IMPACT = M_T_IMPACT/(1._EB+M_T_IMPACT) * (1._EB+GAMMA_IMPACT)
-
-C_L_IMPACT = Z_L_IMPACT**(-EXPON_L_IMPACT)
-C_T_IMPACT = C_L_IMPACT * Z_T_IMPACT**(EXPON_L_IMPACT-EXPON_T_IMPACT)
-
-! ! needed if NATURAL
-! DTDN = (TMP_G-TMP_W)/ZC * NVEC
-! IF (DOT_PRODUCT(DTDN,GVEC) > -TWO_EPSILON_EB) THEN
-!    EXPON_TURB=1._EB
-! ELSE
-!    EXPON_TURB=0.8_EB
-! ENDIF
-
-! Step 1: assume a heat transfer coefficient
-
-H = K_G/ZC ! initial guess
-DTMP = ABS(TMP_W-TMP_G)
-Q = H*DTMP ! Q > 0. in this routine
-
-Q_LOOP: DO ITER=1,MAX_ITER
-
-   ! Step 2: compute new thermal diffusive length scale, delta*
-   D_STAR_NATURAL = (THETA_NATURAL/Q)**0.25_EB
-   D_STAR_FORCED  = SQRT(THETA_FORCED/Q)
-   D_STAR_IMPACT  = (THETA_IMPACT/Q)**EXPON_D_IMPACT
-
-   REGIME=MINLOC((/D_STAR_NATURAL,D_STAR_FORCED,D_STAR_IMPACT/),DIM=1)
-
-   ! Set REGIME based on minimum delta*
-
-   REGIME_SELECT: SELECT CASE(REGIME)
-
-      CASE(NATURAL)
-
-         ! Step 3: compute new z* (thermal)
-         Z_STAR = ZC/D_STAR_NATURAL
-
-         ! Step 4: based on z*, choose scaling law
-         IF (Z_STAR<=Z_L_NATURAL) THEN
-            NUSSELT = 1._EB
-         ELSEIF (Z_STAR>Z_L_NATURAL .AND. Z_STAR<=Z_T_NATURAL) THEN
-            NUSSELT = C_L_NATURAL * Z_STAR**0.8_EB
-         ELSE
-            NUSSELT = C_T_NATURAL * Z_STAR !**EXPON_TURB
-         ENDIF
-
-      CASE(FORCED)
-
-         ! Step 3: compute new z* (thermal)
-         Z_STAR = ZC/D_STAR_FORCED
-
-         ! Step 4: based on z*, choose scaling law
-         IF (Z_STAR<=Z_L_FORCED) THEN
-            NUSSELT = 1._EB
-         ELSEIF (Z_STAR>Z_L_FORCED .AND. Z_STAR<=Z_T_FORCED) THEN
-            NUSSELT = C_L_FORCED * Z_STAR**TWTH
-         ELSE
-            NUSSELT = C_T_FORCED * Z_STAR**EIGHT_NINETHS
-         ENDIF
-
-      CASE(IMPACT)
-
-         ! Step 3: compute new z* (thermal)
-         Z_STAR = ZC/D_STAR_IMPACT
-
-         ! Step 4: based on z*, choose scaling law
-         IF (Z_STAR<=Z_L_IMPACT) THEN
-            NUSSELT = 1._EB
-         ELSEIF (Z_STAR>Z_L_IMPACT .AND. Z_STAR<=Z_T_IMPACT) THEN
-            NUSSELT = C_L_IMPACT * Z_STAR**EXPON_L_IMPACT
-         ELSE
-            NUSSELT = C_T_IMPACT * Z_STAR**EXPON_T_IMPACT
-         ENDIF
-
-   END SELECT REGIME_SELECT
-
-   ! Step 5: update heat transfer coefficient
-   H = NUSSELT*K_G/ZC
-   Q_OLD = Q
-   Q = H*DTMP
-
-   ERROR = ABS(Q-Q_OLD)/MAX(Q_OLD,TWO_EPSILON_EB)
-   IF (ERROR<0.001_EB) EXIT Q_LOOP
-
-ENDDO Q_LOOP
-
-END SUBROUTINE RAYLEIGH_HEAT_FLUX_MODEL
-
-
-SUBROUTINE RAYLEIGH_MASS_FLUX_MODEL(H_MASS,Z_STAR,DZ,B_NUMBER,D_FILM,RHO_FILM,MU_FILM)
-
-!!!!! EXPERIMENTAL !!!!!
-
-! Rayleigh number scaling in nondimensional mass transfer wall units
-!
-! The formulation is based on the discussion of natural convection systems in
-! J.P. Holman, Heat Transfer, 7th Ed., McGraw-Hill, 1990, p. 346.
-
-REAL(EB), INTENT(OUT) :: H_MASS,Z_STAR
-REAL(EB), INTENT(IN) :: DZ,B_NUMBER,D_FILM,RHO_FILM,MU_FILM
-REAL(EB) :: SHERWOOD,ZC,NU_FILM,D_STAR,MFLUX_OLD,ERROR,D_STAR_FAC,MFLUX
-INTEGER :: ITER
-INTEGER, PARAMETER :: MAX_ITER=10
-! C_L = Z_L**(-0.8_EB)
-! C_T = C_L*Z_T**(-0.2_EB)
-REAL(EB), PARAMETER :: Z_L = 3.2_EB, Z_T=17._EB
-REAL(EB), PARAMETER :: C_L = 3.2_EB**(-0.8_EB), C_T = C_L*17._EB**(-0.2_EB)
-
-IF (B_NUMBER<TWO_EPSILON_EB) THEN
-   MFLUX = 0._EB
-   RETURN
-ENDIF
-
-ZC = 0.5_EB*DZ
-NU_FILM = MU_FILM/RHO_FILM
-D_STAR_FAC = RHO_FILM*D_FILM**2*NU_FILM/GRAV
-
-! Step 1: assume a mass transfer coefficient
-
-H_MASS = D_FILM/ZC ! initial guess
-
-! Step 2: compute initial MFLUX
-
-MFLUX = RHO_FILM*H_MASS*LOG(1._EB + B_NUMBER)
-
-RAYLEIGH_LOOP: DO ITER=1,MAX_ITER
-
-   ! Step 3: compute new mass diffusive length scale, delta*, from modified Grashof number * Sc
-
-   D_STAR = (D_STAR_FAC/MFLUX)**0.25_EB
-
-   ! Step 4: compute new z* (mass)
-
-   Z_STAR = ZC/D_STAR ! Ra* = (z*)**4
-
-   ! Step 5: based on z*, choose Ra scaling law
-
-   IF (Z_STAR<=Z_L) THEN
-      SHERWOOD = 1._EB
-   ELSEIF (Z_STAR>Z_L .AND. Z_STAR<=Z_T) THEN
-      SHERWOOD = C_L * Z_STAR**0.8_EB
-   ELSE
-      SHERWOOD = C_T * Z_STAR
-   ENDIF
-
-   ! Step 6: update mass transfer coefficient
-
-   H_MASS = SHERWOOD*D_FILM/ZC
-   MFLUX_OLD = MFLUX
-   MFLUX = RHO_FILM*H_MASS*LOG(1._EB + B_NUMBER)
-
-   ERROR = ABS(MFLUX-MFLUX_OLD)/MAX(MFLUX_OLD,TWO_EPSILON_EB)
-
-   IF (ERROR<0.001_EB) EXIT RAYLEIGH_LOOP
-
-ENDDO RAYLEIGH_LOOP
-
-END SUBROUTINE RAYLEIGH_MASS_FLUX_MODEL
-
-
-SUBROUTINE LOGLAW_HEAT_FLUX_MODEL(H,YPLUS,U_TAU,K_G,RHO_G,CP_G,MU_G)
-
-! Kiyoung Moon, Yonsei University
-! Ezgi Oztekin, Technology and Manangement International
-
-REAL(EB), INTENT(OUT) :: H
-REAL(EB), INTENT(IN) :: YPLUS,U_TAU,K_G,RHO_G,CP_G,MU_G
-REAL(EB) :: PR_M,TPLUS,B_T
-REAL(EB), PARAMETER :: RKAPPA=1._EB/0.41_EB
-
-PR_M = CP_G*MU_G/K_G
-
-IF (YPLUS < Y_WERNER_WENGLE) THEN
-   TPLUS = PR_M*YPLUS
-ELSE
-   B_T = (3.85_EB*PR_M**ONTH-1.3_EB)**2 + 2.12_EB*LOG(PR_M) ! Kader, 1981
-   TPLUS = PR*RKAPPA*LOG(YPLUS)+B_T
-ENDIF
-
-H = RHO_G*U_TAU*CP_G/TPLUS
-
-END SUBROUTINE LOGLAW_HEAT_FLUX_MODEL
-
-
-SUBROUTINE FM_HEAT_FLUX_MODEL(H,DN,TMP_W,TMP_G,K_G,RHO_G,CP_G)
-
-! Reference:
-! N. Ren, Y. Wang. A convective heat transfer model for LES fire modeling.
-! Proc. Combustion Institute, 38 (2021) 4535-4542.
-
-REAL(EB), INTENT(OUT) :: H
-REAL(EB), INTENT(IN) :: DN,TMP_W,TMP_G,K_G,RHO_G,CP_G
-REAL(EB) :: DTDN,ALPHA_W,Q,DD,C_GRAD
-REAL(EB), PARAMETER :: C1=175._EB, C2=-800._EB, LR=0.0015_EB
-
-IF (ABS(TMP_W-TMP_G)<TWO_EPSILON_EB) THEN
-   H = 0._EB
-   RETURN
-ENDIF
-
-! Currently, this model only contains the gradient correction.
-! Blowing correction will be added later.
-
-DTDN  = 2._EB*(TMP_W-TMP_G)/DN
-ALPHA_W = K_G/(RHO_G*CP_G)
-DD = MAX(0._EB,DN-LR)
-C_GRAD = 1._EB + MAX(0._EB, C1*DD + C2*DD**2)
-Q = RHO_G*CP_G*ALPHA_W*C_GRAD*DTDN
-H = Q/(TMP_W-TMP_G)
-
-END SUBROUTINE FM_HEAT_FLUX_MODEL
-
-
 SUBROUTINE TENSOR_DIFFUSIVITY_MODEL(NM,OPT_N)
 
 INTEGER, INTENT(IN) :: NM
 INTEGER, INTENT(IN), OPTIONAL :: OPT_N
 INTEGER :: I,J,K,N
-REAL(EB) :: DRHOZDX,DRHOZDY,DRHOZDZ,DUDX,DUDY,DUDZ,DVDX,DVDY,DVDZ,DWDX,DWDY,DWDZ,DTDX,DTDY,DTDZ
-REAL(EB), POINTER, DIMENSION(:,:,:,:) :: ZZP=>NULL(),RHO_D_DZDX=>NULL(),RHO_D_DZDY=>NULL(),RHO_D_DZDZ=>NULL()
-REAL(EB), POINTER, DIMENSION(:,:,:) :: RHOP=>NULL(),UU=>NULL(),VV=>NULL(),WW=>NULL(),KDTDX=>NULL(),KDTDY=>NULL(),KDTDZ=>NULL()
+REAL(EB) :: DZDX,DZDY,DZDZ,DUDX,DUDY,DUDZ,DVDX,DVDY,DVDZ,DWDX,DWDY,DWDZ,DTDX,DTDY,DTDZ,RHOBAR,DX2,DY2,DZ2,KX,KY,KZ
+REAL(EB), POINTER, DIMENSION(:,:,:,:) :: ZZP,RHO_D_DZDX,RHO_D_DZDY,RHO_D_DZDZ
+REAL(EB), POINTER, DIMENSION(:,:,:) :: RHOP,UU,VV,WW,KDTDX,KDTDY,KDTDZ
 REAL(EB), PARAMETER :: C_NL=0.083_EB ! C_NL=1/12, See Pope Exercise 13.28
 
 CALL POINT_TO_MESH(NM)
@@ -1659,9 +1302,9 @@ SCALAR_FLUX_IF: IF (PRESENT(OPT_N)) THEN
    ! SGS scalar flux
    ! CAUTION: The flux arrays must point to the same work arrays used in DIVERGENCE_PART_1
    ! Note: Do not reinitialize!  RHO_D_DZDX, etc., already store molecular diffusive flux
-   RHO_D_DZDX=>SCALAR_WORK1
-   RHO_D_DZDY=>SCALAR_WORK2
-   RHO_D_DZDZ=>SCALAR_WORK3
+   RHO_D_DZDX=>SWORK1
+   RHO_D_DZDY=>SWORK2
+   RHO_D_DZDZ=>SWORK3
 
    IF (PREDICTOR) THEN
       UU=>U
@@ -1680,22 +1323,23 @@ SCALAR_FLUX_IF: IF (PRESENT(OPT_N)) THEN
    DO K=1,KBAR
       DO J=1,JBAR
          DO I=0,IBAR
+            RHOBAR = 0.5_EB*(RHOP(I,J,K)+RHOP(I+1,J,K))
 
             DUDX = (UU(I+1,J,K)-UU(I-1,J,K))/(DX(I)+DX(I+1))
-            DUDY = (UU(I,J+1,K)-UU(I,J-1,K))/(DYN(J)+DYN(J+1))
-            DUDZ = (UU(I,J,K+1)-UU(I,J,K-1))/(DZN(K)+DZN(K+1))
+            DUDY = (UU(I,J+1,K)-UU(I,J-1,K))/(DYN(J-1)+DYN(J))
+            DUDZ = (UU(I,J,K+1)-UU(I,J,K-1))/(DZN(K-1)+DZN(K))
 
-            DRHOZDX = RDXN(I)*(RHOP(I+1,J,K)*ZZP(I+1,J,K,N)-RHOP(I,J,K)*ZZP(I,J,K,N))
+            DZDX = RDXN(I)*(ZZP(I+1,J,K,N)-ZZP(I,J,K,N))
+            DZDY = 0.25_EB*RDY(J)*( ZZP(I,J+1,K,N) + ZZP(I+1,J+1,K,N) - ZZP(I,J-1,K,N) - ZZP(I+1,J-1,K,N) )
+            DZDZ = 0.25_EB*RDZ(K)*( ZZP(I,J,K+1,N) + ZZP(I+1,J,K+1,N) - ZZP(I,J,K-1,N) - ZZP(I+1,J,K-1,N) )
 
-            DRHOZDY = 0.25_EB*RDY(J)*( RHOP(I,J+1,K)*ZZP(I,J+1,K,N) + RHOP(I+1,J+1,K)*ZZP(I+1,J+1,K,N) &
-                                     - RHOP(I,J-1,K)*ZZP(I,J-1,K,N) - RHOP(I+1,J-1,K)*ZZP(I+1,J-1,K,N) )
+            DX2 = DXN(I)**2
+            DY2 = DY(J)**2
+            DZ2 = DZ(K)**2
 
-            DRHOZDZ = 0.25_EB*RDZ(K)*( RHOP(I,J,K+1)*ZZP(I,J,K+1,N) + RHOP(I+1,J,K+1)*ZZP(I+1,J,K+1,N) &
-                                     - RHOP(I,J,K-1)*ZZP(I,J,K-1,N) - RHOP(I+1,J,K-1)*ZZP(I+1,J,K-1,N) )
-
-            RHO_D_DZDX(I,J,K,N) = RHO_D_DZDX(I,J,K,N) &
-                                + C_NL*(DX(I)**2*DUDX*DRHOZDX+DY(J)**2*DUDY*DRHOZDY+DZ(K)**2*DUDZ*DRHOZDZ)
-
+            RHO_D_DZDX(I,J,K,N) = RHO_D_DZDX(I,J,K,N) + RHOBAR*C_NL*( DX2*DZDX*DUDX + DY2*DZDY*DUDY + DZ2*DZDZ*DUDZ )
+            KX = C_NL * ( ABS(DX2*DUDX) + ABS(DY2*DUDY) + ABS(DZ2*DUDZ) ) ! stability strength for this x-face (m^2/s)
+            D_Z_MAX(I,J,K) = MAX(D_Z_MAX(I,J,K),KX)
          ENDDO
       ENDDO
    ENDDO
@@ -1703,22 +1347,23 @@ SCALAR_FLUX_IF: IF (PRESENT(OPT_N)) THEN
    DO K=1,KBAR
       DO J=0,JBAR
          DO I=1,IBAR
+            RHOBAR = 0.5_EB*(RHOP(I,J,K)+RHOP(I,J+1,K))
 
-            DVDX = (VV(I+1,J,K)-VV(I-1,J,K))/(DXN(I)+DXN(I+1))
+            DVDX = (VV(I+1,J,K)-VV(I-1,J,K))/(DXN(I-1)+DXN(I))
             DVDY = (VV(I,J+1,K)-VV(I,J-1,K))/(DY(J)+DY(J+1))
-            DVDZ = (VV(I,J,K+1)-VV(I,J,K-1))/(DZN(K)+DZN(K+1))
+            DVDZ = (VV(I,J,K+1)-VV(I,J,K-1))/(DZN(K-1)+DZN(K))
 
-            DRHOZDX = 0.25_EB*RDX(I)*( RHOP(I+1,J,K)*ZZP(I+1,J,K,N) + RHOP(I+1,J+1,K)*ZZP(I+1,J+1,K,N) &
-                                     - RHOP(I-1,J,K)*ZZP(I-1,J,K,N) - RHOP(I-1,J+1,K)*ZZP(I-1,J+1,K,N) )
+            DZDX = 0.25_EB*RDX(I)*( ZZP(I+1,J,K,N) + ZZP(I+1,J+1,K,N) - ZZP(I-1,J,K,N) - ZZP(I-1,J+1,K,N) )
+            DZDY = RDYN(J)*(ZZP(I,J+1,K,N)-ZZP(I,J,K,N))
+            DZDZ = 0.25_EB*RDZ(K)*( ZZP(I,J,K+1,N) + ZZP(I,J+1,K+1,N) - ZZP(I,J,K-1,N) - ZZP(I,J+1,K-1,N) )
 
-            DRHOZDY = RDYN(J)*(RHOP(I,J+1,K)*ZZP(I,J+1,K,N)-RHOP(I,J,K)*ZZP(I,J,K,N))
+            DX2 = DX(I)**2
+            DY2 = DYN(J)**2
+            DZ2 = DZ(K)**2
 
-            DRHOZDZ = 0.25_EB*RDZ(K)*( RHOP(I,J,K+1)*ZZP(I,J,K+1,N) + RHOP(I,J+1,K+1)*ZZP(I,J+1,K+1,N) &
-                                     - RHOP(I,J,K-1)*ZZP(I,J,K-1,N) - RHOP(I,J+1,K-1)*ZZP(I,J+1,K-1,N) )
-
-            RHO_D_DZDY(I,J,K,N) = RHO_D_DZDY(I,J,K,N) &
-                                + C_NL*(DX(I)**2*DVDX*DRHOZDX+DY(J)**2*DVDY*DRHOZDY+DZ(K)**2*DVDZ*DRHOZDZ)
-
+            RHO_D_DZDY(I,J,K,N) = RHO_D_DZDY(I,J,K,N) + RHOBAR*C_NL*( DX2*DZDX*DVDX + DY2*DZDY*DVDY + DZ2*DZDZ*DVDZ )
+            KY = C_NL * ( ABS(DX2*DVDX) + ABS(DY2*DVDY) + ABS(DZ2*DVDZ) )
+            D_Z_MAX(I,J,K) = MAX(D_Z_MAX(I,J,K),KY)
          ENDDO
       ENDDO
    ENDDO
@@ -1726,22 +1371,23 @@ SCALAR_FLUX_IF: IF (PRESENT(OPT_N)) THEN
    DO K=0,KBAR
       DO J=1,JBAR
          DO I=1,IBAR
+            RHOBAR = 0.5_EB*(RHOP(I,J,K)+RHOP(I,J,K+1))
 
-            DWDX = (WW(I+1,J,K)-WW(I-1,J,K))/(DXN(I+1)+DXN(I) )
-            DWDY = (WW(I,J+1,K)-WW(I,J-1,K))/(DYN(J+1)+DYN(J) )
-            DWDZ = (WW(I,J,K+1)-WW(I,J,K-1))/(DZ(K)   +DZ(K+1))
+            DWDX = (WW(I+1,J,K)-WW(I-1,J,K))/(DXN(I-1)+DXN(I))
+            DWDY = (WW(I,J+1,K)-WW(I,J-1,K))/(DYN(J-1)+DYN(J))
+            DWDZ = (WW(I,J,K+1)-WW(I,J,K-1))/(DZ(K)+DZ(K+1))
 
-            DRHOZDX = 0.25_EB*RDX(I)*( RHOP(I+1,J,K)*ZZP(I+1,J,K,N) + RHOP(I+1,J,K+1)*ZZP(I+1,J,K+1,N) &
-                                     - RHOP(I-1,J,K)*ZZP(I-1,J,K,N) - RHOP(I-1,J,K+1)*ZZP(I-1,J,K+1,N) )
+            DZDX = 0.25_EB*RDX(I)*( ZZP(I+1,J,K,N) + ZZP(I+1,J,K+1,N) - ZZP(I-1,J,K,N) - ZZP(I-1,J,K+1,N) )
+            DZDY = 0.25_EB*RDY(J)*( ZZP(I,J+1,K,N) + ZZP(I,J+1,K+1,N) - ZZP(I,J-1,K,N) - ZZP(I,J-1,K+1,N) )
+            DZDZ = RDZN(K)*(ZZP(I,J,K+1,N)-ZZP(I,J,K,N))
 
-            DRHOZDY = 0.25_EB*RDY(J)*( RHOP(I,J+1,K)*ZZP(I,J+1,K,N) + RHOP(I,J+1,K+1)*ZZP(I,J+1,K+1,N) &
-                                     - RHOP(I,J-1,K)*ZZP(I,J-1,K,N) - RHOP(I,J-1,K+1)*ZZP(I,J-1,K+1,N) )
+            DX2 = DX(I)**2
+            DY2 = DY(J)**2
+            DZ2 = DZN(K)**2
 
-            DRHOZDZ = RDZN(K)*(RHOP(I,J,K+1)*ZZP(I,J,K+1,N)-RHOP(I,J,K)*ZZP(I,J,K,N))
-
-            RHO_D_DZDZ(I,J,K,N) = RHO_D_DZDZ(I,J,K,N) &
-                                + C_NL*(DX(I)**2*DWDX*DRHOZDX+DY(J)**2*DWDY*DRHOZDY+DZ(K)**2*DWDZ*DRHOZDZ)
-
+            RHO_D_DZDZ(I,J,K,N) = RHO_D_DZDZ(I,J,K,N) + RHOBAR*C_NL*( DX2*DZDX*DWDX + DY2*DZDY*DWDY + DZ2*DZDZ*DWDZ )
+            KZ = C_NL * ( ABS(DX2*DWDX) + ABS(DY2*DWDY) + ABS(DZ2*DWDZ) )
+            D_Z_MAX(I,J,K) = MAX(D_Z_MAX(I,J,K),KZ)
          ENDDO
       ENDDO
    ENDDO
@@ -1768,17 +1414,21 @@ ELSE SCALAR_FLUX_IF
    DO K=1,KBAR
       DO J=1,JBAR
          DO I=0,IBAR
-
             DUDX = (UU(I+1,J,K)-UU(I-1,J,K))/(DX(I)+DX(I+1))
-            DUDY = (UU(I,J+1,K)-UU(I,J-1,K))/(DYN(J)+DYN(J+1))
-            DUDZ = (UU(I,J,K+1)-UU(I,J,K-1))/(DZN(K)+DZN(K+1))
+            DUDY = (UU(I,J+1,K)-UU(I,J-1,K))/(DYN(J-1)+DYN(J))
+            DUDZ = (UU(I,J,K+1)-UU(I,J,K-1))/(DZN(K-1)+DZN(K))
 
             DTDX = RDXN(I)*(TMP(I+1,J,K)-TMP(I,J,K))
             DTDY = 0.25_EB*RDY(J)*( TMP(I,J+1,K) + TMP(I+1,J+1,K) - TMP(I,J-1,K) - TMP(I+1,J-1,K) )
             DTDZ = 0.25_EB*RDZ(K)*( TMP(I,J,K+1) + TMP(I+1,J,K+1) - TMP(I,J,K-1) - TMP(I+1,J,K-1) )
 
-            KDTDX(I,J,K) = KDTDX(I,J,K) + C_NL*(DX(I)**2*DUDX*DTDX + DY(J)**2*DUDY*DTDY + DZ(K)**2*DUDZ*DTDZ)
+            DX2 = DXN(I)**2
+            DY2 = DY(J)**2
+            DZ2 = DZ(K)**2
 
+            KDTDX(I,J,K) = KDTDX(I,J,K) + C_NL*(DX2*DUDX*DTDX + DY2*DUDY*DTDY + DZ2*DUDZ*DTDZ)
+            KX = C_NL * ( ABS(DX2*DUDX) + ABS(DY2*DUDY) + ABS(DZ2*DUDZ) ) ! stability strength for this x-face (m^2/s)
+            D_Z_MAX(I,J,K) = MAX(D_Z_MAX(I,J,K),KX)
          ENDDO
       ENDDO
    ENDDO
@@ -1786,17 +1436,21 @@ ELSE SCALAR_FLUX_IF
    DO K=1,KBAR
       DO J=0,JBAR
          DO I=1,IBAR
-
-            DVDX = (VV(I+1,J,K)-VV(I-1,J,K))/(DXN(I)+DXN(I+1))
+            DVDX = (VV(I+1,J,K)-VV(I-1,J,K))/(DXN(I-1)+DXN(I))
             DVDY = (VV(I,J+1,K)-VV(I,J-1,K))/(DY(J)+DY(J+1))
-            DVDZ = (VV(I,J,K+1)-VV(I,J,K-1))/(DZN(K)+DZN(K+1))
+            DVDZ = (VV(I,J,K+1)-VV(I,J,K-1))/(DZN(K-1)+DZN(K))
 
             DTDX = 0.25_EB*RDX(I)*( TMP(I+1,J,K) + TMP(I+1,J+1,K) - TMP(I-1,J,K) - TMP(I-1,J+1,K) )
             DTDY = RDYN(J)*(TMP(I,J+1,K)-TMP(I,J,K))
             DTDZ = 0.25_EB*RDZ(K)*( TMP(I,J,K+1) + TMP(I,J+1,K+1) - TMP(I,J,K-1) - TMP(I,J+1,K-1) )
 
-            KDTDY(I,J,K) = KDTDY(I,J,K) + C_NL*(DX(I)**2*DVDX*DTDX + DY(J)**2*DVDY*DTDY + DZ(K)**2*DVDZ*DTDZ)
+            DX2 = DX(I)**2
+            DY2 = DYN(J)**2
+            DZ2 = DZ(K)**2
 
+            KDTDY(I,J,K) = KDTDY(I,J,K) + C_NL*(DX2*DVDX*DTDX + DY2*DVDY*DTDY + DZ2*DVDZ*DTDZ)
+            KY = C_NL * ( ABS(DX2*DVDX) + ABS(DY2*DVDY) + ABS(DZ2*DVDZ) )
+            D_Z_MAX(I,J,K) = MAX(D_Z_MAX(I,J,K),KY)
          ENDDO
       ENDDO
    ENDDO
@@ -1805,16 +1459,21 @@ ELSE SCALAR_FLUX_IF
       DO J=1,JBAR
          DO I=1,IBAR
 
-            DWDX = (WW(I+1,J,K)-WW(I-1,J,K))/(DXN(I+1)+DXN(I) )
-            DWDY = (WW(I,J+1,K)-WW(I,J-1,K))/(DYN(J+1)+DYN(J) )
-            DWDZ = (WW(I,J,K+1)-WW(I,J,K-1))/(DZ(K)   +DZ(K+1))
+            DWDX = (WW(I+1,J,K)-WW(I-1,J,K))/(DXN(I-1)+DXN(I))
+            DWDY = (WW(I,J+1,K)-WW(I,J-1,K))/(DYN(J-1)+DYN(J))
+            DWDZ = (WW(I,J,K+1)-WW(I,J,K-1))/(DZ(K)+DZ(K+1))
 
             DTDX = 0.25_EB*RDX(I)*( TMP(I+1,J,K) + TMP(I+1,J,K+1) - TMP(I-1,J,K) - TMP(I-1,J,K+1) )
             DTDY = 0.25_EB*RDY(J)*( TMP(I,J+1,K) + TMP(I,J+1,K+1) - TMP(I,J-1,K) - TMP(I,J-1,K+1) )
             DTDZ = RDZN(K)*(TMP(I,J,K+1)-TMP(I,J,K))
 
-            KDTDZ(I,J,K) = KDTDZ(I,J,K) + C_NL*(DX(I)**2*DWDX*DTDX + DY(J)**2*DWDY*DTDY + DZ(K)**2*DWDZ*DTDZ)
+            DX2 = DX(I)**2
+            DY2 = DY(J)**2
+            DZ2 = DZN(K)**2
 
+            KDTDZ(I,J,K) = KDTDZ(I,J,K) + C_NL*(DX2*DWDX*DTDX + DY2*DWDY*DTDY + DZ2*DWDZ*DTDZ)
+            KZ = C_NL * ( ABS(DX2*DWDX) + ABS(DY2*DWDY) + ABS(DZ2*DWDZ) )
+            D_Z_MAX(I,J,K) = MAX(D_Z_MAX(I,J,K),KZ)
          ENDDO
       ENDDO
    ENDDO
@@ -1822,6 +1481,57 @@ ELSE SCALAR_FLUX_IF
 ENDIF SCALAR_FLUX_IF
 
 END SUBROUTINE TENSOR_DIFFUSIVITY_MODEL
+
+
+REAL(EB) FUNCTION K_SGS_POPE(NU, S2, DELTA) RESULT(K_SGS)
+
+! Pope model spectrum, see Pope, Turbulent Flows, 2000, Sec. 6.5.3, p.232
+
+REAL(EB), INTENT(IN) :: NU        ! EFFECTIVE KINEMATIC VISCOSITY (MOLECULAR + TURBULENT)
+REAL(EB), INTENT(IN) :: S2        ! S_IJ S_IJ
+REAL(EB), INTENT(IN) :: DELTA     ! GRID SPACING
+
+REAL(EB) :: EPS, ETA, KC, XC, F_ETA
+REAL(EB), PARAMETER :: CK=1.5_EB, BETA=5.2_EB, CETA=0.4_EB, FITH=5._EB/3._EB
+
+! ---- GUARD AGAINST LAMINAR REGIONS ----
+IF (S2 <= 0._EB) THEN
+   K_SGS = 0._EB
+   RETURN
+ENDIF
+
+! ---- DISSIPATION ESTIMATE ----
+EPS = 2._EB * NU * S2
+IF (EPS < TWENTY_EPSILON_EB) THEN
+   K_SGS = 0._EB
+   RETURN
+ENDIF
+
+! ---- KOLMOGOROV LENGTH ----
+ETA = (NU**3 / EPS)**0.25_EB
+
+! ---- CUTOFF WAVENUMBER ----
+KC = PI / DELTA
+
+! ---- DIMENSIONLESS CUTOFF ----
+XC = KC * ETA
+
+! ---- DISSIPATION-RANGE SHAPING FUNCTION F_ETA(XC) ----
+F_ETA = EXP( -BETA * ( ( (XC**4 + CETA**4)**0.25_EB ) - CETA ) )
+
+! ---- PIECEWISE APPROXIMATION ----
+IF (XC <= 2._EB) THEN
+  ! INERTIAL + CUTOFF CORRECTION
+  K_SGS = 1.5_EB * CK * (EPS/KC)**TWTH * F_ETA
+ELSE
+  ! EXPONENTIAL TAIL ASYMPTOTIC
+  K_SGS = CK * (EPS*ETA)**TWTH * EXP(BETA*CETA) * XC**(-FITH) * EXP(-BETA*XC) / BETA
+ENDIF
+
+! ---- SAFETY FLOOR ----
+IF (K_SGS < TWO_EPSILON_EB) K_SGS = 0._EB
+
+END FUNCTION K_SGS_POPE
 
 
 SUBROUTINE TAU_WALL_IJ(TAU_IJ,SS,U_VELO,U_SURF,NN,DN,DIVU,MU,RHO,ROUGHNESS)
@@ -1838,10 +1548,10 @@ REAL(EB), DIMENSION(3), PARAMETER :: E1=(/1._EB,0._EB,0._EB/),E2=(/0._EB,1._EB,0
 ! find a vector TT in the tangent plane of the surface and orthogonal to U_VELO-U_SURF
 U_RELA = U_VELO-U_SURF
 CALL CROSS_PRODUCT(TT,NN,U_RELA) ! TT = NN x U_RELA
-IF (ABS(NORM2(TT))<=TWO_EPSILON_EB) THEN
+IF (ABS(NORM2(TT))<=TWENTY_EPSILON_EB) THEN
    ! tangent vector is completely arbitrary, just perpendicular to NN
-   IF (ABS(NN(1))>=TWO_EPSILON_EB .OR.  ABS(NN(2))>=TWO_EPSILON_EB) TT = (/NN(2),-NN(1),0._EB/)
-   IF (ABS(NN(1))<=TWO_EPSILON_EB .AND. ABS(NN(2))<=TWO_EPSILON_EB) TT = (/NN(3),0._EB,-NN(1)/)
+   IF (ABS(NN(1))>=TWENTY_EPSILON_EB .OR.  ABS(NN(2))>=TWENTY_EPSILON_EB) TT = (/NN(2),-NN(1),0._EB/)
+   IF (ABS(NN(1))<=TWENTY_EPSILON_EB .AND. ABS(NN(2))<=TWENTY_EPSILON_EB) TT = (/NN(3),0._EB,-NN(1)/)
 ENDIF
 TT = TT/NORM2(TT) ! normalize to unit vector
 CALL CROSS_PRODUCT(SS,TT,NN) ! define the streamwise unit vector SS
@@ -1913,9 +1623,9 @@ END SUBROUTINE TAU_WALL_IJ
 SUBROUTINE SYNTHETIC_EDDY_SETUP(NM)
 
 INTEGER, INTENT(IN) :: NM
-TYPE(VENTS_TYPE), POINTER :: VT=>NULL()
+TYPE(VENTS_TYPE), POINTER :: VT
 INTEGER :: NE,NV,IERROR
-REAL(EB), POINTER, DIMENSION(:,:) :: A_IJ=>NULL(),R_IJ=>NULL()
+REAL(EB), POINTER, DIMENSION(:,:) :: A_IJ,R_IJ
 
 VENT_LOOP: DO NV=1,MESHES(NM)%N_VENT
    VT => MESHES(NM)%VENTS(NV)
@@ -1976,8 +1686,8 @@ USE TRAN, ONLY: GET_IJK
 REAL(EB), INTENT(IN) :: DT,T
 INTEGER, INTENT(IN) :: NM
 INTEGER :: NE,NV,II,JJ,KK,IERROR
-TYPE(VENTS_TYPE), POINTER :: VT=>NULL()
-TYPE(SURFACE_TYPE), POINTER :: SF=>NULL()
+TYPE(VENTS_TYPE), POINTER :: VT
+TYPE(SURFACE_TYPE), POINTER :: SF
 REAL(EB) :: XX,YY,ZZ,SHAPE_FACTOR,VOLUME_WEIGHTING_FACTOR(3),EDDY_VOLUME(3),PROFILE_FACTOR,RAMP_T,TSI,&
             VEL_NORMAL,VEL_TANG_1,VEL_TANG_2,Z_WGT
 INTEGER, PARAMETER :: SHAPE_CODE=1 ! 1=tent, 2=tophat
@@ -2183,7 +1893,7 @@ SUBROUTINE EDDY_POSITION(NE,NV,NM,IERROR)
 INTEGER, INTENT(IN) :: NE,NV,NM
 INTEGER, INTENT(INOUT) :: IERROR
 REAL(EB) :: RN
-TYPE(VENTS_TYPE), POINTER :: VT=>NULL()
+TYPE(VENTS_TYPE), POINTER :: VT
 
 VT => MESHES(NM)%VENTS(NV)
 
@@ -2211,7 +1921,7 @@ SUBROUTINE EDDY_AMPLITUDE(NE,NV,NM)
 INTEGER, INTENT(IN) :: NE,NV,NM
 REAL(EB) :: EPS_EDDY(3)
 REAL(EB) :: RN
-TYPE(VENTS_TYPE), POINTER :: VT=>NULL()
+TYPE(VENTS_TYPE), POINTER :: VT
 INTEGER :: J
 
 EPS_EDDY=-1._EB
@@ -2261,11 +1971,11 @@ REAL(EB) :: MEANU,MEANV,MEANW,DUMMY(3)
 INTEGER :: I,J,K,II,JJ,KK,FILE_NUM,IM,IW,IOR,IIO,JJO,KKO,NX,NX_BLOCK,I_MESH,J_MESH,K_MESH,MX
 INTEGER, INTENT(IN) :: NM
 CHARACTER(80), INTENT(IN) :: FN_ISO
-TYPE (MESH_TYPE), POINTER :: M=>NULL()
-TYPE (MESH_TYPE), POINTER :: M2=>NULL()
-TYPE (WALL_TYPE), POINTER :: WC=>NULL()
-TYPE (BOUNDARY_COORD_TYPE), POINTER :: BC=>NULL()
-TYPE (EXTERNAL_WALL_TYPE), POINTER :: EWC=>NULL()
+TYPE (MESH_TYPE), POINTER :: M
+TYPE (MESH_TYPE), POINTER :: M2
+TYPE (WALL_TYPE), POINTER :: WC
+TYPE (BOUNDARY_COORD_TYPE), POINTER :: BC
+TYPE (EXTERNAL_WALL_TYPE), POINTER :: EWC
 
 IF (NM>1) RETURN
 
@@ -2419,8 +2129,8 @@ SUBROUTINE spectral_output(NM,FN_SPEC)
 INTEGER, INTENT(IN) :: NM
 CHARACTER(80), INTENT(IN) :: FN_SPEC
 INTEGER :: NN(3),I,J,K,IM,II,JJ,KK
-REAL(EB),    POINTER, DIMENSION(:,:,:) :: UU=>NULL(),VV=>NULL(),WW=>NULL()
-COMPLEX(EB), POINTER, DIMENSION(:,:,:) :: UUHT=>NULL(),VVHT=>NULL(),WWHT=>NULL(),KKHT=>NULL()
+REAL(EB),    POINTER, DIMENSION(:,:,:) :: UU,VV,WW
+COMPLEX(EB), POINTER, DIMENSION(:,:,:) :: UUHT,VVHT,WWHT,KKHT
 TYPE (MESH_TYPE), POINTER :: MM,M
 
 IF (NM>1) RETURN
@@ -2479,7 +2189,7 @@ SUBROUTINE sandia_out(NM)
 
 INTEGER, INTENT(IN) :: NM
 INTEGER :: NN(3),I,J,K,IM,II,JJ,KK,file_num
-REAL(EB), POINTER, DIMENSION(:,:,:) :: UU=>NULL(),VV=>NULL(),WW=>NULL()
+REAL(EB), POINTER, DIMENSION(:,:,:) :: UU,VV,WW
 TYPE (MESH_TYPE), POINTER :: MM,M
 
 ! This subroutine writes out the velocity, relative pressure, and
@@ -3409,7 +3119,6 @@ CONTAINS
 
 SUBROUTINE SAAD_MMS_1(NM)
 USE MESH_POINTERS
-USE MESH_VARIABLES
 USE GLOBAL_CONSTANTS, ONLY: P_INF,TMPA,N_TRACKED_SPECIES
 USE PHYSICAL_FUNCTIONS, ONLY: GET_SPECIFIC_GAS_CONSTANT
 INTEGER, INTENT(IN) :: NM
@@ -3441,7 +3150,6 @@ END SUBROUTINE SAAD_MMS_1
 
 SUBROUTINE SHUNN_MMS_3(DT,NM)
 USE MESH_POINTERS
-USE MESH_VARIABLES
 USE GLOBAL_CONSTANTS, ONLY: P_INF,TMPA,N_TRACKED_SPECIES
 USE PHYSICAL_FUNCTIONS, ONLY: GET_SPECIFIC_GAS_CONSTANT
 INTEGER, INTENT(IN) :: NM

@@ -93,7 +93,7 @@ I = 1,2,3 in any of the internal wall points.
 
 &MISC SOLID_PHASE_ONLY = .TRUE. /
 
-&DUMP FLUSH_FILE_BUFFERS=T, NFRAMES=200 /
+&DUMP NFRAMES=200 /
 
 &SURF ID='TEST'
       STRETCH_FACTOR = 1.0
@@ -107,6 +107,7 @@ I = 1,2,3 in any of the internal wall points.
       A = 0.389
       E = 0.
       NU_MATL = 1.0
+      HEAT_OF_REACTION = 0
       MATL_ID = 'MAT_B'/
 
 &MATL ID = 'MAT_B'
@@ -116,6 +117,7 @@ I = 1,2,3 in any of the internal wall points.
       A = 0.262
       E = 0.
       NU_MATL = 1.0
+      HEAT_OF_REACTION = 0
       MATL_ID = 'MAT_C'/
 
 &MATL ID = 'MAT_C'

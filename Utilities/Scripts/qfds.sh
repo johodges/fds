@@ -38,6 +38,7 @@ function usage {
   echo ""
   echo "qfds.sh runs FDS using an executable from the repository or one specified with the -e option."
   echo ""
+  echo " -A AccountName - Allocation account name to charge "
   echo " -e exe - full path of FDS used to run case "
   echo "    [default: $FDSROOT/fds/Build/${MPI}_intel_linux$DB/fds_${MPI}_intel_linux$DB]"
   echo " -h   - show commonly used options"
@@ -51,6 +52,7 @@ function usage {
   fi
   echo "Other options:"
   echo " -b email_address - send an email to email_address when jobs starts, aborts and finishes"
+  echo " -c remove restriction limiting the job to the minimum number of nodes"
   echo " -d dir - specify directory where the case is found [default: .]"
   echo " -G use GNU OpenMPI version of fds"
   echo " -I use Intel MPI version of fds"
@@ -59,7 +61,7 @@ function usage {
   echo " -n n - number of MPI processes per node [default: 1]"
   echo " -P use PBS/Torque"
   echo " -s   - stop job"
-  echo " -t   - used for timing studies, run a job alone on a node (reserving $NCORES_COMPUTENODE cores)"
+  echo " -t   - used for timing studies, run a job alone on a node"
   echo " -T type - run dv (development) or db (debug) version of fds"
   echo "           if -T is not specified then the release version of fds is used"
   echo " -U n - only allow n jobs owned by `whoami` to run at a time"
@@ -106,11 +108,6 @@ if [ "$QFDS_NCORES" == "" ]; then
 else
   n_cores=$QFDS_NCORES
 fi
-if [ "$NCORES_COMPUTENODE" == "" ]; then
-  NCORES_COMPUTENODE=$n_cores
-else
-  n_cores=$NCORES_COMPUTENODE
-fi
 
 #*** set default parameter values
 
@@ -124,10 +121,16 @@ max_mpi_processes_per_node=1000
 n_openmp_threads=1
 use_debug=
 use_devel=
-use_intel_mpi=1
-use_gnu_openmpi=
+if [ "$USE_OMPI_GNU" == "1" ]; then
+  use_gnu_openmpi=1
+  use_intel_mpi=
+else
+  use_intel_mpi=1
+  use_gnu_openmpi=
+fi
 EMAIL=
 casedir=
+cram=no
 use_default_casedir=
 USERMAX=
 dir=.
@@ -135,6 +138,7 @@ benchmark=no
 showinput=0
 exe=
 walltime=99-99:99:99
+ACCOUNT=
 
 if [ $# -lt 1 ]; then
   usage
@@ -145,11 +149,17 @@ commandline=`echo $* | sed 's/-V//' | sed 's/-v//'`
 
 #*** read in parameters from command line
 
-while getopts 'b:d:e:GhHIj:Ln:o:Pp:q:stT:U:vw:y:Y' OPTION
+while getopts 'A:b:cd:e:GhHIj:Ln:o:Pp:q:stT:U:vw:y:Y' OPTION
 do
 case $OPTION  in
+  A)
+   ACCOUNT="$OPTARG"
+   ;;
   b)
    EMAIL="$OPTARG"
+   ;;
+  c)
+   cram="yes"
    ;;
   d)
    dir="$OPTARG"
@@ -159,6 +169,7 @@ case $OPTION  in
    ;;
   G)
    use_gnu_openmpi=1
+   use_intel_mpi=
    ;;
   h)
    usage
@@ -354,7 +365,11 @@ if [ "$RESOURCE_MANAGER" == "SLURM" ]; then
      MPIRUN="srun --mpi=pmi2 "
   else
 # use on spark ( USE_MPIRUN variable is set to 1 in /etc/profile )
-     MPIRUN="mpirun "
+     if [ "$use_gnu_openmpi" == "1" ] || [ "$use_intel_mpi" == "" ]; then
+        MPIRUN="mpirun --bind-to none "
+     else
+        MPIRUN="mpirun "
+     fi
   fi
 else
   QSUB="qsub -q $queue"
@@ -379,9 +394,13 @@ cat << EOF >> $scriptfile
 #SBATCH --partition=$queue
 #SBATCH --ntasks=$n_mpi_processes
 #SBATCH --cpus-per-task=$n_openmp_threads
-#SBATCH --nodes=$nodes
 #SBATCH --time=$walltime
 EOF
+if [ "$ACCOUNT" != "" ]; then
+cat << EOF >> $scriptfile
+#SBATCH --account=$ACCOUNT
+EOF
+fi
 
 if [[ $n_openmp_threads -gt 1 ]] || [[ $max_mpi_processes_per_node -lt 1000 ]] ; then
 cat << EOF >> $scriptfile
@@ -400,6 +419,12 @@ if [ "$benchmark" == "yes" ]; then
 cat << EOF >> $scriptfile
 #SBATCH --exclusive
 #SBATCH --cpu-freq=Performance
+EOF
+fi
+
+if [ "$cram" == "no" ]; then
+cat << EOF >> $scriptfile
+#SBATCH --nodes=$nodes
 EOF
 fi
 

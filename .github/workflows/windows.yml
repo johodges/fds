@@ -26,9 +26,9 @@ permissions:
 env:
   # update urls for oneapi packages according to
   # https://github.com/oneapi-src/oneapi-ci/blob/master/.github/workflows/build_all.yml
-  WINDOWS_BASEKIT_URL: https://registrationcenter-download.intel.com/akdlm/IRC_NAS/d91caaa0-7306-46ea-a519-79a0423e1903/w_BaseKit_p_2024.2.1.101_offline.exe
+  WINDOWS_BASEKIT_URL: https://registrationcenter-download.intel.com/akdlm/IRC_NAS/1f18901e-877d-469d-a41a-a10f11b39336/intel-oneapi-base-toolkit-2025.3.0.372_offline.exe
   WINDOWS_BASEKIT_COMPONENTS: intel.oneapi.win.mkl.devel
-  WINDOWS_HPCKIT_URL: https://registrationcenter-download.intel.com/akdlm/IRC_NAS/745e923a-3f85-4e1e-b6dd-637c0e9ccba6/w_HPCKit_p_2024.2.1.80_offline.exe
+  WINDOWS_HPCKIT_URL: https://registrationcenter-download.intel.com/akdlm/IRC_NAS/3a871580-f839-46ed-aeae-685084127279/intel-oneapi-hpc-toolkit-2025.3.0.378_offline.exe
   WINDOWS_HPCKIT_COMPONENTS: intel.oneapi.win.ifort-compiler:intel.oneapi.win.mpi.devel
 
 
@@ -44,13 +44,13 @@ jobs:
         shell: cmd
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
       # install oneapi components from web installer based on
       # oneapi-ci/scripts/install_windows.bat
     - name: cache install oneapi
       id: cache-install
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: C:\Program Files (x86)\Intel\oneAPI\
         key: install-${{ env.WINDOWS_BASEKIT_URL }}-${{ env.WINDOWS_BASEKIT_COMPONENTS }}-${{ env.WINDOWS_HPCKIT_URL }}-${{ env.WINDOWS_HPCKIT_COMPONENTS }}
@@ -71,25 +71,13 @@ jobs:
         webimage_hpc_extracted\bootstrapper.exe -s --action install --components=%WINDOWS_HPCKIT_COMPONENTS% --eula=accept -p=NEED_VS2017_INTEGRATION=0 -p=NEED_VS2019_INTEGRATION=0 --log-dir=.
         rd /s/q "webimage_hpc_extracted"
 
-      # github-actions does not cache windows symlinks, so we need to specify the version of each component explicitly
-      # https://www.intel.com/content/www/us/en/develop/documentation/oneapi-programming-guide/top/oneapi-development-environment-setup/use-the-setvars-script-with-windows/use-a-config-file-for-setvars-bat-on-windows.html
-      # https://oneapi-src.github.io/oneapi-ci/
-    - name: specify oneapi version
-      run: |
-        (
-          echo compiler=2024.2.1
-          echo mkl=2024.2.1
-          echo mpi=2021.13.1
-        ) > oneapi_config.txt
     - name: build fds debug
       run: |
-        call "C:\Program Files (x86)\Intel\oneAPI\setvars.bat" --config="oneapi_config.txt"
         cd Build\impi_intel_win_db
         call make_fds.bat
         fds_impi_intel_win_db.exe
     - name: build fds release
       run: |
-        call "C:\Program Files (x86)\Intel\oneAPI\setvars.bat" --config="oneapi_config.txt"
         cd Build\impi_intel_win
         call make_fds.bat
         fds_impi_intel_win.exe
