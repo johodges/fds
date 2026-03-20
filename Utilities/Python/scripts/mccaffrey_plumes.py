@@ -133,23 +133,25 @@ if __name__ == "__main__":
     isDir = os.path.isdir(pltdir)
     if not isDir:
         os.mkdir(pltdir)
-    for Q in [45]:
+    for Q in [22,45]:
         for quantity in ['Velocity','Temperature']:
             x, z, data, levels = getExperimentalData(Q, quantity)
             
             f = None
             for i, resolution in enumerate(resolutions):
-                model_data, version_string = getModelData(Q, resolution, quantity, x, z)
                 f = plot_to_fig(x, z, contour_data=data, data_label='Exp',
                                 plot_type='line_contour', levels=levels, line_color='k',
                                 x_label='Burner Radius (m)', y_label='Height (m)', 
                                 x_min=0.0, x_max=0.2, x_nticks=5, figure_handle=f)
+                '''
+                model_data, version_string = getModelData(Q, resolution, quantity, x, z)
                 f = plot_to_fig(x, z, contour_data=model_data, data_label='FDS', 
                                 show_legend=True, legend_location=4,
                                 plot_type='line_contour', levels=levels, line_color='r',
                                 x_label='Burner Radius (m)', y_label='Height (m)', 
                                 revision_label=version_string,
                                 figure_handle=f)
+                '''
                 f.savefig(pltdir + 'McCaffrey_Radial_Plume_%s_%s_kW_%0.0fmm.pdf'%(quantity,Q, resolution*1e3), backend='pdf')
                 f = None
             

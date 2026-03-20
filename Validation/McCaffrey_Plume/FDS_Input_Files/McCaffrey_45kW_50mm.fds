@@ -1,4 +1,4 @@
-&HEAD CHID='McCaffrey_22kW_50mm'/
+&HEAD CHID='McCaffrey_45kW_50mm'/
 
 &MULT ID='MESH-MULT', DX=0.6, DY=0.6, DZ=1.125, I_UPPER=1, J_UPPER=1, /
 &MESH IJK=12,12,45, XB=-0.6,0.0,-0.6,0.0,-0.75,1.5, MULT_ID='MESH-MULT'/ 4 mesh
