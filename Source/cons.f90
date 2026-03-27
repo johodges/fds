@@ -346,6 +346,7 @@ REAL(EB) :: NOISE_VELOCITY=0.005_EB            !< Velocity of random noise vecto
 REAL(EB) :: TAU_DEFAULT=1._EB                  !< Default ramp-up time (s)
 REAL(EB) :: TAU_CHEM=1.E-5_EB                  !< Smallest reaction mixing time scale (s)
 REAL(EB) :: TAU_FLAME=1.E10_EB                 !< Largest reaction mixing time scale (s)
+REAL(EB) :: TURBULENT_FLAME_SPEED=100._EB      !< Flame speed used to set minimum reaction mixing time (m/s)
 REAL(EB) :: SMOKE_ALBEDO=0.3_EB                !< Parmeter used by Smokeview
 REAL(EB) :: Y_WERNER_WENGLE=11.81_EB           !< Limit of y+ in Werner-Wengle model
 REAL(EB) :: PARTICLE_CFL_MAX=1.0_EB            !< Upper limit of CFL constraint based on particle velocity
@@ -876,17 +877,9 @@ INTEGER :: NRT                    !< Number of radiation theta angles
 INTEGER :: NCO
 INTEGER :: UIIDIM
 INTEGER :: NLAMBDAT               !< Number of wavelength subdivisions
-INTEGER :: N_RADCAL_ARRAY_SIZE
-INTEGER :: RADCAL_SPECIES_INDEX(16)
-INTEGER :: N_KAPPA_T=44           !< Number of temperature points in absorption coefficient look-up table
-INTEGER :: N_KAPPA_Y=50           !< Number of species points in absorption coefficient look-up table
 
 LOGICAL :: WIDE_BAND_MODEL        !< Non-gray gas, wide band model
 LOGICAL :: WSGG_MODEL             !< Weighted Sum of Gray Gas model
-
-REAL(EB), ALLOCATABLE, DIMENSION(:,:) :: Z2RADCAL_SPECIES
-REAL(EB), ALLOCATABLE, DIMENSION(:,:,:,:) :: RADCAL_SPECIES2KAPPA
-CHARACTER(LABEL_LENGTH) :: RADCAL_SPECIES_ID(16)='NULL'
 
 END MODULE RADCONS
 
