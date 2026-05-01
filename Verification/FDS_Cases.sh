@@ -129,6 +129,7 @@ $QFDS -d Complex_Geometry shunn3_128_cc_exp_gdv.fds
 $QFDS -d Complex_Geometry shunn3_256_cc_exp_gdv.fds
 $QFDS -o 2 -d Complex_Geometry shunn3_320_cc_exp_gdv.fds
 $QFDS -d Complex_Geometry t34_scaling.fds
+$QFDS -p 24 -d Complex_Geometry obst_geom_sprk.fds
 
 $QFDS -d Complex_Geometry geom_poiseuille_N10a_theta0_stm.fds
 $QFDS -d Complex_Geometry geom_poiseuille_N20a_theta0_stm.fds
@@ -227,7 +228,7 @@ $QFDS -p 4 -d Fires box_burn_away10.fds
 $QFDS -p 4 -d Fires box_burn_away11.fds
 $QFDS -d Fires box_burn_away_2D.fds
 $QFDS -d Fires box_burn_away_2D_residue.fds
-$QFDS -p 4 -d Fires couch.fds
+$QFDS -p 8 -d Fires couch.fds
 $QFDS -d Fires fire_const_gamma.fds
 $QFDS -d Fires spray_burner.fds
 $QFDS -d Fires HoC_Ideal.fds
@@ -301,6 +302,7 @@ $QFDS -d Heat_Transfer insulated_steel_pipe.fds
 $QFDS -d Heat_Transfer insulated_steel_pipe_2d.fds
 $QFDS -d Heat_Transfer insulated_steel_plate.fds
 $QFDS -d Heat_Transfer ht1d_pile.fds
+$QFDS -d Heat_Transfer ht3d_average_temp.fds
 $QFDS -d Heat_Transfer ht3d_pile.fds
 $QFDS -d Heat_Transfer ht3d_beam_heating_1.fds
 $QFDS -d Heat_Transfer ht3d_beam_heating_2.fds
