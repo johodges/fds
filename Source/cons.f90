@@ -422,7 +422,7 @@ INTEGER, ALLOCATABLE, DIMENSION(:) :: COUNTS,DISPLS,COUNTS_10,DISPLS_10,COUNTS_2
 REAL(EB) :: DT_INITIAL                                      !< Initial time step size (s)
 REAL(EB) :: T_BEGIN                                         !< Beginning time of simulation (s)
 REAL(EB) :: T_END                                           !< Ending time of simulation (s)
-REAL(EB) :: T_END_CLOCK=HUGE(EB)                            !< Ending time of simulation (s) for clock time
+REAL(EB) :: T_END_CLOCK=HUGE(1._EB)                          !< Ending time of simulation (s) for clock time
 REAL(EB) :: TIME_SHRINK_FACTOR                              !< Factor to reduce specific heat and total run time
 REAL(EB) :: RELAXATION_FACTOR=1._EB                         !< Factor used to relax normal velocity nudging at immersed boundaries
 REAL(EB) :: MPI_TIMEOUT=600._EB                             !< Time to wait for MPI messages to be received (s)
