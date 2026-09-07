@@ -272,6 +272,12 @@ LOGICAL :: NO_PRESSURE_ZONES=.FALSE.                !< Flag to suppress pressure
 LOGICAL :: CTRL_DIRECT_FORCE=.FALSE.                !< Allow adjustable direct force via CTRL logic
 LOGICAL :: REACTING_THIN_OBSTRUCTIONS=.FALSE.       !< Thin obstructions that off-gas are present
 LOGICAL :: TENSOR_DIFFUSIVITY=.FALSE.               !< If true, use experimental tensor diffusivity model for spec and tmp
+LOGICAL :: WRITE_SMV=.TRUE.                         !< Write the Smokeview output files
+LOGICAL :: WRITE_VTK=.FALSE.                        !< Write the VTKHDF output files
+LOGICAL :: WRITE_VTK_GEOM=.FALSE.                   !< Write the VTKHDF unstructured geometry file
+LOGICAL :: PARAVIEW_PROJECT=.FALSE.                 !< Write a ParaView state script alongside the VTKHDF files
+LOGICAL :: VTK_KEEPOPEN=.FALSE.                     !< Hold the VTKHDF files open between output times
+INTEGER :: VTK_COMPRESSION_LEVEL=1                  !< gzip level (0-9) for VTKHDF datasets; 0 disables compression
 LOGICAL :: OXPYRO_MODEL=.FALSE.                     !< Flag to use oxidative pyrolysis mass transfer model
 LOGICAL :: OUTPUT_WALL_QUANTITIES=.FALSE.           !< Flag to force call to WALL_MODEL
 LOGICAL :: STORE_FIRE_ARRIVAL=.FALSE.               !< Flag for tracking arrival of spreading fire front over a surface
@@ -295,6 +301,8 @@ CHARACTER(FORMULA_LENGTH), DIMENSION(MAX_TERRAIN_IMAGES) :: TERRAIN_IMAGE !< Nam
 CHARACTER(CHID_LENGTH) :: CHID                                            !< Job ID
 CHARACTER(CHID_LENGTH) :: RESTART_CHID                                    !< Job ID for a restarted case
 CHARACTER(FILE_LENGTH) :: RESULTS_DIR                                     !< Custom directory for output
+CHARACTER(FILE_LENGTH) :: VTK_DIR                                         !< Custom directory for VTKHDF output
+CHARACTER(FILE_LENGTH) :: WORKING_DIR                                     !< Working directory, embedded in the ParaView script
 CHARACTER(FILE_LENGTH) :: BINGEOM_DIR                                     !< Custom directory for writing binary geometry files
 CHARACTER(5) :: DECIMAL_SPECIFIER='POINT'                                 !< Use point or comma for real outputs
 CHARACTER(1) :: SEPARATOR                                                 !< Decimal point or comma
@@ -572,7 +580,8 @@ REAL(EB) :: ALIGNMENT_TOLERANCE=0.001_EB      !< Maximum ratio of sizes of abutt
 ! Logical units and output file names
 
 INTEGER                              :: LU_ERR=ERROR_UNIT,LU_END=2,LU_GIT=3,LU_SMV=4,LU_INPUT=5,LU_OUTPUT=6,LU_STOP=7,LU_CPU=8,&
-                                        LU_CATF=9,LU_RDIR=10,LU_GDIR=11,LU_SETCC=12,LU_BINGEOM=13,LU_PARCSRPCG_MATRIX=14
+                                        LU_CATF=9,LU_RDIR=10,LU_GDIR=11,LU_SETCC=12,LU_BINGEOM=13,LU_PARCSRPCG_MATRIX=14, &
+                                        LU_PARAVIEW=15,LU_VRDIR=16,LU_WDIR=17
 INTEGER                              :: LU_MASS,LU_HRR,LU_STEPS,LU_NOTREADY,LU_VELOCITY_ERROR,LU_CFL,LU_LINE=-1,LU_CUTCELL, &
                                         LU_CVODE_SUBSTEPS
 INTEGER                              :: LU_HISTOGRAM,LU_HVAC
@@ -586,7 +595,7 @@ INTEGER                              :: DEVC_COLUMN_LIMIT=254,CTRL_COLUMN_LIMIT=
 
 CHARACTER(FN_LENGTH) :: FN_INPUT='null',FN_STOP='null',FN_CPU,FN_CFL,FN_OUTPUT='null',FN_MASS,FN_HRR,FN_STEPS,FN_SMV,FN_END, &
                         FN_ERR,FN_NOTREADY,FN_VELOCITY_ERROR,FN_GIT,FN_LINE,FN_HISTOGRAM,FN_CUTCELL,FN_TGA,FN_DEVC_CTRL,FN_HVAC, &
-                        FN_CVODE_SUBSTEPS
+                        FN_CVODE_SUBSTEPS,FN_PARAVIEW
 CHARACTER(FN_LENGTH), ALLOCATABLE, DIMENSION(:) :: FN_PART,FN_PROF,FN_XYZ,FN_TERRAIN,FN_PL3D,FN_DEVC,FN_STATE,FN_CTRL,FN_CORE, &
                                                    FN_RESTART,FN_VEG_OUT,FN_GEOM,FN_CFACE_GEOM
 CHARACTER(FN_LENGTH), ALLOCATABLE, DIMENSION(:,:) :: FN_SLCF,FN_SLCF_GEOM,FN_BNDF,FN_BNDG,FN_ISOF,FN_ISOF2,FN_SMOKE3D,FN_RADF
@@ -818,20 +827,23 @@ INTEGER :: RAMP_TMP_INDEX =0  !< Ramp index for temperature file time series
 INTEGER :: RAMP_UVW_INDEX =0  !< Ramp index for velocity file time series
 REAL(EB), ALLOCATABLE, DIMENSION(:) :: BNDF_CLOCK, CPU_CLOCK,CTRL_CLOCK,DEVC_CLOCK,FLSH_CLOCK,GEOM_CLOCK, HRR_CLOCK,HVAC_CLOCK,&
                                        ISOF_CLOCK,MASS_CLOCK,PART_CLOCK,PL3D_CLOCK,PROF_CLOCK,RADF_CLOCK,RSRT_CLOCK,&
-                                       SLCF_CLOCK,SL3D_CLOCK,SM3D_CLOCK,UVW_CLOCK ,TMP_CLOCK ,SPEC_CLOCK
+                                       SLCF_CLOCK,SL3D_CLOCK,SM3D_CLOCK,UVW_CLOCK ,TMP_CLOCK ,SPEC_CLOCK,&
+                                       SL3D_VTK_CLOCK,SM3D_VTK_CLOCK,BNDF_VTK_CLOCK,PART_VTK_CLOCK,SLCF_VTK_CLOCK
 INTEGER, ALLOCATABLE, DIMENSION(:) :: BNDF_COUNTER, CPU_COUNTER,CTRL_COUNTER,DEVC_COUNTER,FLSH_COUNTER,GEOM_COUNTER, HRR_COUNTER,&
                                       HVAC_COUNTER,ISOF_COUNTER,MASS_COUNTER,PART_COUNTER,PL3D_COUNTER,PROF_COUNTER,RADF_COUNTER,&
-                                      RSRT_COUNTER,SLCF_COUNTER,SL3D_COUNTER,SM3D_COUNTER,UVW_COUNTER ,TMP_COUNTER ,SPEC_COUNTER
+                                      RSRT_COUNTER,SLCF_COUNTER,SL3D_COUNTER,SM3D_COUNTER,UVW_COUNTER ,TMP_COUNTER ,SPEC_COUNTER,&
+                                      SL3D_VTK_COUNTER,SM3D_VTK_COUNTER,BNDF_VTK_COUNTER,PART_VTK_COUNTER,SLCF_VTK_COUNTER
 REAL(EB) :: TURB_INIT_CLOCK=-1.E10_EB
 REAL(EB) :: MMS_TIMER=1.E10_EB
 REAL(EB) :: DT_SLCF,DT_BNDF,DT_DEVC,DT_PL3D,DT_PART,DT_RESTART,DT_ISOF,DT_HRR,DT_HVAC,DT_MASS,DT_PROF,DT_CTRL,&
-            DT_FLUSH,DT_SL3D,DT_GEOM,DT_CPU,DT_RADF,DT_SMOKE3D,DT_UVW ,DT_TMP,DT_SPEC
+            DT_FLUSH,DT_SL3D,DT_GEOM,DT_CPU,DT_RADF,DT_SMOKE3D,DT_UVW ,DT_TMP,DT_SPEC,DT_VTK,&
+            DT_SL3D_VTK,DT_SLCF_VTK,DT_SM3D_VTK,DT_BNDF_VTK,DT_PART_VTK
 REAL(EB) :: DT_SLCF_SPECIFIED =-1._EB,DT_BNDF_SPECIFIED   =-1._EB,DT_DEVC_SPECIFIED=-1._EB,DT_PL3D_SPECIFIED=-1._EB,&
             DT_PART_SPECIFIED =-1._EB,DT_RESTART_SPECIFIED=-1._EB,DT_ISOF_SPECIFIED=-1._EB,DT_HRR_SPECIFIED =-1._EB,&
             DT_HVAC_SPECIFIED =-1._EB,DT_MASS_SPECIFIED   =-1._EB,DT_PROF_SPECIFIED=-1._EB,DT_CTRL_SPECIFIED=-1._EB,&
             DT_FLUSH_SPECIFIED=-1._EB,DT_SL3D_SPECIFIED   =-1._EB,DT_GEOM_SPECIFIED=-1._EB,DT_CPU_SPECIFIED =-1._EB,&
             DT_RADF_SPECIFIED =-1._EB,DT_SMOKE3D_SPECIFIED=-1._EB,DT_UVW_SPECIFIED =-1._EB,DT_TMP_SPECIFIED =-1._EB,&
-            DT_SPEC_SPECIFIED =-1._EB
+            DT_SPEC_SPECIFIED =-1._EB,DT_VTK_SPECIFIED    =-1._EB
 
 END MODULE OUTPUT_CLOCKS
 

@@ -36,6 +36,13 @@ PUBLIC ASSIGN_FILE_NAMES,INITIALIZE_GLOBAL_DUMPS,INITIALIZE_MESH_DUMPS,WRITE_STA
        DUMP_MASS,DUMP_CONTROLS,INITIALIZE_DIAGNOSTIC_FILE,DUMP_RESTART,DUMP_HVAC,&
        DUMP_GEOM,UPDATE_DEVICES_2,WRITE_DEVC_CTRL_LOG,DUMP_CVODE_SUBSTEPS
 
+! Output kernels shared with the VTKHDF writers in VTK_FDS_INTERFACE.  Keep this list
+! minimal: VTK_FDS_INTERFACE uses DUMP, so nothing here may reference it back.
+
+PUBLIC DUMP_MESH_SPREADSHEET_OUTPUTS,GAS_PHASE_OUTPUT,SOLID_PHASE_OUTPUT,PARTICLE_OUTPUT,&
+       GET_SMOKE3D_QQ,GET_GEOMSIZES,GET_GEOMINFO,GET_GEOMVALS,GETSLICEDIR,&
+       COMPUTE_PARTICLE_FLUXES,GET_SLICE_QUANTITY,GET_SLICE_CORNER_WEIGHTS,DRY
+
 CONTAINS
 
 
@@ -68,15 +75,15 @@ END SUBROUTINE UPDATE_GLOBAL_OUTPUTS
 SUBROUTINE DUMP_MESH_OUTPUTS(T,DT,NM)
 
 USE COMP_FUNCTIONS, ONLY : CURRENT_TIME
-USE TURBULENCE, ONLY: SANDIA_OUT
 REAL(EB) :: TNOW
 REAL(EB), INTENT(IN) :: T,DT
 INTEGER, INTENT(IN) :: NM
-CHARACTER(80) :: FN_UVW,FN_MMS,FN_SPECTRUM,FN_TMP,FN_SPEC
 
 TNOW = CURRENT_TIME()
 
 CALL POINT_TO_MESH(NM)
+
+IF (.NOT.WRITE_SMV) RETURN
 
 IF (T>=PART_CLOCK(PART_COUNTER(NM)) .AND. PARTICLE_FILE) THEN
    CALL DUMP_PART(T,NM)
@@ -133,6 +140,27 @@ IF (T>=PL3D_CLOCK(PL3D_COUNTER(NM)) .OR. STOP_STATUS==INSTABILITY_STOP) THEN
       IF (PL3D_CLOCK(PL3D_COUNTER(NM))>=T) EXIT
    ENDDO
 ENDIF
+
+! Always output spreadsheet data
+
+CALL DUMP_MESH_SPREADSHEET_OUTPUTS(T,NM)
+
+T_USED(7) = T_USED(7) + CURRENT_TIME() - TNOW
+END SUBROUTINE DUMP_MESH_OUTPUTS
+
+!> \brief Dump the per-mesh spreadsheet (CSV) and special-purpose outputs
+!>
+!> These outputs do not depend on the Smokeview/VTKHDF output format, so they are
+!> shared by both output paths.
+
+SUBROUTINE DUMP_MESH_SPREADSHEET_OUTPUTS(T,NM)
+
+USE TURBULENCE, ONLY: SANDIA_OUT
+REAL(EB), INTENT(IN) :: T
+INTEGER, INTENT(IN) :: NM
+CHARACTER(80) :: FN_UVW,FN_MMS,FN_SPECTRUM,FN_TMP,FN_SPEC
+
+CALL POINT_TO_MESH(NM)
 
 IF (T>=PROF_CLOCK(PROF_COUNTER(NM))) THEN
    CALL DUMP_PROF(T,NM)
@@ -194,8 +222,9 @@ PERIODIC_TEST_SELECT: SELECT CASE(PERIODIC_TEST)
       ENDIF
 END SELECT PERIODIC_TEST_SELECT
 
-T_USED(7) = T_USED(7) + CURRENT_TIME() - TNOW
-END SUBROUTINE DUMP_MESH_OUTPUTS
+END SUBROUTINE DUMP_MESH_SPREADSHEET_OUTPUTS
+
+
 
 
 !> \brief Assign names and logical units for all output files
@@ -508,6 +537,11 @@ ENDIF
 IF (WRITE_CVODE_SUBSTEPS) THEN
    LU_CVODE_SUBSTEPS = GET_FILE_NUMBER()
    FN_CVODE_SUBSTEPS = TRIM(CHID)//'_cvode_substeps.csv'
+ENDIF
+
+IF (PARAVIEW_PROJECT) THEN
+   LU_PARAVIEW = GET_FILE_NUMBER()
+   FN_PARAVIEW = TRIM(RESULTS_DIR)//TRIM(CHID)//'_paraview.py'
 ENDIF
 
 
@@ -4507,7 +4541,7 @@ SUBROUTINE DUMP_SMOKE3D(T,DT,NM)
 USE ISOSMOKE, ONLY: SMOKE3D_TO_FILE
 REAL(EB), INTENT(IN) :: T,DT
 INTEGER,  INTENT(IN) :: NM
-INTEGER  :: I,J,K,N
+INTEGER  :: N
 REAL(FB) :: STIME
 REAL(EB), POINTER, DIMENSION(:,:,:) :: FF
 REAL(FB), ALLOCATABLE, DIMENSION(:) :: QQ_PACK
@@ -4524,37 +4558,7 @@ DATA_FILE_LOOP: DO N=1,N_SMOKE3D
    S3 => SMOKE3D_FILE(N)
    IF (S3%QUANTITY_INDEX==0) CYCLE
 
-   ! Obtain Smoke3D output at cell centers
-
-   DO K=0,KBP1
-      DO J=0,JBP1
-         DO I=0,IBP1
-            FF(I,J,K)=GAS_PHASE_OUTPUT(T,DT,NM,I,J,K,S3%QUANTITY_INDEX,Y_INDEX=S3%Y_INDEX,Z_INDEX=S3%Z_INDEX)
-         ENDDO
-      ENDDO
-   ENDDO
-
-   ! Interpolate data to cell nodes
-
-   DO K=0,KBAR
-      DO J=0,JBAR
-         DO I=0,IBAR
-            QQ(I,J,K,1) = REAL((FF(I,J,K)  +FF(I+1,J,K)  +FF(I,J,K+1)  +FF(I+1,J,K+1)+ &
-                                FF(I,J+1,K)+FF(I+1,J+1,K)+FF(I,J+1,K+1)+FF(I+1,J+1,K+1))*0.125_FB,FB)
-         ENDDO
-      ENDDO
-   ENDDO
-
-   IF (CC_IBM) THEN
-      DO K=0,KBAR
-         DO J=0,JBAR
-            DO I=0,IBAR
-               IF(MESHES(NM)%VERTVAR(I,J,K,CC_VGSC) /= CC_SOLID) CYCLE
-               QQ(I,J,K,1) = 0._FB
-            ENDDO
-         ENDDO
-      ENDDO
-   ENDIF
+   CALL GET_SMOKE3D_QQ(S3,T,DT,NM,FF,QQ)
 
    ! Pack the data into a 1-D array and send to the routine that writes the file for Smokeview
 
@@ -4566,6 +4570,61 @@ DATA_FILE_LOOP: DO N=1,N_SMOKE3D
 ENDDO DATA_FILE_LOOP
 
 END SUBROUTINE DUMP_SMOKE3D
+
+
+!> \brief Evaluate a Smoke3D quantity at cell centers and interpolate it to cell nodes
+!>
+!> \param S3 Pointer to the SMOKE3D_FILE entry being written
+!> \param T Current simulation time (s)
+!> \param DT Current time step (s)
+!> \param NM Mesh number
+!> \param FF Work array holding the cell-centered values
+!> \param QQ Node-interpolated output
+!>
+!> Shared by DUMP_SMOKE3D and the VTKHDF Smoke3D writer.
+
+SUBROUTINE GET_SMOKE3D_QQ(S3,T,DT,NM,FF,QQ)
+
+TYPE(SMOKE3D_TYPE), POINTER, INTENT(IN) :: S3
+REAL(EB), POINTER, DIMENSION(:,:,:), INTENT(INOUT) :: FF
+REAL(FB), POINTER, DIMENSION(:,:,:,:), INTENT(INOUT) :: QQ
+REAL(EB), INTENT(IN) :: T,DT
+INTEGER,  INTENT(IN) :: NM
+INTEGER  :: I,J,K
+
+! Obtain Smoke3D output at cell centers
+
+DO K=0,KBP1
+   DO J=0,JBP1
+      DO I=0,IBP1
+         FF(I,J,K)=GAS_PHASE_OUTPUT(T,DT,NM,I,J,K,S3%QUANTITY_INDEX,Y_INDEX=S3%Y_INDEX,Z_INDEX=S3%Z_INDEX)
+      ENDDO
+   ENDDO
+ENDDO
+
+! Interpolate data to cell nodes
+
+DO K=0,KBAR
+   DO J=0,JBAR
+      DO I=0,IBAR
+         QQ(I,J,K,1) = REAL((FF(I,J,K)  +FF(I+1,J,K)  +FF(I,J,K+1)  +FF(I+1,J,K+1)+ &
+                             FF(I,J+1,K)+FF(I+1,J+1,K)+FF(I,J+1,K+1)+FF(I+1,J+1,K+1))*0.125_FB,FB)
+      ENDDO
+   ENDDO
+ENDDO
+
+IF (CC_IBM) THEN
+   DO K=0,KBAR
+      DO J=0,JBAR
+         DO I=0,IBAR
+            IF(MESHES(NM)%VERTVAR(I,J,K,CC_VGSC) /= CC_SOLID) CYCLE
+            QQ(I,J,K,1) = 0._FB
+         ENDDO
+      ENDDO
+   ENDDO
+ENDIF
+
+END SUBROUTINE GET_SMOKE3D_QQ
 
 
 SUBROUTINE GETSLICEDIR(I1,I2,J1,J2,K1,K2,DIR,SLICE)
@@ -6008,48 +6067,24 @@ RETURN
 END SUBROUTINE GET_GASCUTFACE_SCALAR_SLICE
 
 
-! \brief Write contour slices, Plot3D data, or 3d slices to a file
+!> \brief Build the weights used to average cell-centered values onto cell corners
 !>
-!> \param T Current simulation time (s)
-!> \param DT Current time step size (s)
 !> \param NM Mesh number
-!> \param IFRMT Slice (IFRMT=0) or Plot3D (IFRMT=1) or 3D slice (IFRMT=2)
+!> \param B 1 in every cell that takes part in the 8-cell corner average, 0 otherwise
+!> \param S Reciprocal of the sum of the eight B values meeting at corner (I,J,K)
+!>
+!> B and S depend only on the mesh topology, so they are built once per mesh per output
+!> time and reused for every slice and quantity on that mesh.
 
-SUBROUTINE DUMP_SLCF(T,DT,NM,IFRMT)
+SUBROUTINE GET_SLICE_CORNER_WEIGHTS(NM,B,S)
 
-USE MEMORY_FUNCTIONS, ONLY: RE_ALLOCATE_STRINGS
 USE GEOMETRY_FUNCTIONS, ONLY: SEARCH_OTHER_MESHES
-USE TRAN, ONLY : GET_IJK
-USE ISOSMOKE, ONLY: SLICE_TO_RLEFILE
-INTEGER, INTENT(IN) :: NM,IFRMT
-REAL(EB), INTENT(IN) :: T,DT
-REAL(EB) :: BSUM,TT
-REAL(FB) :: T_BOUND, SLICE_MIN_BOUND, SLICE_MAX_BOUND
-INTEGER :: CHANGE_BOUND
-INTEGER :: I,J,K,NQT,I1,I2,J1,J2,K1,K2,ITM,ITM1,IQ,IQ2,IQ3,IQQ,IND,II1,II2,JJ1,JJ2,KK1,KK2, &
-           IC,Y_INDEX,Z_INDEX,PART_INDEX,VELO_INDEX,PROP_INDEX,REAC_INDEX,MATL_INDEX,NOM,IIO,JJO,KKO,I_INC,J_INC,&
-           DEBUG,IERROR,IFACT,JFACT,KFACT,NX,NY,NZ,KTS,NTSL,ICO
-REAL(EB), POINTER, DIMENSION(:,:,:) :: B,S,QUANTITY
-REAL(FB) :: ZERO,STIME,SLICE_MIN,SLICE_MAX,UVEL,VVEL,WVEL,VEL,UVW_MAX,PLOT3D_MIN,PLOT3D_MAX
-LOGICAL :: PLOT3D,SLCF3D
-LOGICAL :: AGL_TERRAIN_SLICE,CC_CELL_CENTERED,CC_INTERP2FACES
-REAL(FB), ALLOCATABLE, DIMENSION(:) :: QQ_PACK
+INTEGER, INTENT(IN) :: NM
+REAL(EB), POINTER, DIMENSION(:,:,:), INTENT(INOUT) :: B,S
+INTEGER :: I,J,K,IC,NOM,IIO,JJO,KKO,ICO
+REAL(EB) :: BSUM
 TYPE (MESH_TYPE), POINTER :: M2
-TYPE (SLICE_TYPE), POINTER :: SL
 
-! Return if there are no slices to process and this is not a Plot3D dump
-
-SELECT CASE(IFRMT)
-   CASE(0) ; PLOT3D=.FALSE. ; SLCF3D=.FALSE.
-   CASE(1) ; PLOT3D=.TRUE.  ; SLCF3D=.FALSE.
-   CASE(2) ; PLOT3D=.FALSE. ; SLCF3D=.TRUE.
-END SELECT
-
-IF (MESHES(NM)%N_SLCF==0 .AND. .NOT.PLOT3D) RETURN
-
-! Create an array, B, that is 1 in any cell that is to be included in the 8-cell corner average, 0 otherwise.
-
-B => WORK1
 B = 1._EB
 
 DO IC=1,CELL_COUNT(NM)
@@ -6070,9 +6105,6 @@ DO IC=1,CELL_COUNT(NM)
    ENDIF
 ENDDO
 
-! Create an array, S, that is the reciprocal of the sum of the B values at cell corner (I,J,K).
-
-S => WORK2
 S = 0._EB
 
 DO K=0,KBAR
@@ -6084,7 +6116,287 @@ DO K=0,KBAR
    ENDDO
 ENDDO
 
-! If sprinkler diagnostic on, pre-compute various PARTICLE flux output
+END SUBROUTINE GET_SLICE_CORNER_WEIGHTS
+
+
+!> \brief Evaluate one slice quantity and average it onto the slice's output positions
+!>
+!> \param T Current simulation time (s)
+!> \param DT Current time step (s)
+!> \param NM Mesh number
+!> \param IND Index of the output quantity
+!> \param I1 Lower I index of the slice
+!> \param I2 Upper I index of the slice
+!> \param J1 Lower J index of the slice
+!> \param J2 Upper J index of the slice
+!> \param K1 Lower K index of the slice
+!> \param K2 Upper K index of the slice
+!> \param Y_INDEX Primitive species index
+!> \param Z_INDEX Lumped species index
+!> \param PART_INDEX Particle class index
+!> \param VELO_INDEX Velocity component index
+!> \param PROP_INDEX Property index
+!> \param REAC_INDEX Reaction index
+!> \param AGL_TERRAIN_SLICE Slice follows the terrain a fixed height above ground
+!> \param CC_CELL_CENTERED Slice values are reported at cell centers
+!> \param CC_INTERP2FACES Slice values are reported at cell faces
+!> \param NTSL Running count of terrain slices, incremented here for a terrain slice
+!> \param B Corner-average weights from GET_SLICE_CORNER_WEIGHTS
+!> \param S Corner-average normalization from GET_SLICE_CORNER_WEIGHTS
+!> \param QUANTITY Work array holding the evaluated quantity
+!> \param QQ Output array
+!> \param IQQ Index of the output array to fill
+!>
+!> Shared by DUMP_SLCF (Smokeview .sf and Plot3D output) and the VTKHDF slice writer, so
+!> that both report identical values.
+
+SUBROUTINE GET_SLICE_QUANTITY(T,DT,NM,IND,I1,I2,J1,J2,K1,K2,Y_INDEX,Z_INDEX,PART_INDEX,VELO_INDEX,PROP_INDEX,&
+                              REAC_INDEX,AGL_TERRAIN_SLICE,CC_CELL_CENTERED,CC_INTERP2FACES,NTSL,B,S,QUANTITY,QQ,IQQ)
+
+REAL(EB), INTENT(IN) :: T,DT
+INTEGER, INTENT(IN) :: NM,IND,I1,I2,J1,J2,K1,K2,Y_INDEX,Z_INDEX,PART_INDEX,VELO_INDEX,PROP_INDEX,REAC_INDEX,IQQ
+LOGICAL, INTENT(IN) :: AGL_TERRAIN_SLICE,CC_CELL_CENTERED,CC_INTERP2FACES
+INTEGER, INTENT(INOUT) :: NTSL
+REAL(EB), POINTER, DIMENSION(:,:,:), INTENT(IN) :: B,S
+REAL(EB), POINTER, DIMENSION(:,:,:), INTENT(INOUT) :: QUANTITY
+REAL(FB), POINTER, DIMENSION(:,:,:,:), INTENT(INOUT) :: QQ
+INTEGER :: I,J,K,II1,II2,JJ1,JJ2,KK1,KK2,I_INC,J_INC,KTS
+
+! Determine what cells need to be evaluated to form cell-corner averages
+
+II1 = I1
+II2 = I2+1
+JJ1 = J1
+JJ2 = J2+1
+KK1 = K1
+KK2 = K2+1
+
+SELECT CASE(OUTPUT_QUANTITY(IND)%CELL_POSITION)
+   CASE(CELL_FACE)
+      QUANTITY = 0._EB
+      IF (OUTPUT_QUANTITY(IND)%IOR==1) II2 = I2
+      IF (OUTPUT_QUANTITY(IND)%IOR==2) JJ2 = J2
+      IF (OUTPUT_QUANTITY(IND)%IOR==3) KK2 = K2
+   CASE(CELL_EDGE)
+      II2 = I2
+      JJ2 = J2
+      KK2 = K2
+END SELECT
+
+! Loop through the necessary cells, storing the desired output QUANTITY
+
+IF (.NOT.AGL_TERRAIN_SLICE) THEN
+   DO K=KK1,KK2
+      DO J=JJ1,JJ2
+         DO I=II1,II2
+            QUANTITY(I,J,K) = GAS_PHASE_OUTPUT(T,DT,NM,I,J,K,IND,Y_INDEX=Y_INDEX,Z_INDEX=Z_INDEX,PART_INDEX=PART_INDEX,&
+                                               VELO_INDEX=VELO_INDEX,PROP_INDEX=PROP_INDEX,REAC_INDEX=REAC_INDEX)
+         ENDDO
+      ENDDO
+   ENDDO
+ELSE
+   NTSL = NTSL + 1
+   DO I=II1,II2
+      DO J=JJ1,JJ2
+         KTS = K_AGL_SLICE(I,J,NTSL)
+         QUANTITY(I,J,K1) = GAS_PHASE_OUTPUT(T,DT,NM,I,J,KTS,IND,Y_INDEX=Y_INDEX,Z_INDEX=Z_INDEX,PART_INDEX=PART_INDEX,&
+                                             VELO_INDEX=VELO_INDEX)
+      ENDDO
+   ENDDO
+ENDIF
+
+! Average the QUANTITY at cell nodes, faces, or edges, as appropriate
+
+IF (AGL_TERRAIN_SLICE) THEN
+
+   I_INC = 1
+   J_INC = 1
+   IF (OUTPUT_QUANTITY(IND)%CELL_POSITION==CELL_FACE .AND. OUTPUT_QUANTITY(IND)%IOR==1) I_INC = 0
+   IF (OUTPUT_QUANTITY(IND)%CELL_POSITION==CELL_FACE .AND. OUTPUT_QUANTITY(IND)%IOR==2) J_INC = 0
+
+   DO J=J1,J2
+      DO I=I1,I2
+         QQ(I,J,K1,IQQ) = REAL(0.25_EB*(QUANTITY(I,J      ,K1)+QUANTITY(I+I_INC,J      ,K1)+&
+                                        QUANTITY(I,J+J_INC,K1)+QUANTITY(I+I_INC,J+J_INC,K1)),FB)
+      ENDDO
+   ENDDO
+
+ELSEIF (CC_CELL_CENTERED) THEN
+
+   DO K=KK1,KK2
+      DO J=JJ1,JJ2
+         DO I=II1,II2
+            QQ(I,J,K,IQQ) = REAL(QUANTITY(I,J,K),FB)
+         ENDDO
+      ENDDO
+   ENDDO
+
+ELSEIF (CC_INTERP2FACES) THEN
+
+   DO K=KK1,KK2
+      DO J=JJ1,JJ2
+         DO I=II1,II2
+         !xxx need to change the following code to use face centered interpolation
+         ! (perhaps copy some variant of node centered interpolation code above)
+            QQ(I,J,K,IQQ) = REAL(QUANTITY(I,J,K),FB)
+         ENDDO
+      ENDDO
+   ENDDO
+
+ELSE  ! Node interpolated slice
+
+   DO K=K1,K2
+      DO J=J1,J2
+         DO I=I1,I2
+            SELECT CASE(OUTPUT_QUANTITY(IND)%CELL_POSITION)
+               CASE(CELL_CENTER)
+                  QQ(I,J,K,IQQ) = REAL(CORNER_VALUE(QUANTITY,B,S,IND),FB)
+               CASE(CELL_FACE)
+                  QQ(I,J,K,IQQ) = REAL(FACE_VALUE(),FB)
+               CASE(CELL_EDGE)
+                  QQ(I,J,K,IQQ) = REAL(EDGE_VALUE(QUANTITY,S,IND),FB)
+            END SELECT
+         ENDDO
+      ENDDO
+   ENDDO
+
+ENDIF
+
+CONTAINS
+
+REAL(EB) FUNCTION CORNER_VALUE(A,B,S,INDX)
+
+REAL(EB), INTENT(IN), DIMENSION(0:,0:,0:) :: A,B,S
+INTEGER, INTENT(IN) :: INDX
+
+IF (ABS(S(I,J,K))<=TWENTY_EPSILON_EB) THEN
+   CORNER_VALUE = OUTPUT_QUANTITY(INDX)%AMBIENT_VALUE
+ELSE
+   CORNER_VALUE = S(I,J,K)*(A(I,J,K)    *B(I,J,K)     + A(I+1,J,K)    *B(I+1,J,K)   + &
+                            A(I,J,K+1)  *B(I,J,K+1)   + A(I+1,J,K+1)  *B(I+1,J,K+1) + &
+                            A(I,J+1,K)  *B(I,J+1,K)   + A(I+1,J+1,K)  *B(I+1,J+1,K) + &
+                            A(I,J+1,K+1)*B(I,J+1,K+1) + A(I+1,J+1,K+1)*B(I+1,J+1,K+1))
+ENDIF
+
+END FUNCTION CORNER_VALUE
+
+
+REAL(EB) FUNCTION FACE_VALUE()
+
+REAL(EB) :: AA(0:1,0:1)
+INTEGER :: IE,ICMM,ICMP,ICPM,COUNTER
+
+SELECT CASE(OUTPUT_QUANTITY(IND)%IOR)
+   CASE(1) ; AA(0:1,0:1) = QUANTITY(I,J:J+1,K:K+1)
+   CASE(2) ; AA(0:1,0:1) = QUANTITY(I:I+1,J,K:K+1)
+   CASE(3) ; AA(0:1,0:1) = QUANTITY(I:I+1,J:J+1,K)
+END SELECT
+ICMM = CELL_INDEX(I,J,K)
+IF (ICMM>0) THEN
+   SELECT CASE(IND)
+      CASE(6)
+         ICPM = CELL_INDEX(I,J+1,K)
+         ICMP = CELL_INDEX(I,J,K+1)
+         IE = CELL(ICMM)%EDGE_INDEX(8)
+         IF (EDGE(IE)%U_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%U_AVG ; AA(0,1)=EDGE(IE)%U_AVG ; ENDIF
+         IE = CELL(ICMM)%EDGE_INDEX(12)
+         IF (EDGE(IE)%U_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%U_AVG ; AA(1,0)=EDGE(IE)%U_AVG ; ENDIF
+         IE = CELL(ICPM)%EDGE_INDEX(8)
+         IF (EDGE(IE)%U_AVG>-1.E5_EB) THEN ; AA(1,0)=EDGE(IE)%U_AVG ; AA(1,1)=EDGE(IE)%U_AVG ; ENDIF
+         IE = CELL(ICMP)%EDGE_INDEX(12)
+         IF (EDGE(IE)%U_AVG>-1.E5_EB) THEN ; AA(0,1)=EDGE(IE)%U_AVG ; AA(1,1)=EDGE(IE)%U_AVG ; ENDIF
+      CASE(7)
+         ICPM = CELL_INDEX(I+1,J,K)
+         ICMP = CELL_INDEX(I,J,K+1)
+         IE = CELL(ICMM)%EDGE_INDEX(4)
+         IF (EDGE(IE)%V_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%V_AVG ; AA(0,1)=EDGE(IE)%V_AVG ; ENDIF
+         IE = CELL(ICMM)%EDGE_INDEX(12)
+         IF (EDGE(IE)%V_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%V_AVG ; AA(1,0)=EDGE(IE)%V_AVG ; ENDIF
+         IE = CELL(ICPM)%EDGE_INDEX(4)
+         IF (EDGE(IE)%V_AVG>-1.E5_EB) THEN ; AA(1,0)=EDGE(IE)%V_AVG ; AA(1,1)=EDGE(IE)%V_AVG ; ENDIF
+         IE = CELL(ICMP)%EDGE_INDEX(12)
+         IF (EDGE(IE)%V_AVG>-1.E5_EB) THEN ; AA(0,1)=EDGE(IE)%V_AVG ; AA(1,1)=EDGE(IE)%V_AVG ; ENDIF
+      CASE(8)
+         ICPM = CELL_INDEX(I+1,J,K)
+         ICMP = CELL_INDEX(I,J+1,K)
+         IE = CELL(ICMM)%EDGE_INDEX(4)
+         IF (EDGE(IE)%W_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%W_AVG ; AA(0,1)=EDGE(IE)%W_AVG ; ENDIF
+         IE = CELL(ICMM)%EDGE_INDEX(8)
+         IF (EDGE(IE)%W_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%W_AVG ; AA(1,0)=EDGE(IE)%W_AVG ; ENDIF
+         IE = CELL(ICPM)%EDGE_INDEX(4)
+         IF (EDGE(IE)%W_AVG>-1.E5_EB) THEN ; AA(1,0)=EDGE(IE)%W_AVG ; AA(1,1)=EDGE(IE)%W_AVG ; ENDIF
+         IE = CELL(ICMP)%EDGE_INDEX(8)
+         IF (EDGE(IE)%W_AVG>-1.E5_EB) THEN ; AA(0,1)=EDGE(IE)%W_AVG ; AA(1,1)=EDGE(IE)%W_AVG ; ENDIF
+   END SELECT
+ENDIF
+
+COUNTER = COUNT(AA/=0._EB)
+
+FACE_VALUE = SUM(AA)/REAL(MAX(1,COUNTER),EB)
+
+END FUNCTION FACE_VALUE
+
+
+REAL(EB) FUNCTION EDGE_VALUE(A,S,INDX)
+
+REAL(EB), INTENT(IN), DIMENSION(0:,0:,0:) :: A,S
+INTEGER, INTENT(IN) :: INDX
+
+IF (ABS(S(I,J,K))<=TWENTY_EPSILON_EB) THEN
+   EDGE_VALUE = OUTPUT_QUANTITY(INDX)%AMBIENT_VALUE
+ELSE
+   EDGE_VALUE = A(I,J,K)
+ENDIF
+
+END FUNCTION EDGE_VALUE
+
+END SUBROUTINE GET_SLICE_QUANTITY
+
+
+
+! \brief Write contour slices, Plot3D data, or 3d slices to a file
+!>
+!> \param T Current simulation time (s)
+!> \param DT Current time step size (s)
+!> \param NM Mesh number
+!> \param IFRMT Slice (IFRMT=0) or Plot3D (IFRMT=1) or 3D slice (IFRMT=2)
+
+SUBROUTINE DUMP_SLCF(T,DT,NM,IFRMT)
+
+USE MEMORY_FUNCTIONS, ONLY: RE_ALLOCATE_STRINGS
+USE GEOMETRY_FUNCTIONS, ONLY: SEARCH_OTHER_MESHES
+USE TRAN, ONLY : GET_IJK
+USE ISOSMOKE, ONLY: SLICE_TO_RLEFILE
+INTEGER, INTENT(IN) :: NM,IFRMT
+REAL(EB), INTENT(IN) :: T,DT
+REAL(EB) :: TT
+REAL(FB) :: T_BOUND, SLICE_MIN_BOUND, SLICE_MAX_BOUND
+INTEGER :: CHANGE_BOUND
+INTEGER :: I,J,K,NQT,I1,I2,J1,J2,K1,K2,ITM,ITM1,IQ,IQ2,IQ3,IQQ,IND, &
+           Y_INDEX,Z_INDEX,PART_INDEX,VELO_INDEX,PROP_INDEX,REAC_INDEX,MATL_INDEX,&
+           DEBUG,IERROR,IFACT,JFACT,KFACT,NX,NY,NZ,NTSL
+REAL(EB), POINTER, DIMENSION(:,:,:) :: B,S,QUANTITY
+REAL(FB) :: ZERO,STIME,SLICE_MIN,SLICE_MAX,UVEL,VVEL,WVEL,VEL,UVW_MAX,PLOT3D_MIN,PLOT3D_MAX
+LOGICAL :: PLOT3D,SLCF3D
+LOGICAL :: AGL_TERRAIN_SLICE,CC_CELL_CENTERED,CC_INTERP2FACES
+REAL(FB), ALLOCATABLE, DIMENSION(:) :: QQ_PACK
+TYPE (SLICE_TYPE), POINTER :: SL
+
+! Return if there are no slices to process and this is not a Plot3D dump
+
+SELECT CASE(IFRMT)
+   CASE(0) ; PLOT3D=.FALSE. ; SLCF3D=.FALSE.
+   CASE(1) ; PLOT3D=.TRUE.  ; SLCF3D=.FALSE.
+   CASE(2) ; PLOT3D=.FALSE. ; SLCF3D=.TRUE.
+END SELECT
+
+IF (MESHES(NM)%N_SLCF==0 .AND. .NOT.PLOT3D) RETURN
+
+! Build the weights used to average cell-centered values onto cell corners
+
+B => WORK1
+S => WORK2
+CALL GET_SLICE_CORNER_WEIGHTS(NM,B,S)
 
 IF (.NOT.PLOT3D) THEN
    IF (SLCF_PARTICLE_FLUX) CALL COMPUTE_PARTICLE_FLUXES
@@ -6182,50 +6494,7 @@ QUANTITY_LOOP: DO IQ=1,NQT
       IF ((I2-I1==0 .OR. J2-J1==0 .OR. K2-K1==0) .AND.      SLCF3D) CYCLE QUANTITY_LOOP
    ENDIF
 
-   ! Determine what cells need to be evaluated to form cell-corner averages
-
-   II1 = I1
-   II2 = I2+1
-   JJ1 = J1
-   JJ2 = J2+1
-   KK1 = K1
-   KK2 = K2+1
-
-   SELECT CASE(OUTPUT_QUANTITY(IND)%CELL_POSITION)
-      CASE(CELL_FACE)
-         QUANTITY = 0._EB
-         IF (OUTPUT_QUANTITY(IND)%IOR==1) II2 = I2
-         IF (OUTPUT_QUANTITY(IND)%IOR==2) JJ2 = J2
-         IF (OUTPUT_QUANTITY(IND)%IOR==3) KK2 = K2
-      CASE(CELL_EDGE)
-         II2 = I2
-         JJ2 = J2
-         KK2 = K2
-   END SELECT
-
-   ! Loop through the necessary cells, storing the desired output QUANTITY
-
-   IF (.NOT.AGL_TERRAIN_SLICE) THEN
-      DO K=KK1,KK2
-         DO J=JJ1,JJ2
-            DO I=II1,II2
-               QUANTITY(I,J,K) = GAS_PHASE_OUTPUT(T,DT,NM,I,J,K,IND,Y_INDEX=Y_INDEX,Z_INDEX=Z_INDEX,PART_INDEX=PART_INDEX,&
-                                                  VELO_INDEX=VELO_INDEX,PROP_INDEX=PROP_INDEX,REAC_INDEX=REAC_INDEX)
-            ENDDO
-         ENDDO
-      ENDDO
-   ELSE
-      NTSL = NTSL + 1
-      DO I=II1,II2
-         DO J=JJ1,JJ2
-            KTS = K_AGL_SLICE(I,J,NTSL)
-            QUANTITY(I,J,K1) = GAS_PHASE_OUTPUT(T,DT,NM,I,J,KTS,IND,Y_INDEX=Y_INDEX,Z_INDEX=Z_INDEX,PART_INDEX=PART_INDEX,&
-                                                VELO_INDEX=VELO_INDEX)
-         ENDDO
-      ENDDO
-   ENDIF
-
-   ! Average the QUANTITY at cell nodes, faces, or edges, as appropriate
+   ! Evaluate the quantity and average it onto the slice nodes, faces or edges
 
    IF (PLOT3D) THEN
       IQQ = IQ
@@ -6233,60 +6502,8 @@ QUANTITY_LOOP: DO IQ=1,NQT
       IQQ = 1
    ENDIF
 
-   IF (AGL_TERRAIN_SLICE) THEN
-
-      I_INC = 1
-      J_INC = 1
-      IF (OUTPUT_QUANTITY(IND)%CELL_POSITION==CELL_FACE .AND. OUTPUT_QUANTITY(IND)%IOR==1) I_INC = 0
-      IF (OUTPUT_QUANTITY(IND)%CELL_POSITION==CELL_FACE .AND. OUTPUT_QUANTITY(IND)%IOR==2) J_INC = 0
-
-      DO J=J1,J2
-         DO I=I1,I2
-            QQ(I,J,K1,IQQ) = REAL(0.25_EB*(QUANTITY(I,J      ,K1)+QUANTITY(I+I_INC,J      ,K1)+&
-                                           QUANTITY(I,J+J_INC,K1)+QUANTITY(I+I_INC,J+J_INC,K1)),FB)
-         ENDDO
-      ENDDO
-
-   ELSEIF (CC_CELL_CENTERED) THEN
-
-      DO K=KK1,KK2
-         DO J=JJ1,JJ2
-            DO I=II1,II2
-               QQ(I,J,K,IQQ) = REAL(QUANTITY(I,J,K),FB)
-            ENDDO
-         ENDDO
-      ENDDO
-
-   ELSEIF (CC_INTERP2FACES) THEN
-
-      DO K=KK1,KK2
-         DO J=JJ1,JJ2
-            DO I=II1,II2
-            !xxx need to change the following code to use face centered interpolation
-            ! (perhaps copy some variant of node centered interpolation code above)
-               QQ(I,J,K,IQQ) = REAL(QUANTITY(I,J,K),FB)
-            ENDDO
-         ENDDO
-      ENDDO
-
-   ELSE  ! Node interpolated slice
-
-      DO K=K1,K2
-         DO J=J1,J2
-            DO I=I1,I2
-               SELECT CASE(OUTPUT_QUANTITY(IND)%CELL_POSITION)
-                  CASE(CELL_CENTER)
-                     QQ(I,J,K,IQQ) = REAL(CORNER_VALUE(QUANTITY,B,S,IND),FB)
-                  CASE(CELL_FACE)
-                     QQ(I,J,K,IQQ) = REAL(FACE_VALUE(),FB)
-                  CASE(CELL_EDGE)
-                     QQ(I,J,K,IQQ) = REAL(EDGE_VALUE(QUANTITY,S,IND),FB)
-               END SELECT
-            ENDDO
-         ENDDO
-      ENDDO
-
-   ENDIF
+   CALL GET_SLICE_QUANTITY(T,DT,NM,IND,I1,I2,J1,J2,K1,K2,Y_INDEX,Z_INDEX,PART_INDEX,VELO_INDEX,PROP_INDEX,&
+                           REAC_INDEX,AGL_TERRAIN_SLICE,CC_CELL_CENTERED,CC_INTERP2FACES,NTSL,B,S,QUANTITY,QQ,IQQ)
 
    ! Dump out the slice file to a .sf file
 
@@ -6469,94 +6686,6 @@ IF (PLOT3D) THEN
    CLOSE(LU_PL3D(NM+NMESHES))
 ENDIF
 
-CONTAINS
-
-
-REAL(EB) FUNCTION CORNER_VALUE(A,B,S,INDX)
-
-REAL(EB), INTENT(IN), DIMENSION(0:,0:,0:) :: A,B,S
-INTEGER, INTENT(IN) :: INDX
-
-IF (ABS(S(I,J,K))<=TWENTY_EPSILON_EB) THEN
-   CORNER_VALUE = OUTPUT_QUANTITY(INDX)%AMBIENT_VALUE
-ELSE
-   CORNER_VALUE = S(I,J,K)*(A(I,J,K)    *B(I,J,K)     + A(I+1,J,K)    *B(I+1,J,K)   + &
-                            A(I,J,K+1)  *B(I,J,K+1)   + A(I+1,J,K+1)  *B(I+1,J,K+1) + &
-                            A(I,J+1,K)  *B(I,J+1,K)   + A(I+1,J+1,K)  *B(I+1,J+1,K) + &
-                            A(I,J+1,K+1)*B(I,J+1,K+1) + A(I+1,J+1,K+1)*B(I+1,J+1,K+1))
-ENDIF
-
-END FUNCTION CORNER_VALUE
-
-
-REAL(EB) FUNCTION FACE_VALUE()
-
-REAL(EB) :: AA(0:1,0:1)
-INTEGER :: IE,ICMM,ICMP,ICPM,COUNTER
-
-SELECT CASE(OUTPUT_QUANTITY(IND)%IOR)
-   CASE(1) ; AA(0:1,0:1) = QUANTITY(I,J:J+1,K:K+1)
-   CASE(2) ; AA(0:1,0:1) = QUANTITY(I:I+1,J,K:K+1)
-   CASE(3) ; AA(0:1,0:1) = QUANTITY(I:I+1,J:J+1,K)
-END SELECT
-ICMM = CELL_INDEX(I,J,K)
-IF (ICMM>0) THEN
-   SELECT CASE(IND)
-      CASE(6)
-         ICPM = CELL_INDEX(I,J+1,K)
-         ICMP = CELL_INDEX(I,J,K+1)
-         IE = CELL(ICMM)%EDGE_INDEX(8)
-         IF (EDGE(IE)%U_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%U_AVG ; AA(0,1)=EDGE(IE)%U_AVG ; ENDIF
-         IE = CELL(ICMM)%EDGE_INDEX(12)
-         IF (EDGE(IE)%U_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%U_AVG ; AA(1,0)=EDGE(IE)%U_AVG ; ENDIF
-         IE = CELL(ICPM)%EDGE_INDEX(8)
-         IF (EDGE(IE)%U_AVG>-1.E5_EB) THEN ; AA(1,0)=EDGE(IE)%U_AVG ; AA(1,1)=EDGE(IE)%U_AVG ; ENDIF
-         IE = CELL(ICMP)%EDGE_INDEX(12)
-         IF (EDGE(IE)%U_AVG>-1.E5_EB) THEN ; AA(0,1)=EDGE(IE)%U_AVG ; AA(1,1)=EDGE(IE)%U_AVG ; ENDIF
-      CASE(7)
-         ICPM = CELL_INDEX(I+1,J,K)
-         ICMP = CELL_INDEX(I,J,K+1)
-         IE = CELL(ICMM)%EDGE_INDEX(4)
-         IF (EDGE(IE)%V_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%V_AVG ; AA(0,1)=EDGE(IE)%V_AVG ; ENDIF
-         IE = CELL(ICMM)%EDGE_INDEX(12)
-         IF (EDGE(IE)%V_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%V_AVG ; AA(1,0)=EDGE(IE)%V_AVG ; ENDIF
-         IE = CELL(ICPM)%EDGE_INDEX(4)
-         IF (EDGE(IE)%V_AVG>-1.E5_EB) THEN ; AA(1,0)=EDGE(IE)%V_AVG ; AA(1,1)=EDGE(IE)%V_AVG ; ENDIF
-         IE = CELL(ICMP)%EDGE_INDEX(12)
-         IF (EDGE(IE)%V_AVG>-1.E5_EB) THEN ; AA(0,1)=EDGE(IE)%V_AVG ; AA(1,1)=EDGE(IE)%V_AVG ; ENDIF
-      CASE(8)
-         ICPM = CELL_INDEX(I+1,J,K)
-         ICMP = CELL_INDEX(I,J+1,K)
-         IE = CELL(ICMM)%EDGE_INDEX(4)
-         IF (EDGE(IE)%W_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%W_AVG ; AA(0,1)=EDGE(IE)%W_AVG ; ENDIF
-         IE = CELL(ICMM)%EDGE_INDEX(8)
-         IF (EDGE(IE)%W_AVG>-1.E5_EB) THEN ; AA(0,0)=EDGE(IE)%W_AVG ; AA(1,0)=EDGE(IE)%W_AVG ; ENDIF
-         IE = CELL(ICPM)%EDGE_INDEX(4)
-         IF (EDGE(IE)%W_AVG>-1.E5_EB) THEN ; AA(1,0)=EDGE(IE)%W_AVG ; AA(1,1)=EDGE(IE)%W_AVG ; ENDIF
-         IE = CELL(ICMP)%EDGE_INDEX(8)
-         IF (EDGE(IE)%W_AVG>-1.E5_EB) THEN ; AA(0,1)=EDGE(IE)%W_AVG ; AA(1,1)=EDGE(IE)%W_AVG ; ENDIF
-   END SELECT
-ENDIF
-
-COUNTER = COUNT(AA/=0._EB)
-
-FACE_VALUE = SUM(AA)/REAL(MAX(1,COUNTER),EB)
-
-END FUNCTION FACE_VALUE
-
-
-REAL(EB) FUNCTION EDGE_VALUE(A,S,INDX)
-
-REAL(EB), INTENT(IN), DIMENSION(0:,0:,0:) :: A,S
-INTEGER, INTENT(IN) :: INDX
-
-IF (ABS(S(I,J,K))<=TWENTY_EPSILON_EB) THEN
-   EDGE_VALUE = OUTPUT_QUANTITY(INDX)%AMBIENT_VALUE
-ELSE
-   EDGE_VALUE = A(I,J,K)
-ENDIF
-
-END FUNCTION EDGE_VALUE
 
 END SUBROUTINE DUMP_SLCF
 

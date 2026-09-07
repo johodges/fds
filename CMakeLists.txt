@@ -52,6 +52,7 @@ add_executable(fds
     Source/pres.f90
     Source/init.f90
     Source/dump.f90
+    Source/vtkf.f90
     Source/read.f90
     Source/divg.f90
 )

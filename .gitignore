@@ -114,3 +114,6 @@ Build/cmakeb/
 # Ignore everything under such directories
 *UNTRACKED*/**
 
+
+# build output
+Build/*/fds_*
