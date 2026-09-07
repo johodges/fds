@@ -66,11 +66,15 @@ INTEGER(HID_T), ALLOCATABLE, DIMENSION(:) :: HDF_PART_COUNTER
 
 INTEGER(HID_T) :: VTK_DXPL_ID=-1_HID_T
 
+
 ! Chunk sizes are clamped into this range (in elements).  Chunks of one element, which
 ! is what the per-time-step scalar datasets used to get, cost a B-tree entry and a
 ! filter-pipeline pass each; chunks of a whole mesh blow past the chunk cache.
 
 INTEGER(HSIZE_T), PARAMETER :: VTK_CHUNK_MIN=1024_HSIZE_T, VTK_CHUNK_MAX=1048576_HSIZE_T
+
+! Metadata block size (bytes) for the VTKHDF files
+INTEGER(HSIZE_T), PARAMETER :: VTK_META_BLOCK_SIZE=1048576_HSIZE_T
 
 #endif
 
@@ -433,6 +437,29 @@ ENDSUBROUTINE DEALLOCATE_VTK_GAS_PHASE_GEOMETRY
 
 
 
+!> \brief Build the file-access property list used for every VTKHDF file
+!>
+!> Collective metadata I/O is the important part.  By default every rank independently
+!> reads the same superblock, group and object-header blocks when a file or dataset is
+!> opened, and independently writes the same metadata when one is created, which turns
+!> into a read/write storm on the same file offsets as the rank count grows.  With
+!> collective metadata operations rank 0 does the I/O and broadcasts.  The larger metadata
+!> block size trades a little file space for far fewer, larger metadata transfers.
+
+SUBROUTINE GET_VTK_FAPL(PLIST_ID)
+
+INTEGER(HID_T), INTENT(OUT) :: PLIST_ID
+INTEGER :: ERROR
+
+CALL H5PCREATE_F(H5P_FILE_ACCESS_F, PLIST_ID, ERROR)
+CALL H5PSET_FAPL_MPIO_F(PLIST_ID, MPI_COMM_WORLD, MPI_INFO_NULL, ERROR)
+IF (N_MPI_PROCESSES>1) CALL H5PSET_ALL_COLL_METADATA_OPS_F(PLIST_ID, .TRUE., ERROR)
+CALL H5PSET_COLL_METADATA_WRITE_F(PLIST_ID, .TRUE., ERROR)
+CALL H5PSET_META_BLOCK_SIZE_F(PLIST_ID, VTK_META_BLOCK_SIZE, ERROR)
+
+END SUBROUTINE GET_VTK_FAPL
+
+
 SUBROUTINE CREATE_OPEN_VTKHDF(FILENAME,&
                        FILE_ID, PLIST_ID, GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4)
    CHARACTER(*), INTENT(IN) :: FILENAME
@@ -447,8 +474,7 @@ SUBROUTINE CREATE_OPEN_VTKHDF(FILENAME,&
    CALL MPI_COMM_RANK(MPI_COMM_WORLD, MPI_RANK, MPIERROR)
    
    ! Setup file access property list with parallel I/O access.
-   CALL H5PCREATE_F(H5P_FILE_ACCESS_F, PLIST_ID, ERROR)
-   CALL H5PSET_FAPL_MPIO_F(PLIST_ID, MPI_COMM_WORLD, MPI_INFO_NULL, ERROR)
+   CALL GET_VTK_FAPL(PLIST_ID)
    
    ! Create the file collectively.
    CALL H5FCREATE_F(FILENAME, H5F_ACC_TRUNC_F, FILE_ID, ERROR, ACCESS_PRP = PLIST_ID)
@@ -483,8 +509,7 @@ SUBROUTINE CREATE_OPEN_VTKHDF_SERIES(FILENAME,FILE_ID,PLIST_ID,G1,G2,G3,G4,G5,G6
    CALL MPI_COMM_RANK(MPI_COMM_WORLD, MPI_RANK, MPIERROR)
    
    ! Setup file access property list with parallel I/O access.
-   CALL H5PCREATE_F(H5P_FILE_ACCESS_F, PLIST_ID, ERROR)
-   CALL H5PSET_FAPL_MPIO_F(PLIST_ID, MPI_COMM_WORLD, MPI_INFO_NULL, ERROR)
+   CALL GET_VTK_FAPL(PLIST_ID)
    
    ! Create the file collectively.
    CALL H5FCREATE_F(FILENAME, H5F_ACC_TRUNC_F, FILE_ID, ERROR, ACCESS_PRP = PLIST_ID)
@@ -523,8 +548,7 @@ SUBROUTINE OPEN_VTKHDF_SERIES(FILENAME,FILE_ID,PLIST_ID,G1,G2,G3,G4,G5,G6,G7)
    CALL MPI_COMM_RANK(MPI_COMM_WORLD, MPI_RANK, MPIERROR)
    
    ! Setup file access property list with parallel I/O access.
-   CALL H5PCREATE_F(H5P_FILE_ACCESS_F, PLIST_ID, ERROR)
-   CALL H5PSET_FAPL_MPIO_F(PLIST_ID, MPI_COMM_WORLD, MPI_INFO_NULL, ERROR)
+   CALL GET_VTK_FAPL(PLIST_ID)
    
    ! Create the file collectively.
    CALL H5FOPEN_F(FILENAME, H5F_ACC_RDWR_F, FILE_ID, ERROR, ACCESS_PRP = PLIST_ID)
@@ -555,8 +579,7 @@ SUBROUTINE OPEN_VTKHDF(FILENAME,&
    CALL MPI_COMM_RANK(MPI_COMM_WORLD, MPI_RANK, MPIERROR)
    
    ! Setup file access property list with parallel I/O access.
-   CALL H5PCREATE_F(H5P_FILE_ACCESS_F, PLIST_ID, ERROR)
-   CALL H5PSET_FAPL_MPIO_F(PLIST_ID, MPI_COMM_WORLD, MPI_INFO_NULL, ERROR)
+   CALL GET_VTK_FAPL(PLIST_ID)
    
    ! Create the file collectively.
    CALL H5FOPEN_F(FILENAME, H5F_ACC_RDWR_F, FILE_ID, ERROR, ACCESS_PRP = PLIST_ID)
@@ -1066,6 +1089,33 @@ SUBROUTINE INITIALIZE_VTKHDF_SMOKE3D()
    CALL H5DCLOSE_F(DSET_ID_TYP, ERROR)
    
 END SUBROUTINE INITIALIZE_VTKHDF_SMOKE3D
+
+!> \brief Flush every open VTKHDF file to disk
+!>
+!> With MPI-IO, HDF5 defers the superblock, group and object-header writes.  A run that is
+!> killed without closing its files therefore leaves them with no readable header at all --
+!> the raw data blocks are present but nothing can open the file.  Flushing pushes the
+!> metadata out so that the file on disk stays loadable while the run continues.
+
+SUBROUTINE FLUSH_VTKHDF()
+
+INTEGER :: II,N,ERROR
+
+IF (ALLOCATED(HDF_SLCF_FILE_ID)) THEN
+   DO II=1,MESHES(1)%N_UNIQUE_SLCF
+      CALL H5FFLUSH_F(HDF_SLCF_FILE_ID(II),H5F_SCOPE_GLOBAL_F,ERROR)
+   ENDDO
+ENDIF
+IF (N_SMOKE3D>0) CALL H5FFLUSH_F(HDF_SM3D_FILE_ID,H5F_SCOPE_GLOBAL_F,ERROR)
+CALL H5FFLUSH_F(HDF_BNDF_FILE_ID,H5F_SCOPE_GLOBAL_F,ERROR)
+IF (ALLOCATED(HDF_PART_FILE_ID)) THEN
+   DO N=1,N_LAGRANGIAN_CLASSES
+      CALL H5FFLUSH_F(HDF_PART_FILE_ID(N),H5F_SCOPE_GLOBAL_F,ERROR)
+   ENDDO
+ENDIF
+
+END SUBROUTINE FLUSH_VTKHDF
+
 
 SUBROUTINE CLOSE_VTKHDF_BNDF()
    CALL CLOSE_VTKHDF_SERIES(HDF_BNDF_FILE_ID,&
@@ -3339,6 +3389,12 @@ IF (T>=PART_VTK_CLOCK(PART_VTK_COUNTER(LOWER_MESH_INDEX))) THEN
    IF (.NOT.VTK_KEEPOPEN) CALL CLOSE_VTKHDF_PART()
    PART_VTK_COUNTER(LOWER_MESH_INDEX) = PART_VTK_COUNTER(LOWER_MESH_INDEX) + 1
 ENDIF
+
+! Make what has been written so far readable on disk.  Without this a run that is killed
+! leaves files that HDF5 cannot open at all, because with MPI-IO the superblock and the
+! group and object headers are not written until the file is closed.
+
+IF (VTK_KEEPOPEN .AND. FLUSH_FILE_BUFFERS) CALL FLUSH_VTKHDF()
 
 ! Spreadsheet data is written here only when the Smokeview path is switched off.
 ! When WRITE_SMV is true, DUMP_MESH_OUTPUTS writes it instead.
