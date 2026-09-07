@@ -209,7 +209,7 @@ IF (I2-I1==0 .OR. J2-J1==0 .OR. K2-K1==0) THEN
          DO I = I1, I2
             VERTICES(1,IFACT)=REAL(MESHES(NM)%X(I),FB)
             VERTICES(2,IFACT)=REAL(MESHES(NM)%Y(J),FB)
-            IF (SL%AGL_SLICE > 0) THEN
+            IF (SL%TERRAIN_SLICE) THEN
                KTS = MESHES(NM)%K_AGL_SLICE(I,J,NTSL)
                VERTICES(3,IFACT)=REAL(MESHES(NM)%Z(KTS),FB)
             ELSE
