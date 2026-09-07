@@ -2989,6 +2989,21 @@ SUBROUTINE ADD_VERSION(GROUP_ID,ADIMS,ARANK,ANAME,ATTR_DATA)
    CALL H5SCLOSE_F(ASPACE_ID, ERROR)
 END SUBROUTINE ADD_VERSION
 
+SUBROUTINE ADD_ATTRIBUTE_F32(GROUP_ID,ADIMS,ARANK,ANAME,ATTR_DATA)
+   INTEGER(HID_T) :: ATTR_ID, ASPACE_ID, GROUP_ID             ! Identifiers
+   INTEGER(HSIZE_T), DIMENSION(1), INTENT(IN) :: ADIMS        ! Attribute dimension
+   INTEGER, INTENT(IN)     ::   ARANK                         ! Attribute rank
+   INTEGER :: ERROR                                           ! Error flag
+   CHARACTER(LEN=*), INTENT(IN) :: ANAME                      ! Attribute name
+   REAL(FB), DIMENSION(:), INTENT(IN) :: ATTR_DATA            ! Attribute data
+
+   CALL H5SCREATE_SIMPLE_F(ARANK, ADIMS, ASPACE_ID, ERROR)
+   CALL H5ACREATE_F(GROUP_ID, TRIM(ANAME), H5T_IEEE_F32LE, ASPACE_ID, ATTR_ID, ERROR)
+   CALL H5AWRITE_F(ATTR_ID, H5T_IEEE_F32LE, ATTR_DATA, ADIMS, ERROR)
+   CALL H5ACLOSE_F(ATTR_ID, ERROR)
+   CALL H5SCLOSE_F(ASPACE_ID, ERROR)
+END SUBROUTINE ADD_ATTRIBUTE_F32
+
 SUBROUTINE ADD_ATTRIBUTE_CHAR(GROUP_ID,DATA_DIMS,ANAME,ATTR_DATA,ALEN)
    INTEGER(HID_T) :: ATTR_ID, ASPACE_ID, GROUP_ID, ATYPE_ID   ! Identifiers
    INTEGER(HSIZE_T), DIMENSION(1), INTENT(IN) :: DATA_DIMS    ! Attribute dimension
@@ -3032,6 +3047,27 @@ END SUBROUTINE ADD_ATTRIBUTE_INT
 #endif
 
 
+!> \brief The colour every particle of a class is drawn in
+!>
+!> \param N Particle class index
+!>
+!> Taken from the class, or from its surface when the class does not set one.  It does
+!> not vary between particles of the class or over time, which is why the VTKHDF files
+!> record it once rather than per point per output time.
+
+FUNCTION GET_PART_CLASS_COLOR(N) RESULT(RGB)
+INTEGER, INTENT(IN) :: N
+REAL(FB), DIMENSION(3) :: RGB
+TYPE(LAGRANGIAN_PARTICLE_CLASS_TYPE), POINTER :: LPC_LOCAL
+LPC_LOCAL => LAGRANGIAN_PARTICLE_CLASS(N)
+IF (LPC_LOCAL%RGB(1)==-1) THEN
+   RGB = REAL(SURFACE(LPC_LOCAL%SURF_INDEX)%RGB,FB)/255._FB
+ELSE
+   RGB = REAL(LPC_LOCAL%RGB,FB)/255._FB
+ENDIF
+END FUNCTION GET_PART_CLASS_COLOR
+
+
 SUBROUTINE WRITE_PARAVIEW_STATE_FILE(NMESHES)
 USE OUTPUT_CLOCKS
 USE COMP_FUNCTIONS, ONLY: CURRENT_TIME
@@ -3039,7 +3075,8 @@ USE COMP_FUNCTIONS, ONLY: CURRENT_TIME
 INTEGER, INTENT(IN) :: NMESHES
 TYPE (MESH_TYPE), POINTER :: M
 REAL(EB) :: CX,CY,CZ,XMN,XMX,YMN,YMX,ZMN,ZMX
-INTEGER :: NM
+INTEGER :: NM,N
+REAL(FB) :: RGB_PART(3)
 REAL(EB) :: TNOW
 
 TNOW = CURRENT_TIME()
@@ -3313,35 +3350,28 @@ WRITE(LU_PARAVIEW,'(A,A)') "                slcf_files = sorted([indir+sep+rdir 
 WRITE(LU_PARAVIEW,'(A,A)') "                sl2dData = VTKHDFReader(",&
                                                 "registrationName='%s=%0.4f'%(axis_name,axis), FileName=slcf_files)"
 WRITE(LU_PARAVIEW,'(A)') "# Add particle data"
+! Every particle of a class is drawn in the class's colour, which the writer no longer
+! repeats per point per output time, so name the colours here.  The file also carries
+! its own in VTKHDF/FieldData/COLOR.
+
+WRITE(LU_PARAVIEW,'(A)') "partColors = {}"
+DO N=1,N_LAGRANGIAN_CLASSES
+   RGB_PART = GET_PART_CLASS_COLOR(N)
+   WRITE(LU_PARAVIEW,'(A,A,A,F6.3,A,F6.3,A,F6.3,A)') "partColors['",TRIM(LAGRANGIAN_PARTICLE_CLASS(N)%ID),&
+      "'] = [",RGB_PART(1),", ",RGB_PART(2),", ",RGB_PART(3),"]"
+ENDDO
+
 WRITE(LU_PARAVIEW,'(A)') "if len(partFiles) > 0:"
-WRITE(LU_PARAVIEW,'(A)') "    partTypes = [x.split('_PART_')[1] for x in partFiles]"
-WRITE(LU_PARAVIEW,'(A)') "    partTypes = ['_'.join(x.split('_')[:-1]) for x in partTypes]"
-WRITE(LU_PARAVIEW,'(A)') "    uniquePartTypes = sorted(list(set(partTypes)))"
-WRITE(LU_PARAVIEW,'(A)') "    for partType in uniquePartTypes:"
-WRITE(LU_PARAVIEW,'(A)') "        partTypeFiles = sorted([x for x,y in zip(partFiles, partTypes) if y == partType])"
-WRITE(LU_PARAVIEW,'(A)') "        if remoteConnection:"
-WRITE(LU_PARAVIEW,'(A)') "            partTypeFiles = sorted([x for x,y in zip(partFiles, partTypes) if y == partType])"
-WRITE(LU_PARAVIEW,'(A,A)') "            partData = VTKHDFReader(",&
-                                            "registrationName='Particle: '+partType, FileName=partTypeFiles)"
-WRITE(LU_PARAVIEW,'(A)') "        else:"
-WRITE(LU_PARAVIEW,'(A)') "            partTypeFiles = [rdir + x.split(sep)[-1] for x in partTypeFiles]"
-WRITE(LU_PARAVIEW,'(A)') "            times = parseTimes(partTypeFiles, '.vtkhdf')"
-WRITE(LU_PARAVIEW,'(A)') "            outname = indir+sep+'particles-'+partType.replace(' ','-')+'.vtkhdf.series'"
-WRITE(LU_PARAVIEW,'(A)') "            outname = os.path.abspath(outname)"
-WRITE(LU_PARAVIEW,'(A)') "            writeSeries(partTypeFiles, times, outname)"
-WRITE(LU_PARAVIEW,'(A,A)') "            partData = VTKHDFReader(",&
-                                            "registrationName='Particle: '+partType, FileName=[outname])"
-WRITE(LU_PARAVIEW,'(A)') "        cOLORTF2D = GetTransferFunction2D('COLOR')"
-WRITE(LU_PARAVIEW,'(A)') "        partColor = GetColorTransferFunction('COLOR')"
-WRITE(LU_PARAVIEW,'(A)') "        partColor.TransferFunction2D = cOLORTF2D"
-WRITE(LU_PARAVIEW,'(A,A)') "        partColor.RGBPoints = [1.13, 0.23, 0.30, 0.75, 1.13, 0.87,",&
-                                        " 0.87, 0.87, 1.13, 0.71, 0.02, 0.15]"
-WRITE(LU_PARAVIEW,'(A)') "        partColor.ScalarRangeInitialized = 1.0"
+WRITE(LU_PARAVIEW,'(A)') "    for partFile in partFiles:"
+WRITE(LU_PARAVIEW,'(A)') "        partType = partFile.split('_PART_')[1].rsplit('.vtkhdf', 1)[0]"
+WRITE(LU_PARAVIEW,'(A,A)') "        partData = VTKHDFReader(",&
+                                        "registrationName='Particle: '+partType, FileName=[partFile])"
 WRITE(LU_PARAVIEW,'(A)') "        partDisplay = Show(partData, renderView1, 'GeometryRepresentation')"
 WRITE(LU_PARAVIEW,'(A)') "        partDisplay.Representation = 'Point Gaussian'"
-WRITE(LU_PARAVIEW,'(A)') "        partDisplay.ColorArrayName = ['POINTS', 'COLOR']"
-WRITE(LU_PARAVIEW,'(A)') "        partDisplay.LookupTable = partColor"
-WRITE(LU_PARAVIEW,'(A)') "        partDisplay.MapScalars = 0"
+WRITE(LU_PARAVIEW,'(A)') "        partDisplay.ColorArrayName = [None, '']"
+WRITE(LU_PARAVIEW,'(A)') "        partRGB = partColors.get(partType, [0.7, 0.7, 0.7])"
+WRITE(LU_PARAVIEW,'(A)') "        partDisplay.AmbientColor = partRGB"
+WRITE(LU_PARAVIEW,'(A)') "        partDisplay.DiffuseColor = partRGB"
 WRITE(LU_PARAVIEW,'(A)') "        partDisplay.GaussianRadius = 0.05"
 WRITE(LU_PARAVIEW,'(A)') "        partDisplay.ShaderPreset = 'Plain circle'"
 
@@ -5009,6 +5039,27 @@ END SUBROUTINE PART_APPEND_2D
 
 !> \brief Create one VTKHDF particle file per Lagrangian particle class
 
+!> \brief Record a particle class's colour on the file's VTKHDF group
+!>
+!> \param N Particle class index
+!>
+!> Three floats, written once when the file is created, so the file still says what
+!> colour the class is without the generated ParaView script alongside it.
+!>
+!> An HDF5 attribute rather than a FieldData array: FieldData is temporal in a VTKHDF
+!> time series, so an array there needs a Steps/FieldDataOffsets entry for every step,
+!> and without one the reader fails the entire read request rather than skipping it.
+
+SUBROUTINE WRITE_PART_COLOR(N)
+INTEGER, INTENT(IN) :: N
+INTEGER(HSIZE_T), DIMENSION(1) :: ADIMS
+REAL(FB), DIMENSION(3) :: RGB
+RGB = GET_PART_CLASS_COLOR(N)
+ADIMS = (/3_HSIZE_T/)
+CALL ADD_ATTRIBUTE_F32(HDF_PART_G1(N),ADIMS,1,'COLOR',RGB)
+END SUBROUTINE WRITE_PART_COLOR
+
+
 SUBROUTINE INITIALIZE_VTKHDF_PART()
 
 CHARACTER(FN_LENGTH) :: FILENAME
@@ -5032,6 +5083,7 @@ DO N=1,N_LAGRANGIAN_CLASSES
    CALL CREATE_OPEN_VTKHDF_SERIES(FILENAME,HDF_PART_FILE_ID(N),HDF_PART_PLIST_ID(N),&
       HDF_PART_G1(N),HDF_PART_G2(N),HDF_PART_G3(N),HDF_PART_G4(N),&
       HDF_PART_G5(N),HDF_PART_G6(N),HDF_PART_G7(N))
+   CALL WRITE_PART_COLOR(N)
 ENDDO
 
 IF (.NOT.VTK_KEEPOPEN) CALL CLOSE_VTKHDF_PART()
@@ -5074,7 +5126,7 @@ INTEGER :: N,NN,NM,IP,NPP,IZERO,IERR,IOFF,NQ,NPTS_STEP,NOFF_STEP,N_LOCAL,N_MESH_
 INTEGER(HSIZE_T) :: POINT_BASE,PART_BASE
 INTEGER, ALLOCATABLE, DIMENSION(:) :: NPOINTS,POINT_OFFSET,OFFS_OFFSET,TA,CONN,OFFS,&
                                       BLK_START,BLK_COUNT,OBLK_START,OBLK_COUNT
-REAL(FB), ALLOCATABLE, DIMENSION(:,:) :: VERTICES,COLORS
+REAL(FB), ALLOCATABLE, DIMENSION(:,:) :: VERTICES
 REAL(FB), ALLOCATABLE, DIMENSION(:,:) :: QP
 INTEGER(IB8), ALLOCATABLE, DIMENSION(:) :: TYPES
 INTEGER(HID_T) :: DSET_ID
@@ -5167,7 +5219,6 @@ CLASS_LOOP: DO N=1,N_LAGRANGIAN_CLASSES
 
    NLOC_PTS = SUM(NPOINTS(LOWER_MESH_INDEX:UPPER_MESH_INDEX))
    ALLOCATE(VERTICES(3,MAX(1,NLOC_PTS)))
-   ALLOCATE(COLORS(3,MAX(1,NLOC_PTS)))
    ALLOCATE(TA(MAX(1,NLOC_PTS)),STAT=IZERO)    ; CALL ChkMemErr('DUMP','TA',IZERO)
    ALLOCATE(CONN(MAX(1,NLOC_PTS)))
    ALLOCATE(TYPES(MAX(1,NLOC_PTS)))
@@ -5201,11 +5252,6 @@ CLASS_LOOP: DO N=1,N_LAGRANGIAN_CLASSES
          IOFF = IOFF + 1
          OFFS(IOFF) = NP_LOCAL
          VERTICES(1:3,NPP) = REAL((/BC%X,BC%Y,BC%Z/),FB)
-         IF (LPC%RGB(1)==-1) THEN
-            COLORS(1:3,NPP) = REAL(SURFACE(LPC%SURF_INDEX)%RGB,FB)/255._FB
-         ELSE
-            COLORS(1:3,NPP) = REAL(LPC%RGB,FB)/255._FB
-         ENDIF
          DO NN=1,NQ
             QP(NPP,NN) = REAL(PARTICLE_OUTPUT(NM,T,LPC%QUANTITIES_INDEX(NN),IP,&
                Y_INDEX=LPC%QUANTITIES_Y_INDEX(NN),Z_INDEX=LPC%QUANTITIES_Z_INDEX(NN)),FB)
@@ -5229,11 +5275,7 @@ CLASS_LOOP: DO N=1,N_LAGRANGIAN_CLASSES
 
    CALL PART_APPEND_1D(HDF_PART_G4(N),'TAG',VTK_PART_CHUNK,NPTS_STEP,N_LOCAL,BLK_START,BLK_COUNT,&
                        HDF_PART_CRP_LIST(N),HDF_PART_PLIST_ID(N),IDATA=TA)
-   CALL PART_APPEND_2D(HDF_PART_G4(N),'COLOR',VTK_PART_CHUNK,NPTS_STEP,N_LOCAL,BLK_START,BLK_COUNT,&
-                       HDF_PART_CRP_LIST(N),HDF_PART_PLIST_ID(N),COLORS)
    CALL APPEND_STEP_INDEX(HDF_PART_G7(N),'TAG',INT(POINT_BASE,IB32),&
-                          HDF_PART_CRP_LIST(N),HDF_PART_PLIST_ID(N))
-   CALL APPEND_STEP_INDEX(HDF_PART_G7(N),'COLOR',INT(POINT_BASE,IB32),&
                           HDF_PART_CRP_LIST(N),HDF_PART_PLIST_ID(N))
    DO NN=1,NQ
       CALL PART_APPEND_1D(HDF_PART_G4(N),TRIM(LPC%SMOKEVIEW_LABEL(NN)),VTK_PART_CHUNK,NPTS_STEP,&
@@ -5243,7 +5285,7 @@ CLASS_LOOP: DO N=1,N_LAGRANGIAN_CLASSES
                              HDF_PART_CRP_LIST(N),HDF_PART_PLIST_ID(N))
    ENDDO
 
-   DEALLOCATE(VERTICES) ; DEALLOCATE(COLORS) ; DEALLOCATE(TA)
+   DEALLOCATE(VERTICES) ; DEALLOCATE(TA)
    DEALLOCATE(CONN) ; DEALLOCATE(TYPES) ; DEALLOCATE(OFFS) ; DEALLOCATE(QP)
 
 ENDDO CLASS_LOOP
