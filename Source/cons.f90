@@ -278,6 +278,7 @@ LOGICAL :: NO_PRESSURE_ZONES=.FALSE.                !< Flag to suppress pressure
 LOGICAL :: CTRL_DIRECT_FORCE=.FALSE.                !< Allow adjustable direct force via CTRL logic
 LOGICAL :: REACTING_THIN_OBSTRUCTIONS=.FALSE.       !< Thin obstructions that off-gas are present
 LOGICAL :: TENSOR_DIFFUSIVITY=.FALSE.               !< If true, use experimental tensor diffusivity model for spec and tmp
+INTEGER :: VTK_COMPRESSION_LEVEL=1                  !< gzip level (0-9) applied to VTKHDF datasets; 0 disables compression
 LOGICAL :: VTK_KEEPOPEN=.FALSE.                     !< Flag that indicates VTK output files should be kept open or closed
 LOGICAL :: VTK_BINARY=.TRUE.                        !< Flag that indicates VTK outputs should be binary or ascii
 LOGICAL :: VTK_HDF=.TRUE.                           !< Flag that indicates VTK outputs should be HDF or XML
