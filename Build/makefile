@@ -126,7 +126,10 @@ ifdef HDF5_HOME # This assumes the HDF5 library is available.
    FFLAGS_HDF5 = -DWITH_HDF5 ${HDF5_INFO} -I"${HDF5_HOME}/include"
    FFLAGS_HDF5_WIN = -DWITH_HDF5 ${HDF5_INFO} /I"${HDF5_HOME}\include"
    LFLAGS_HDF5 = ${HDF5_HOME}/lib/libhdf5_fortran.a ${HDF5_HOME}/lib/libhdf5_f90cstub.a ${HDF5_HOME}/lib/libhdf5.a -lz
-   LFLAGS_HDF5_WIN = ${HDF5_HOME}\lib\libhdf5_fortran.lib ${HDF5_HOME}\lib\libhdf5_f90cstub.lib ${HDF5_HOME}\lib\libhdf5.lib
+   # shlwapi supplies StrStrIA, which H5system.c calls from Wstrcasestr_wrap.  HDF5's CMake
+   # carries it as a public link library, but that only reaches a consumer who links HDF5
+   # through its CMake package rather than naming the .lib files, as here.
+   LFLAGS_HDF5_WIN = ${HDF5_HOME}\lib\libhdf5_fortran.lib ${HDF5_HOME}\lib\libhdf5_f90cstub.lib ${HDF5_HOME}\lib\libhdf5.lib shlwapi.lib
 endif # HDF5_HOME
 
 ifdef HYPRE_HOME # This assumes the HYPRE library is available.
