@@ -6264,6 +6264,18 @@ ENDIF
 
 CONTAINS
 
+!> \brief Average a quantity onto a slice node from the eight cells around it
+
+!>
+
+!> \param A Quantity to average
+
+!> \param B Cell weights
+
+!> \param S Reciprocal of the summed weights at each node
+
+!> \param INDX Output quantity index, used for the ambient value
+
 REAL(EB) FUNCTION CORNER_VALUE(A,B,S,INDX)
 
 REAL(EB), INTENT(IN), DIMENSION(0:,0:,0:) :: A,B,S
@@ -6279,6 +6291,9 @@ ELSE
 ENDIF
 
 END FUNCTION CORNER_VALUE
+
+
+!> \brief Average a quantity onto a slice node from the cells on one face
 
 
 REAL(EB) FUNCTION FACE_VALUE()
@@ -6335,6 +6350,21 @@ COUNTER = COUNT(AA/=0._EB)
 FACE_VALUE = SUM(AA)/REAL(MAX(1,COUNTER),EB)
 
 END FUNCTION FACE_VALUE
+
+
+!> \brief Average a quantity onto a slice node from the cells along one edge
+
+
+!>
+
+
+!> \param A Quantity to average
+
+
+!> \param S Reciprocal of the summed weights at each node
+
+
+!> \param INDX Output quantity index, used for the ambient value
 
 
 REAL(EB) FUNCTION EDGE_VALUE(A,S,INDX)

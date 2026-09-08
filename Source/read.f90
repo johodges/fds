@@ -2443,6 +2443,18 @@ SELECT CASE(WRITE_FORMAT)
       CALL SHUTDOWN(MESSAGE) ; RETURN
 END SELECT
 
+! The VTKHDF output is compiled in only when FDS is built against HDF5.  Without it,
+! asking for VTK would switch the Smokeview output off and put nothing in its place,
+! and the run would report success having written no visualization output at all.
+
+#ifndef WITH_HDF5
+IF (WRITE_VTK) THEN
+   WRITE(MESSAGE,'(A,A,A)') 'ERROR(1055): WRITE_FORMAT, ',TRIM(WRITE_FORMAT),&
+      ', requires that FDS be built with HDF5.'
+   CALL SHUTDOWN(MESSAGE) ; RETURN
+ENDIF
+#endif
+
 ! Keep track of whether the output timing intervals are specified by the user or not
 
 IF (DT_BNDF_SPECIFIED   /= DT_BNDF)    THEN ; DT_BNDF_SPECIFIED   = DT_BNDF    ; ELSE ; DT_BNDF_SPECIFIED   = -1._EB ; ENDIF
@@ -16321,6 +16333,38 @@ MESH_LOOP: DO NM=1,NMESHES
 
 ENDDO MESH_LOOP
 
+!> \brief Build the name identifying the plane a slice lies on
+
+!>
+
+!> \param PBX Plane position normal to x, or a large negative number if unset
+
+!> \param PBY Plane position normal to y, or a large negative number if unset
+
+!> \param PBZ Plane position normal to z, or a large negative number if unset
+
+!> \param XS_MIN Lower x bound of the domain
+
+!> \param XF_MAX Upper x bound of the domain
+
+!> \param YS_MIN Lower y bound of the domain
+
+!> \param YF_MAX Upper y bound of the domain
+
+!> \param ZS_MIN Lower z bound of the domain
+
+!> \param ZF_MAX Upper z bound of the domain
+
+!> \param AGL_SLICE Height above the terrain, for a terrain slice
+
+!> \param SLCF_NAME Name of the plane (out)
+
+!>
+
+!> Slices that lie on the same plane get the same name and are written to the same
+
+!> VTKHDF file, one point data array per quantity.
+
 CONTAINS
 
 SUBROUTINE GET_SLCF_NAME(PBX,PBY,PBZ,XS_MIN,XF_MAX,YS_MIN,YF_MAX,ZS_MIN,ZF_MAX,AGL_SLICE,SLCF_NAME)
@@ -16376,6 +16420,24 @@ ELSE
 ENDIF
 
 END SUBROUTINE GET_SLCF_NAME
+
+!> \brief Count the distinct planes the slices lie on
+
+!>
+
+!> \param N_SLCF_O Number of SLCF lines in the input file
+
+!> \param N_UNIQUE_SLCF Number of distinct planes (out)
+
+!> \param UNIQUE_SLICE_NAMES Name of each distinct plane (out)
+
+!> \param AGL_SLICES Height above the terrain of each distinct plane (out)
+
+!>
+
+!> Every rank has to agree on the set of planes, since each one becomes a VTKHDF
+
+!> file that all ranks write to collectively.
 
 SUBROUTINE COUNT_UNIQUE_SLCF(N_SLCF_O,N_UNIQUE_SLCF,UNIQUE_SLICE_NAMES,AGL_SLICES)
 INTEGER, INTENT(IN) :: N_SLCF_O

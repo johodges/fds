@@ -120,6 +120,31 @@ CONTAINS
 
 #ifdef WITH_HDF5
 
+!> \brief Build the VTK hexahedral cells spanning an entire mesh
+
+!>
+
+!> \param NM Mesh number
+
+!> \param NC Number of cells (out)
+
+!> \param NP Number of points (out)
+
+!> \param VERTICES Point coordinates, allocated here (out)
+
+!> \param CONNECT Point indices of each cell, allocated here (out)
+
+!> \param OFFSETS Where each cell starts in CONNECT, allocated here (out)
+
+!> \param VTKC_TYPE VTK cell type of each cell, allocated here (out)
+
+!>
+
+!> Connectivity is local to the mesh, as it is for every VTKHDF output, so the
+
+!> mesh becomes one partition of the assembled grid.
+
+
 SUBROUTINE BUILD_VTK_GAS_PHASE_GEOMETRY2(NM, &
                                         NC, NP, VERTICES, CONNECT, OFFSETS, VTKC_TYPE)
 
@@ -180,6 +205,67 @@ DO I=1,NC
 ENDDO
 
 ENDSUBROUTINE BUILD_VTK_GAS_PHASE_GEOMETRY2
+
+
+
+!> \brief Build the VTK cells covering one slice within one mesh
+
+
+
+!>
+
+
+
+!> \param NM Mesh number
+
+
+
+!> \param SL Slice to build the geometry for
+
+
+
+!> \param NTSL Terrain slice counter, used to index K_AGL_SLICE
+
+
+
+!> \param NC Number of cells (out)
+
+
+
+!> \param NP Number of points (out)
+
+
+
+!> \param VERTICES Point coordinates, allocated here (out)
+
+
+
+!> \param CONNECT Point indices of each cell, allocated here (out)
+
+
+
+!> \param OFFSETS Where each cell starts in CONNECT, allocated here (out)
+
+
+
+!> \param VTKC_TYPE VTK cell type of each cell, allocated here (out)
+
+
+
+!>
+
+
+
+!> A slice with a degenerate direction is a sheet of quadrilaterals; one with none
+
+
+
+!> is a block of hexahedra.  A terrain slice follows the ground, so its points take
+
+
+
+!> their height from K_AGL_SLICE rather than from the slice plane.
+
 
 
 
@@ -325,6 +411,52 @@ ENDIF
 ENDSUBROUTINE BUILD_VTK_SLICE_GEOMETRY2
 
 
+!> \brief Build the VTK quadrilaterals covering one boundary patch
+
+
+!>
+
+
+!> \param NM Mesh number
+
+
+!> \param PA Patch to build the geometry for
+
+
+!> \param NCELLS Number of cells (out)
+
+
+!> \param NPOINTS Number of points (out)
+
+
+!> \param X_PTS Point x coordinates, allocated here (out)
+
+
+!> \param Y_PTS Point y coordinates, allocated here (out)
+
+
+!> \param Z_PTS Point z coordinates, allocated here (out)
+
+
+!> \param CONNECT Point indices of each cell, allocated here (out)
+
+
+!> \param OFFSETS Where each cell starts in CONNECT, allocated here (out)
+
+
+!> \param VTKC_TYPE VTK cell type of each cell, allocated here (out)
+
+
+!>
+
+
+!> The patch lies in the plane normal to PA%IOR, so which pair of mesh directions
+
+
+!> the quadrilaterals span depends on that orientation.
+
+
+
 SUBROUTINE BUILD_VTK_SOLID_PHASE_GEOMETRY(NM, PA, &
                                           NCELLS, NPOINTS, X_PTS, Y_PTS, Z_PTS, CONNECT, OFFSETS, VTKC_TYPE)
 
@@ -401,6 +533,43 @@ ENDDO
 ENDSUBROUTINE BUILD_VTK_SOLID_PHASE_GEOMETRY
 
 
+!> \brief Convert an FDS triangulated surface into VTK triangles
+
+
+!>
+
+
+!> \param VERTS Vertex coordinates, three per vertex
+
+
+!> \param FACES Vertex indices, three per face
+
+
+!> \param NCELLS Number of cells (out)
+
+
+!> \param NPOINTS Number of points (out)
+
+
+!> \param X_PTS Point x coordinates, allocated here (out)
+
+
+!> \param Y_PTS Point y coordinates, allocated here (out)
+
+
+!> \param Z_PTS Point z coordinates, allocated here (out)
+
+
+!> \param CONNECT Point indices of each cell, allocated here (out)
+
+
+!> \param OFFSETS Where each cell starts in CONNECT, allocated here (out)
+
+
+!> \param VTKC_TYPE VTK cell type of each cell, allocated here (out)
+
+
+
 SUBROUTINE BUILD_VTK_GEOM_GEOMETRY(VERTS, FACES, NCELLS, NPOINTS,&
                                    X_PTS, Y_PTS, Z_PTS, CONNECT, OFFSETS, VTKC_TYPE)
 
@@ -438,6 +607,47 @@ DO I=1,NCELLS
 ENDDO
 
 ENDSUBROUTINE BUILD_VTK_GEOM_GEOMETRY
+
+
+
+
+!> \brief Release the arrays returned by the geometry builders
+
+
+
+
+!>
+
+
+
+
+!> \param X_PTS Point x coordinates
+
+
+
+
+!> \param Y_PTS Point y coordinates
+
+
+
+
+!> \param Z_PTS Point z coordinates
+
+
+
+
+!> \param OFFSETS Where each cell starts in CONNECT
+
+
+
+
+!> \param VTKC_TYPE VTK cell type of each cell
+
+
+
+
+!> \param CONNECT Point indices of each cell
+
 
 
 
@@ -493,6 +703,40 @@ CALL H5PSET_META_BLOCK_SIZE_F(PLIST_ID, VTK_META_BLOCK_SIZE, ERROR)
 END SUBROUTINE GET_VTK_FAPL
 
 
+!> \brief Create a single time VTKHDF file and open its groups
+
+
+!>
+
+
+!> \param FILENAME Name of the file to create
+
+
+!> \param FILE_ID HDF5 file identifier (out)
+
+
+!> \param PLIST_ID Data transfer property list shared by writes to this file (out)
+
+
+!> \param GROUP_ID1 VTKHDF group (out)
+
+
+!> \param GROUP_ID2 VTKHDF/CellData group (out)
+
+
+!> \param GROUP_ID3 VTKHDF/FieldData group (out)
+
+
+!> \param GROUP_ID4 VTKHDF/PointData group (out)
+
+
+!>
+
+
+!> Used for output that does not vary over time, such as the geometry file.
+
+
+
 SUBROUTINE CREATE_OPEN_VTKHDF(FILENAME,&
                        FILE_ID, PLIST_ID, GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4)
    CHARACTER(*), INTENT(IN) :: FILENAME
@@ -526,6 +770,52 @@ SUBROUTINE CREATE_OPEN_VTKHDF(FILENAME,&
    CALL ADD_ATTRIBUTE_CHAR(GROUP_ID1,DATA_DIMS,"Type","UnstructuredGrid",16_SIZE_T)
 
 END SUBROUTINE CREATE_OPEN_VTKHDF
+
+
+!> \brief Create a time series VTKHDF file and open its groups
+
+
+!>
+
+
+!> \param FILENAME Name of the file to create
+
+
+!> \param FILE_ID HDF5 file identifier (out)
+
+
+!> \param PLIST_ID Data transfer property list shared by writes to this file (out)
+
+
+!> \param G1 VTKHDF group (out)
+
+
+!> \param G2 VTKHDF/CellData group (out)
+
+
+!> \param G3 VTKHDF/FieldData group (out)
+
+
+!> \param G4 VTKHDF/PointData group (out)
+
+
+!> \param G5 VTKHDF/Steps group (out)
+
+
+!> \param G6 VTKHDF/Steps/CellDataOffsets group (out)
+
+
+!> \param G7 VTKHDF/Steps/PointDataOffsets group (out)
+
+
+!>
+
+
+!> The Steps groups are what make the file temporal: each output time appends one
+
+
+!> entry to the arrays under them saying where that step's data begins.
+
 
 
 SUBROUTINE CREATE_OPEN_VTKHDF_SERIES(FILENAME,FILE_ID,PLIST_ID,G1,G2,G3,G4,G5,G6,G7)
@@ -569,6 +859,52 @@ SUBROUTINE CREATE_OPEN_VTKHDF_SERIES(FILENAME,FILE_ID,PLIST_ID,G1,G2,G3,G4,G5,G6
 END SUBROUTINE CREATE_OPEN_VTKHDF_SERIES
 
 
+!> \brief Reopen an existing time series VTKHDF file and its groups
+
+
+!>
+
+
+!> \param FILENAME Name of the file to open
+
+
+!> \param FILE_ID HDF5 file identifier (out)
+
+
+!> \param PLIST_ID Data transfer property list shared by writes to this file (out)
+
+
+!> \param G1 VTKHDF group (out)
+
+
+!> \param G2 VTKHDF/CellData group (out)
+
+
+!> \param G3 VTKHDF/FieldData group (out)
+
+
+!> \param G4 VTKHDF/PointData group (out)
+
+
+!> \param G5 VTKHDF/Steps group (out)
+
+
+!> \param G6 VTKHDF/Steps/CellDataOffsets group (out)
+
+
+!> \param G7 VTKHDF/Steps/PointDataOffsets group (out)
+
+
+!>
+
+
+!> Only reached when VTK_KEEPOPEN is false, which reopens each file at every
+
+
+!> output time rather than holding it open for the run.
+
+
+
 SUBROUTINE OPEN_VTKHDF_SERIES(FILENAME,FILE_ID,PLIST_ID,G1,G2,G3,G4,G5,G6,G7)
    CHARACTER(*), INTENT(IN) :: FILENAME
    INTEGER(HID_T), INTENT(OUT) :: FILE_ID       ! Identifiers
@@ -600,6 +936,43 @@ END SUBROUTINE OPEN_VTKHDF_SERIES
 
 
 
+!> \brief Reopen an existing single time VTKHDF file and its groups
+
+
+
+!>
+
+
+
+!> \param FILENAME Name of the file to open
+
+
+
+!> \param FILE_ID HDF5 file identifier (out)
+
+
+
+!> \param PLIST_ID Data transfer property list shared by writes to this file (out)
+
+
+
+!> \param GROUP_ID1 VTKHDF group (out)
+
+
+
+!> \param GROUP_ID2 VTKHDF/CellData group (out)
+
+
+
+!> \param GROUP_ID3 VTKHDF/FieldData group (out)
+
+
+
+!> \param GROUP_ID4 VTKHDF/PointData group (out)
+
+
+
+
 SUBROUTINE OPEN_VTKHDF(FILENAME,&
                        FILE_ID, PLIST_ID, GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4)
    CHARACTER(*), INTENT(IN) :: FILENAME
@@ -627,6 +1000,28 @@ SUBROUTINE OPEN_VTKHDF(FILENAME,&
 END SUBROUTINE OPEN_VTKHDF
 
 
+!> \brief Close a single time VTKHDF file and its groups
+
+
+!>
+
+
+!> \param FILE_ID HDF5 file identifier
+
+
+!> \param GROUP_ID1 VTKHDF group
+
+
+!> \param GROUP_ID2 VTKHDF/CellData group
+
+
+!> \param GROUP_ID3 VTKHDF/FieldData group
+
+
+!> \param GROUP_ID4 VTKHDF/PointData group
+
+
+
 SUBROUTINE CLOSE_VTKHDF(FILE_ID, GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4)
    INTEGER(HID_T), INTENT(IN) :: FILE_ID, GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4
    INTEGER  :: ERROR                    !< IO Error status.
@@ -637,6 +1032,33 @@ SUBROUTINE CLOSE_VTKHDF(FILE_ID, GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4)
    CALL H5GCLOSE_F(GROUP_ID1, ERROR)
    CALL H5FCLOSE_F(FILE_ID, ERROR)
 END SUBROUTINE CLOSE_VTKHDF
+
+!> \brief Close a time series VTKHDF file and its groups
+
+!>
+
+!> \param FILE_ID HDF5 file identifier
+
+!> \param G1 VTKHDF group
+
+!> \param G2 VTKHDF/CellData group
+
+!> \param G3 VTKHDF/FieldData group
+
+!> \param G4 VTKHDF/PointData group
+
+!> \param G5 VTKHDF/Steps group
+
+!> \param G6 VTKHDF/Steps/CellDataOffsets group
+
+!> \param G7 VTKHDF/Steps/PointDataOffsets group
+
+!>
+
+!> The cached dataset handles are closed first; HDF5 will not write a file out
+
+!> completely while objects inside it are still open.
+
 
 SUBROUTINE CLOSE_VTKHDF_SERIES(FILE_ID,G1,G2,G3,G4,G5,G6,G7)
    INTEGER(HID_T), INTENT(IN) :: FILE_ID, G1,G2,G3,G4,G5,G6,G7
@@ -652,6 +1074,29 @@ SUBROUTINE CLOSE_VTKHDF_SERIES(FILE_ID,G1,G2,G3,G4,G5,G6,G7)
    CALL H5GCLOSE_F(G1, ERROR)
    CALL H5FCLOSE_F(FILE_ID, ERROR)
 END SUBROUTINE CLOSE_VTKHDF_SERIES
+
+!> \brief Lengthen a slice quantity's dataset to make room for one more output time
+
+!>
+
+!> \param DATANAME Name of the quantity being written
+
+!> \param II Index of the unique slice plane, which selects the file
+
+!> \param BASE_OFFSET Where this output time's data begins in the dataset (out)
+
+!> \param NCELLS Number of cells each mesh contributes (out)
+
+!> \param NPOINTS Number of points each mesh contributes (out)
+
+!>
+
+!> Every rank needs the same picture of how much each mesh contributes, so the
+
+!> per mesh counts are exchanged with MPI_ALLREDUCE rather than gathered on one
+
+!> rank and scattered back.
+
 
 SUBROUTINE EXTEND_SLICE_VTKHDF(DATANAME, II, BASE_OFFSET, NCELLS, NPOINTS)
    CHARACTER(*), INTENT(IN) :: DATANAME
@@ -754,6 +1199,19 @@ SUBROUTINE WRITE_VTKHDF_BNDF_DATA_MULTI(DATASET,GROUP_ID,N_BLK,BLK_START,BLK_COU
 END SUBROUTINE WRITE_VTKHDF_BNDF_DATA_MULTI
 
 
+!> \brief Lengthen the boundary file's datasets to make room for one more output time
+
+
+!>
+
+
+!> \param BASE_OFFSET_CELLS Where this output time's cell data begins (out)
+
+
+!> \param BASE_OFFSET_PTS Where this output time's point data begins (out)
+
+
+
 SUBROUTINE EXTEND_BNDF_VTKHDF(BASE_OFFSET_CELLS, BASE_OFFSET_PTS)
    TYPE (BOUNDARY_FILE_TYPE), POINTER :: BF
    INTEGER(HID_T) :: DSET_ID    ! Dataset identifiers
@@ -790,6 +1248,23 @@ EXTEND_LOOP: DO NF=1,N_BNDF
 ENDDO EXTEND_LOOP
    
 END SUBROUTINE EXTEND_BNDF_VTKHDF
+
+
+
+!> \brief Lengthen a Smoke3D quantity's dataset to make room for one more output time
+
+
+
+!>
+
+
+
+!> \param DATANAME Name of the quantity being written
+
+
+
+!> \param BASE_OFFSET Where this output time's data begins in the dataset (out)
+
 
 
 
@@ -916,6 +1391,35 @@ SUBROUTINE ADD_DATA_TO_SMOKE3D_VTKHDF_MULTI(DATANAME,DATA,BASE_OFFSET,N_LOCAL,WR
    CALL VTK_DSET_RELEASE(DSET_ID, ERROR)
 
 END SUBROUTINE ADD_DATA_TO_SMOKE3D_VTKHDF_MULTI
+
+
+
+
+
+
+!> \brief Create the Smoke3D VTKHDF file and write the grid it will refer to
+
+
+
+
+
+
+!>
+
+
+
+
+
+
+!> The grid does not change over the run, so it is written once here and every
+
+
+
+
+
+
+!> output time's Steps entry points back at it.
+
 
 
 
@@ -1166,10 +1670,17 @@ ENDIF
 END SUBROUTINE FLUSH_VTKHDF
 
 
+!> \brief Close the boundary VTKHDF file
+
+
+
 SUBROUTINE CLOSE_VTKHDF_BNDF()
    CALL CLOSE_VTKHDF_SERIES(HDF_BNDF_FILE_ID,&
       HDF_BNDF_G1,HDF_BNDF_G2,HDF_BNDF_G3,HDF_BNDF_G4,HDF_BNDF_G5,HDF_BNDF_G6,HDF_BNDF_G7)
 END SUBROUTINE CLOSE_VTKHDF_BNDF
+
+!> \brief Close the Smoke3D VTKHDF file
+
 
 SUBROUTINE CLOSE_VTKHDF_SMOKE3D()
    IF (N_SMOKE3D > 0) THEN
@@ -1177,6 +1688,9 @@ SUBROUTINE CLOSE_VTKHDF_SMOKE3D()
          HDF_SM3D_G1,HDF_SM3D_G2,HDF_SM3D_G3,HDF_SM3D_G4,HDF_SM3D_G5,HDF_SM3D_G6,HDF_SM3D_G7)
    ENDIF
 END SUBROUTINE CLOSE_VTKHDF_SMOKE3D
+
+!> \brief Close the slice VTKHDF files
+
 
 SUBROUTINE CLOSE_VTKHDF_SLICE()
 INTEGER :: IQ
@@ -1197,6 +1711,9 @@ INTEGER :: IQ
    DEALLOCATE(HDF_SLCF_G7)
 END SUBROUTINE CLOSE_VTKHDF_SLICE
 
+!> \brief Reopen the boundary VTKHDF file, when the files are not held open
+
+
 SUBROUTINE OPEN_VTKHDF_BNDF()
    CHARACTER(FN_LENGTH) :: FILENAME
    WRITE(FILENAME,'(A,A,A)') "",TRIM(VTK_DIR)//TRIM(CHID),'_BNDF.vtkhdf'
@@ -1205,12 +1722,18 @@ SUBROUTINE OPEN_VTKHDF_BNDF()
       HDF_BNDF_G1,HDF_BNDF_G2,HDF_BNDF_G3,HDF_BNDF_G4,HDF_BNDF_G5,HDF_BNDF_G6,HDF_BNDF_G7)
 END SUBROUTINE OPEN_VTKHDF_BNDF
 
+!> \brief Reopen the Smoke3D VTKHDF file, when the files are not held open
+
+
 SUBROUTINE OPEN_VTKHDF_SMOKE3D()
    CHARACTER(FN_LENGTH) :: FILENAME
    WRITE(FILENAME,'(A,A,A)') "",TRIM(VTK_DIR)//TRIM(CHID),'_SM3D.vtkhdf'
    CALL OPEN_VTKHDF_SERIES(FILENAME,HDF_SM3D_FILE_ID,HDF_SM3D_PLIST_ID,&
       HDF_SM3D_G1,HDF_SM3D_G2,HDF_SM3D_G3,HDF_SM3D_G4,HDF_SM3D_G5,HDF_SM3D_G6,HDF_SM3D_G7)
 END SUBROUTINE OPEN_VTKHDF_SMOKE3D
+
+!> \brief Reopen the slice VTKHDF files, when the files are not held open
+
 
 SUBROUTINE OPEN_VTKHDF_SLICE()
 CHARACTER(FN_LENGTH) :: FILENAME,SLCFNAME
@@ -1234,6 +1757,25 @@ ALLOCATE(HDF_SLCF_G7(MESHES(1)%N_UNIQUE_SLCF))
          HDF_SLCF_G5(IQ),HDF_SLCF_G6(IQ),HDF_SLCF_G7(IQ))
    ENDDO UNIQUE_LOOPF
 END SUBROUTINE OPEN_VTKHDF_SLICE
+
+!> \brief Create one slice plane's VTKHDF file and write the grid it will refer to
+
+!>
+
+!> \param FILENAME Name of the file to create
+
+!> \param SLCFNAME Name of the slice plane, shared by every quantity on it
+
+!> \param II Index of the unique slice plane
+
+!> \param NTSL Terrain slice counter, used to index K_AGL_SLICE
+
+!>
+
+!> Slices that lie on the same plane share a file, one quantity per point data
+
+!> array, so the grid is written once no matter how many quantities there are.
+
 
 SUBROUTINE INITIALIZE_VTKHDF_SLICE(FILENAME,SLCFNAME,II,NTSL)
    CHARACTER(*), INTENT(IN) :: FILENAME,SLCFNAME
@@ -1400,6 +1942,19 @@ SUBROUTINE INITIALIZE_VTKHDF_SLICE(FILENAME,SLCFNAME,II,NTSL)
    ENDDO EXCHANGE_SLCF_NCELLS
    
 END SUBROUTINE INITIALIZE_VTKHDF_SLICE
+
+
+!> \brief Write the obstruction and terrain geometry to a single time VTKHDF file
+
+
+!>
+
+
+!> The geometry is written once, before the time loop, and is what ParaView draws
+
+
+!> as the solid part of the scene.
+
 
 
 SUBROUTINE WRITE_VTKHDF_GEOM_FILE()
@@ -1896,6 +2451,19 @@ SUBROUTINE WRITE_VTKHDF_GEOM_FILE()
    CALL CLOSE_VTKHDF(FILE_ID, GROUP_ID1,GROUP_ID2,GROUP_ID3,GROUP_ID4)
    T_USED(7) = T_USED(7) + CURRENT_TIME() - TNOW
 END SUBROUTINE WRITE_VTKHDF_GEOM_FILE
+
+
+
+!> \brief Create the boundary VTKHDF file and write the patch geometry it will refer to
+
+
+
+!>
+
+
+
+!> \param FILENAME Name of the file to create
+
 
 
 
@@ -2445,6 +3013,211 @@ END SUBROUTINE WRITE_VTKHDF_SLICE_DATA_MULTI
 
 
 
+!> \brief Write one mesh's contribution to a slice plane's grid
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!> \param SLCFNAME Name of the slice plane
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!> \param SL3D True if the slice spans three dimensions
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!> \param NM Mesh number
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!> \param NCELLS Number of cells each mesh contributes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!> \param NPOINTS Number of points each mesh contributes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!> \param NCONNECTIONS Number of connectivity entries each mesh contributes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!> \param NTSL Terrain slice counter, used to index K_AGL_SLICE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!> \param PLIST_ID Data transfer property list for this file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!> \param CRP_LIST Dataset creation property list for this file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!> \param GROUP_ID1 VTKHDF group of this file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 SUBROUTINE WRITE_VTKHDF_SLICE_CELL_FILE_NOOPEN(SLCFNAME,SL3D,NM,NCELLS,NPOINTS,NCONNECTIONS,NTSL,&
    PLIST_ID,CRP_LIST,GROUP_ID1)
    CHARACTER(*), INTENT(IN) :: SLCFNAME
@@ -2732,6 +3505,25 @@ VTK_IS_STEPS_GROUP = ERROR>=0 .AND. INDEX(GNAME,'/Steps')>0
 END FUNCTION VTK_IS_STEPS_GROUP
 
 
+!> \brief Return the data transfer property list shared by every VTKHDF write
+
+
+!>
+
+
+!> \param PLIST_ID Data transfer property list
+
+
+!>
+
+
+!> Created on first use and kept for the run.  Creating one per dataset access,
+
+
+!> as this once did, leaked a property list on every write.
+
+
+
 SUBROUTINE GET_VTK_DXPL(PLIST_ID)
    INTEGER(HID_T), INTENT(OUT) :: PLIST_ID
    INTEGER :: ERROR
@@ -2743,8 +3535,6 @@ SUBROUTINE GET_VTK_DXPL(PLIST_ID)
    PLIST_ID = VTK_DXPL_ID
 END SUBROUTINE GET_VTK_DXPL
 
-
-!> \brief Clamp a requested chunk size into a range that HDF5 handles efficiently
 
 !> \brief Build the dataset creation property list shared by every VTKHDF dataset
 !>
@@ -2773,6 +3563,31 @@ CALL H5PSET_CHUNK_F(CRP_LIST, RANK, CHUNK, ERROR)
 END SUBROUTINE GET_VTK_DCPL
 
 
+!> \brief Clamp a requested chunk size into a range HDF5 handles efficiently
+
+
+!>
+
+
+!> \param RANK Dataset rank
+
+
+!> \param DDIM Requested chunk dimensions
+
+
+!> \param CHUNK Chunk dimensions to use (out)
+
+
+!>
+
+
+!> A chunk of one element costs a B-tree entry and a filter pipeline pass each;
+
+
+!> a chunk of a whole mesh blows past the chunk cache.
+
+
+
 PURE SUBROUTINE VTK_CHUNK_DIMS(RANK,DDIM,CHUNK)
    INTEGER, INTENT(IN) :: RANK
    INTEGER(HSIZE_T), DIMENSION(*), INTENT(IN) :: DDIM
@@ -2783,6 +3598,43 @@ PURE SUBROUTINE VTK_CHUNK_DIMS(RANK,DDIM,CHUNK)
    ENDDO
    CHUNK(RANK) = MIN(MAX(CHUNK(RANK),VTK_CHUNK_MIN),VTK_CHUNK_MAX)
 END SUBROUTINE VTK_CHUNK_DIMS
+
+
+!> \brief Open, or create on first use, a 32 bit real dataset
+
+
+!>
+
+
+!> \param GROUP_ID Group the dataset lives in
+
+
+!> \param SNAME Dataset name
+
+
+!> \param CRP_LIST Dataset creation property list, used when the dataset is created
+
+
+!> \param RANK Dataset rank
+
+
+!> \param DDIM Requested chunk dimensions
+
+
+!> \param CDIM Initial dataset dimensions
+
+
+!> \param DSET_ID Open dataset handle (out)
+
+
+!> \param PLIST_ID Data transfer property list for the write that follows (out)
+
+
+!> \param MDIM Maximum dimensions, present when the dataset grows over time
+
+
+!> \param NOFILTER Create the dataset without the filter pipeline
+
 
 
 SUBROUTINE PARALLEL_INIT_F32(GROUP_ID, SNAME, CRP_LIST, RANK, DDIM, CDIM, DSET_ID, PLIST_ID, MDIM, NOFILTER)
@@ -2826,6 +3678,29 @@ SUBROUTINE PARALLEL_INIT_F32(GROUP_ID, SNAME, CRP_LIST, RANK, DDIM, CDIM, DSET_I
    ENDIF
 END SUBROUTINE PARALLEL_INIT_F32
 
+!> \brief Open, or create on first use, a 32 bit integer dataset
+
+!>
+
+!> \param GROUP_ID Group the dataset lives in
+
+!> \param SNAME Dataset name
+
+!> \param CRP_LIST Dataset creation property list, used when the dataset is created
+
+!> \param RANK Dataset rank
+
+!> \param DDIM Requested chunk dimensions
+
+!> \param CDIM Initial dataset dimensions
+
+!> \param DSET_ID Open dataset handle (out)
+
+!> \param PLIST_ID Data transfer property list for the write that follows (out)
+
+!> \param MDIM Maximum dimensions, present when the dataset grows over time
+
+
 SUBROUTINE PARALLEL_INIT_I32(GROUP_ID, SNAME, CRP_LIST, RANK, DDIM, CDIM, DSET_ID, PLIST_ID, MDIM)
    INTEGER(HID_T), INTENT(IN) :: GROUP_ID               ! Memory identifiers
    INTEGER(HID_T), INTENT(INOUT) :: CRP_LIST, PLIST_ID  ! Memory identifiers
@@ -2864,6 +3739,29 @@ SUBROUTINE PARALLEL_INIT_I32(GROUP_ID, SNAME, CRP_LIST, RANK, DDIM, CDIM, DSET_I
       CALL VTK_DSET_CACHE_ADD(GROUP_ID, SNAME, DSET_ID)
    ENDIF
 END SUBROUTINE PARALLEL_INIT_I32
+
+!> \brief Open, or create on first use, an unsigned 8 bit integer dataset
+
+!>
+
+!> \param GROUP_ID Group the dataset lives in
+
+!> \param SNAME Dataset name
+
+!> \param CRP_LIST Dataset creation property list, used when the dataset is created
+
+!> \param RANK Dataset rank
+
+!> \param DDIM Requested chunk dimensions
+
+!> \param CDIM Initial dataset dimensions
+
+!> \param DSET_ID Open dataset handle (out)
+
+!> \param PLIST_ID Data transfer property list for the write that follows (out)
+
+!> \param MDIM Maximum dimensions, present when the dataset grows over time
+
 
 SUBROUTINE PARALLEL_INIT_U8(GROUP_ID, SNAME, CRP_LIST, RANK, DDIM, CDIM, DSET_ID, PLIST_ID, MDIM)
    INTEGER(HID_T), INTENT(IN) :: GROUP_ID               ! Memory identifiers
@@ -2904,6 +3802,19 @@ SUBROUTINE PARALLEL_INIT_U8(GROUP_ID, SNAME, CRP_LIST, RANK, DDIM, CDIM, DSET_ID
    ENDIF
 END SUBROUTINE PARALLEL_INIT_U8
 
+!> \brief Append integers to the end of a rank one dataset
+
+!>
+
+!> \param DSET_ID Open dataset handle
+
+!> \param PLIST_ID Data transfer property list
+
+!> \param INDATA Values to append
+
+!> \param N Number of values
+
+
 SUBROUTINE APPEND_RANK1_DATASET_I32(DSET_ID,PLIST_ID,INDATA,N)
    INTEGER, INTENT(IN)     ::   N    ! Dataset rank
    INTEGER(IB32), DIMENSION(N), INTENT(IN) :: INDATA
@@ -2922,6 +3833,19 @@ SUBROUTINE APPEND_RANK1_DATASET_I32(DSET_ID,PLIST_ID,INDATA,N)
    CALL H5DSET_EXTENT_F(DSET_ID, SIZE1, ERROR)
    CALL PARALLEL_WRITE_I32(1, DSET_ID, PLIST_ID, OFFSET, COUNT, INDATA)
 END SUBROUTINE APPEND_RANK1_DATASET_I32
+
+!> \brief Append reals to the end of a rank one dataset
+
+!>
+
+!> \param DSET_ID Open dataset handle
+
+!> \param PLIST_ID Data transfer property list
+
+!> \param INDATA Values to append
+
+!> \param N Number of values
+
 
 SUBROUTINE APPEND_RANK1_DATASET_F32(DSET_ID,PLIST_ID,INDATA,N)
    INTEGER, INTENT(IN)     ::   N    ! Dataset rank
@@ -2942,6 +3866,23 @@ SUBROUTINE APPEND_RANK1_DATASET_F32(DSET_ID,PLIST_ID,INDATA,N)
    CALL PARALLEL_WRITE_F32(1, DSET_ID, PLIST_ID, OFFSET, COUNT, INDATA)
 END SUBROUTINE APPEND_RANK1_DATASET_F32
 
+!> \brief Write reals into a hyperslab of a dataset
+
+!>
+
+!> \param RANK Dataset rank
+
+!> \param DSET_ID Open dataset handle
+
+!> \param PLIST_ID Data transfer property list
+
+!> \param OFFSET Where the hyperslab starts
+
+!> \param COUNT Extent of the hyperslab
+
+!> \param DATA Values to write
+
+
 SUBROUTINE PARALLEL_WRITE_F32(RANK, DSET_ID,&
    PLIST_ID, OFFSET, COUNT, DATA)
    INTEGER(HID_T), INTENT(IN) :: DSET_ID, PLIST_ID  ! Memory identifiers
@@ -2959,6 +3900,23 @@ SUBROUTINE PARALLEL_WRITE_F32(RANK, DSET_ID,&
    CALL H5SCLOSE_F(MEMSPACE, ERROR)
    CALL H5SCLOSE_F(DATASPACE, ERROR)
 END SUBROUTINE PARALLEL_WRITE_F32
+
+!> \brief Write 32 bit integers into a hyperslab of a dataset
+
+!>
+
+!> \param RANK Dataset rank
+
+!> \param DSET_ID Open dataset handle
+
+!> \param PLIST_ID Data transfer property list
+
+!> \param OFFSET Where the hyperslab starts
+
+!> \param COUNT Extent of the hyperslab
+
+!> \param DATA Values to write
+
 
 SUBROUTINE PARALLEL_WRITE_I32(RANK, DSET_ID,&
    PLIST_ID, OFFSET, COUNT, DATA)
@@ -2978,6 +3936,23 @@ SUBROUTINE PARALLEL_WRITE_I32(RANK, DSET_ID,&
    CALL H5SCLOSE_F(DATASPACE, ERROR)
 END SUBROUTINE PARALLEL_WRITE_I32
 
+!> \brief Write unsigned 8 bit integers into a hyperslab of a dataset
+
+!>
+
+!> \param RANK Dataset rank
+
+!> \param DSET_ID Open dataset handle
+
+!> \param PLIST_ID Data transfer property list
+
+!> \param OFFSET Where the hyperslab starts
+
+!> \param COUNT Extent of the hyperslab
+
+!> \param DATA Values to write
+
+
 SUBROUTINE PARALLEL_WRITE_U8(RANK, DSET_ID,&
    PLIST_ID, OFFSET, COUNT, DATA)
    INTEGER(HID_T), INTENT(IN) :: DSET_ID, PLIST_ID  ! Memory identifiers
@@ -2996,6 +3971,21 @@ SUBROUTINE PARALLEL_WRITE_U8(RANK, DSET_ID,&
    CALL H5SCLOSE_F(DATASPACE, ERROR)
 END SUBROUTINE PARALLEL_WRITE_U8
 
+!> \brief Write the VTKHDF format version as an attribute
+
+!>
+
+!> \param GROUP_ID Group to attach the attribute to
+
+!> \param ADIMS Attribute dimensions
+
+!> \param ARANK Attribute rank
+
+!> \param ANAME Attribute name
+
+!> \param ATTR_DATA Version numbers
+
+
 SUBROUTINE ADD_VERSION(GROUP_ID,ADIMS,ARANK,ANAME,ATTR_DATA)
    INTEGER(HID_T) :: ATTR_ID, ASPACE_ID, GROUP_ID             ! Identifiers
    INTEGER(HSIZE_T), DIMENSION(1), INTENT(IN) :: ADIMS        ! Attribute dimension
@@ -3011,6 +4001,21 @@ SUBROUTINE ADD_VERSION(GROUP_ID,ADIMS,ARANK,ANAME,ATTR_DATA)
    CALL H5SCLOSE_F(ASPACE_ID, ERROR)
 END SUBROUTINE ADD_VERSION
 
+!> \brief Write a 32 bit real attribute
+
+!>
+
+!> \param GROUP_ID Group to attach the attribute to
+
+!> \param ADIMS Attribute dimensions
+
+!> \param ARANK Attribute rank
+
+!> \param ANAME Attribute name
+
+!> \param ATTR_DATA Attribute values
+
+
 SUBROUTINE ADD_ATTRIBUTE_F32(GROUP_ID,ADIMS,ARANK,ANAME,ATTR_DATA)
    INTEGER(HID_T) :: ATTR_ID, ASPACE_ID, GROUP_ID             ! Identifiers
    INTEGER(HSIZE_T), DIMENSION(1), INTENT(IN) :: ADIMS        ! Attribute dimension
@@ -3025,6 +4030,21 @@ SUBROUTINE ADD_ATTRIBUTE_F32(GROUP_ID,ADIMS,ARANK,ANAME,ATTR_DATA)
    CALL H5ACLOSE_F(ATTR_ID, ERROR)
    CALL H5SCLOSE_F(ASPACE_ID, ERROR)
 END SUBROUTINE ADD_ATTRIBUTE_F32
+
+!> \brief Write a character attribute
+
+!>
+
+!> \param GROUP_ID Group to attach the attribute to
+
+!> \param DATA_DIMS Attribute dimensions
+
+!> \param ANAME Attribute name
+
+!> \param ATTR_DATA Attribute value
+
+!> \param ALEN Length of the attribute string
+
 
 SUBROUTINE ADD_ATTRIBUTE_CHAR(GROUP_ID,DATA_DIMS,ANAME,ATTR_DATA,ALEN)
    INTEGER(HID_T) :: ATTR_ID, ASPACE_ID, GROUP_ID, ATYPE_ID   ! Identifiers
@@ -3044,6 +4064,25 @@ SUBROUTINE ADD_ATTRIBUTE_CHAR(GROUP_ID,DATA_DIMS,ANAME,ATTR_DATA,ALEN)
    CALL H5TCLOSE_F(ATYPE_ID, ERROR)
    CALL H5SCLOSE_F(ASPACE_ID, ERROR)
 END SUBROUTINE ADD_ATTRIBUTE_CHAR
+
+!> \brief Write an integer attribute, replacing it if it is already there
+
+!>
+
+!> \param GROUP_ID Group to attach the attribute to
+
+!> \param DATA_DIMS Attribute dimensions
+
+!> \param ANAME Attribute name
+
+!> \param ATTR_DATA Attribute value
+
+!>
+
+!> The number of output times written so far is kept this way, so it is rewritten
+
+!> at every output time.
+
 
 SUBROUTINE ADD_ATTRIBUTE_INT(GROUP_ID,DATA_DIMS,ANAME,ATTR_DATA)
    INTEGER(HID_T) :: ATTR_ID, ASPACE_ID, GROUP_ID   ! Identifiers
@@ -3088,6 +4127,25 @@ ELSE
    RGB = REAL(LPC_LOCAL%RGB,FB)/255._FB
 ENDIF
 END FUNCTION GET_PART_CLASS_COLOR
+
+
+!> \brief Write a Python script that loads the VTKHDF output into ParaView
+
+
+!>
+
+
+!> \param NMESHES Number of meshes
+
+
+!>
+
+
+!> The script finds the files next to itself, so it works whether ParaView is
+
+
+!> running locally or against a remote server.
+
 
 
 SUBROUTINE WRITE_PARAVIEW_STATE_FILE(NMESHES)
@@ -3556,6 +4614,23 @@ END SUBROUTINE WRITE_PARAVIEW_STATE_FILE
 ! here so that all HDF5-specific output code is in one module.
 !------------------------------------------------------------------------------
 
+!> \brief Append one output time to the VTKHDF files
+
+!>
+
+!> \param T Current simulation time (s)
+
+!> \param DT Current time step size (s)
+
+!> \param INITIAL_DUMP True on the call that creates the files
+
+!>
+
+!> Called at every time step.  Each output has its own clock, so most calls write
+
+!> nothing; the ones that do write are followed by a flush of just those files.
+
+
 SUBROUTINE DUMP_VTK_MESH_OUTPUTS_SERIES(T,DT,INITIAL_DUMP)
 
 USE COMP_FUNCTIONS, ONLY : CURRENT_TIME
@@ -3679,6 +4754,9 @@ IF (.NOT.VTK_KEEPOPEN) CALL CLOSE_VTKHDF_SMOKE3D()
 
 END SUBROUTINE INITIALIZE_SMOKE3D_VTKHDF_SERIES
 
+!> \brief Set up the boundary VTKHDF output for the run
+
+
 SUBROUTINE INITIALIZE_BNDF_VTKHDF_SERIES()
 
 CHARACTER(FN_LENGTH) :: FILENAME
@@ -3688,6 +4766,10 @@ CALL INITIALIZE_VTKHDF_BNDF(FILENAME)
 IF (.NOT.VTK_KEEPOPEN) CALL CLOSE_VTKHDF_BNDF()
 
 END SUBROUTINE INITIALIZE_BNDF_VTKHDF_SERIES
+
+
+!> \brief Set up the slice VTKHDF output for the run, one file per unique slice plane
+
 
 
 SUBROUTINE INITIALIZE_SLCF_VTKHDF_SERIES()
@@ -3728,12 +4810,10 @@ END SUBROUTINE INITIALIZE_SLCF_VTKHDF_SERIES
 
 
 
-!> \brief Write out the SMOKE3D data to files
+!> \brief Append one output time of Smoke3D data to the VTKHDF file
 !>
 !> \param T Current simulation time (s)
 !> \param DT Current time step size (s)
-!> \param NM Mesh number
-!> \param IFRMT SMV (IFRMT=0) or VTK (IFRMT=1)
 
 SUBROUTINE DUMP_SMOKE3D_VTKHDF(T,DT)
 
@@ -4494,6 +5574,17 @@ IF (COUNT>SIZE(VALS)) BLK_DATA(N_BLK_TOT+SIZE(VALS)+1:N_BLK_TOT+COUNT) = 0._FB
 N_BLK_TOT = N_BLK_TOT + COUNT
 END SUBROUTINE ADD_BLOCK
 
+   !> \brief Count the points and cells a boundary patch contributes
+
+   !>
+
+   !> \param PA Patch to count
+
+   !> \param PA_NPOINTS Number of points (out)
+
+   !> \param PA_NCELLS Number of cells (out)
+
+
    SUBROUTINE GET_PA_POINTS_AND_CELLS(PA,PA_NPOINTS,PA_NCELLS)
       TYPE(PATCH_TYPE), POINTER, INTENT(IN) :: PA
       INTEGER :: L1, L2, N1, N2, NX, NY, NZ
@@ -4507,6 +5598,23 @@ END SUBROUTINE ADD_BLOCK
       PA_NPOINTS = (L2-L1+2)*(N2-N1+2)
       PA_NCELLS = (L2-L1+1)*(N2-N1+1)
    ENDSUBROUTINE GET_PA_POINTS_AND_CELLS
+
+   !> \brief Gather one patch's boundary values into a flat array for writing
+
+   !>
+
+   !> \param PA Patch to gather
+
+   !> \param BF Boundary file the quantity belongs to
+
+   !> \param IND Output quantity index
+
+   !> \param PP Cell centered values on the patch
+
+   !> \param PPN Node averaged values on the patch
+
+   !> \param QQ_PACK Gathered values, allocated here (out)
+
 
    SUBROUTINE PACK_VTK_BNDF(PA,BF,IND,PP,PPN,QQ_PACK)
       IMPLICIT NONE
@@ -4612,6 +5720,19 @@ END SUBROUTINE ADD_BLOCK
       ENDIF
 
    END SUBROUTINE PACK_VTK_BNDF
+
+   !> \brief Gather the boundary values on a mesh's triangulated geometry
+
+   !>
+
+   !> \param NM Mesh number
+
+   !> \param CELL_CENTERED True if the quantity is written on cells rather than points
+
+   !> \param BF Boundary file the quantity belongs to
+
+   !> \param VALS Gathered values, allocated here (out)
+
 
    SUBROUTINE PACK_VTK_GEOM(NM,CELL_CENTERED,BF,VALS)
       INTEGER, INTENT(IN) :: NM
@@ -4723,6 +5844,13 @@ T_USED(11) = T_USED(11) + CURRENT_TIME() - TNOW
 END SUBROUTINE EXCHANGE_NOBST_INFO
 #endif
 
+!> \brief Number of Smoke3D points in a mesh
+
+!>
+
+!> \param NM Mesh number
+
+
 FUNCTION NP(NM)
    INTEGER, INTENT(IN) :: NM
    INTEGER :: NX, NY, NZ, NP
@@ -4731,6 +5859,13 @@ FUNCTION NP(NM)
    NZ = SIZE(MESHES(NM)%Z)
    NP = NX*NY*NZ
 END FUNCTION NP
+
+!> \brief Number of Smoke3D cells in a mesh
+
+!>
+
+!> \param NM Mesh number
+
 
 FUNCTION NC(NM)
    INTEGER, INTENT(IN) :: NM
@@ -5094,6 +6229,19 @@ CALL ADD_ATTRIBUTE_F32(HDF_PART_G1(N),ADIMS,1,'COLOR',RGB)
 END SUBROUTINE WRITE_PART_COLOR
 
 
+!> \brief Create one VTKHDF file per particle class
+
+
+!>
+
+
+!> Unlike the other outputs the particle geometry changes at every output time, so
+
+
+!> only the file and its groups are made here; the points arrive with the data.
+
+
+
 SUBROUTINE INITIALIZE_VTKHDF_PART()
 
 CHARACTER(FN_LENGTH) :: FILENAME
@@ -5125,6 +6273,10 @@ IF (.NOT.VTK_KEEPOPEN) CALL CLOSE_VTKHDF_PART()
 END SUBROUTINE INITIALIZE_VTKHDF_PART
 
 
+!> \brief Reopen the particle VTKHDF files, when the files are not held open
+
+
+
 SUBROUTINE OPEN_VTKHDF_PART()
 CHARACTER(FN_LENGTH) :: FILENAME
 INTEGER :: N
@@ -5136,6 +6288,10 @@ DO N=1,N_LAGRANGIAN_CLASSES
       HDF_PART_G5(N),HDF_PART_G6(N),HDF_PART_G7(N))
 ENDDO
 END SUBROUTINE OPEN_VTKHDF_PART
+
+
+!> \brief Close the particle VTKHDF files
+
 
 
 SUBROUTINE CLOSE_VTKHDF_PART()

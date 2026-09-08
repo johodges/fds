@@ -9791,11 +9791,46 @@ A few things to note:
             \ct{DT_SPEC}    & \ct{RAMP_SPEC}      & Species field output       \\
             \ct{DT_TMP}     & \ct{RAMP_TMP}       & Temperature field output   \\
             \ct{DT_UVW}     & \ct{RAMP_UVW}       & Velocity field output      \\
+            \ct{DT_VTK}     & \ct{RAMP_VTK}       & VTKHDF output              \\
             \hline
         \end{tabular}
     \end{center}
 \end{table}
 
+
+\newpage
+
+\section{Visualizing Output with ParaView}
+\label{info:VTKHDF}
+
+FDS normally writes its slice, boundary, Smoke3D and particle output in the binary formats
+Smokeview reads. The same data can instead be written as VTKHDF files, which ParaView reads
+directly. Set \ct{WRITE_FORMAT} on the \ct{DUMP} line to \ct{'SMV'} for the Smokeview files
+(the default), \ct{'VTK'} for the VTKHDF files, or \ct{'BOTH'} for both.
+
+The VTKHDF output requires that FDS be built against the HDF5 library, which the standard build
+scripts do. If FDS is built without it, asking for \ct{'VTK'} or \ct{'BOTH'} stops the run with an
+error rather than leaving you with no output at all.
+
+Each output becomes one file that grows over the run, rather than one file per output time:
+\ct{CHID_SM3D.vtkhdf} for the Smoke3D data, \ct{CHID_BNDF.vtkhdf} for the boundary data, one file
+per particle class, and one file per slice plane holding every quantity written on that plane.
+The obstruction and terrain geometry is written once to \ct{CHID_GEOM.vtkhdf}. Alongside them FDS
+writes \ct{CHID_paraview.py}, a script that loads the whole set into ParaView with the fire, smoke,
+slice and particle rendering already set up. Open it with \emph{Tools\,$\rightarrow$\,Python Script},
+or run \ct{pvpython CHID_paraview.py}.
+
+The files are written on the same clocks as their Smokeview counterparts, so \ct{DT_SLCF} governs
+the slice output in either format. \ct{DT_VTK} overrides all of them at once when you want the
+VTKHDF output written at a different interval than the rest.
+
+By default the VTKHDF files are held open for the duration of the run and flushed at each output
+time, so a run that is interrupted still leaves files that can be opened up to the last output
+time written. Setting \ct{VTK_KEEPOPEN=F} closes and reopens them at every output time instead,
+which is slower and no safer. \ct{VTK_COMPRESSION_LEVEL} sets the gzip level applied to the
+datasets, from 0 for none to 9; the default of 1 is chosen because the levels above it cost
+considerably more time than they save space. \ct{VTK_DIR} puts the VTKHDF files in a directory of
+their own, and defaults to \ct{RESULTS_DIR}.
 
 \newpage
 
@@ -12260,6 +12295,7 @@ Keyword                           & Type         & Description                  
 \ct{DT_SPEC}                      & Real         & Section~\ref{info:CSVF}                &  s        &                               \\ \hline
 \ct{DT_TMP}                       & Real         & Section~\ref{info:CSVF}                &  s        &                               \\ \hline
 \ct{DT_UVW}                       & Real         & Section~\ref{info:CSVF}                &  s        &                               \\ \hline
+\ct{DT_VTK}                       & Real         & Section~\ref{info:VTKHDF}              &  s        &                               \\ \hline
 \ct{FLUSH_FILE_BUFFERS}           & Logical      & Section~\ref{info:DT_DUMP}             &           & \ct{T}                        \\ \hline
 \ct{HRRPUV_MAX_SMV}               & Real         & Section~\ref{info:SMOKE3D}             & \unit{kW/m^3} & 1200 \rule{0pt}{2.3ex}      \\ \hline
 \ct{MASS_FILE}                    & Logical      & Section~\ref{info:MASS_FILE}           &           & \ct{F}                        \\ \hline
@@ -12289,6 +12325,7 @@ Keyword                           & Type         & Description                  
 \ct{RAMP_SPEC}                    & Character    & Section~\ref{info:DT_DUMP}             &           &                               \\ \hline
 \ct{RAMP_TMP}                     & Character    & Section~\ref{info:DT_DUMP}             &           &                               \\ \hline
 \ct{RAMP_UVW}                     & Character    & Section~\ref{info:DT_DUMP}             &           &                               \\ \hline
+\ct{RAMP_VTK}                     & Character    & Section~\ref{info:VTKHDF}              &           &                               \\ \hline
 \ct{RENDER_FILE}                  & Character    & Reference~\cite{Smokeview_Users_Guide} &           &                               \\ \hline
 \ct{RESULTS_DIR}                  & Character    & Section~\ref{info:DUMP}                &           &                               \\ \hline
 \ct{SIG_FIGS}                     & Integer      & Section~\ref{info:SIG_FIGS}            &           & 8                             \\ \hline
@@ -12299,6 +12336,10 @@ Keyword                           & Type         & Description                  
 \ct{TEMP_MAX_SMV}                 & Real         & Section~\ref{info:SMOKE3D}             & \unit{\degreeCelsius} & 2000                          \\ \hline
 \ct{TEMP_MIN_SMV}                 & Real         & Section~\ref{info:SMOKE3D}             & \unit{\degreeCelsius} & 20                            \\ \hline
 \ct{VELOCITY_ERROR_FILE}          & Logical      & Section~\ref{info:TIMING}              &           & \ct{F}                        \\ \hline
+\ct{VTK_COMPRESSION_LEVEL}        & Integer      & Section~\ref{info:VTKHDF}              &           & 1                             \\ \hline
+\ct{VTK_DIR}                      & Character    & Section~\ref{info:VTKHDF}              &           & \ct{RESULTS_DIR}              \\ \hline
+\ct{VTK_KEEPOPEN}                 & Logical      & Section~\ref{info:VTKHDF}              &           & \ct{T}                        \\ \hline
+\ct{WRITE_FORMAT}                 & Character    & Section~\ref{info:VTKHDF}              &           & \ct{'SMV'}                    \\ \hline
 \ct{WRITE_XYZ}                    & Logical      & Section~\ref{info:PL3D}                &           & \ct{F}                        \\ \hline
 \end{xltabular}
 
