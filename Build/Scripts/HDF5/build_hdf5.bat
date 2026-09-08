@@ -30,6 +30,14 @@ cd %CURDIR%
 
 set INSTALLDIR=%FIREMODELS%\libs\hdf5\%LIB_DIR%
 
+::*** this repository's Build directory, found from where this script sits rather than by
+::*** assuming the repository was cloned as fds
+
+set HDF5_SCRIPTDIR=%~dp0
+cd %HDF5_SCRIPTDIR%..\..
+set FDS_BUILD_ROOT=%CD%
+cd %CURDIR%
+
 ::*** erase directory if it exists and clean option was specified
 
 if "x%clean_hdf5%" == "x" goto endif1
@@ -161,7 +169,7 @@ echo removing .obj and .mod files from Windows fds build directories
 echo ----------------------------------------------------------
 echo ----------------------------------------------------------
 echo.
-for /D %%f in (%FIREMODELS%\fds\Build\*win*) do (
+for /D %%f in (%FDS_BUILD_ROOT%\*win*) do (
   cd %%f
   erase *.obj *.mod > Nul 2> Nul
 )

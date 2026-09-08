@@ -6,6 +6,9 @@ CLEAN_HDF5=$2
 
 dir=`pwd`
 
+# this script's own directory, so that the repository need not be cloned as fds
+HDF5_SCRIPTDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 echo "CLEAN_HDF5 = $CLEAN_HDF5"
 if [ "$CLEAN_HDF5" = true ]; then
   echo "Removing hdf5 library ..."
@@ -57,7 +60,7 @@ if [ -d "$FIREMODELS/hdf5" ]; then
   mkdir $FIREMODELS/libs/hdf5/$HDF5_VERSION
   echo "Cleaning hdf5 repository..."
   rm -r $FIREMODELS/hdf5/BUILDDIR/*
-  cp $FIREMODELS/fds/Build/Scripts/HDF5/$CONFMAKE .
+  cp $HDF5_SCRIPTDIR/$CONFMAKE .
   ./$CONFMAKE
   # get back from detached HEAD state
   cd $FIREMODELS/hdf5
