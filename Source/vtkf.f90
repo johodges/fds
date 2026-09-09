@@ -4266,6 +4266,15 @@ CAM_D = 3.9_EB*CAM_R/SQRT(3._EB)
 OPEN(LU_PARAVIEW,FILE=FN_PARAVIEW,FORM='FORMATTED', STATUS='REPLACE',ACTION='WRITE')
 WRITE(LU_PARAVIEW,'(A)') '#Script to import FDS generated data for visualization in Paraview'
 WRITE(LU_PARAVIEW,'(A)') 'import os'
+
+! ParaView takes a byte range lock when its HDF5 opens a file.  On Windows that makes
+! the collective MPI-IO writes of a running case fail, and the case then hangs in the
+! collective rather than stopping.  Turn the lock off before ParaView opens anything,
+! so results can be viewed while the case is still running.  setdefault leaves an
+! explicit setting from the user alone, and this only bites when HDF5 has not already
+! been initialized in the session.
+
+WRITE(LU_PARAVIEW,'(A)') 'os.environ.setdefault("HDF5_USE_FILE_LOCKING","FALSE")'
 WRITE(LU_PARAVIEW,'(A)') 'import glob'
 WRITE(LU_PARAVIEW,'(A)') "def writeSeries(files, times, outfile):"
 WRITE(LU_PARAVIEW,'(A)') "    with open(outfile, 'w') as f:"
