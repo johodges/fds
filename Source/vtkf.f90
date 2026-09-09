@@ -4595,7 +4595,7 @@ WRITE(LU_PARAVIEW,'(A)') "        fireImageDisplay.OpacityArray = ['POINTS', fir
 WRITE(LU_PARAVIEW,'(A)') "        fireImageDisplay.OpacityTransferFunction = piecewisefunction"
 WRITE(LU_PARAVIEW,'(A)') "        fireImageDisplay.DataAxesGrid = gridaxesrep"
 WRITE(LU_PARAVIEW,'(A)') "        fireImageDisplay.PolarAxes = polaraxesrep"
-WRITE(LU_PARAVIEW,'(A)') "        fireImageDisplay.ScalarOpacityUnitDistance = 0.44"
+WRITE(LU_PARAVIEW,'(A,F15.5)') "        fireImageDisplay.ScalarOpacityUnitDistance = ",CAM_R/18._EB
 WRITE(LU_PARAVIEW,'(A)') "        fireImageDisplay.ScalarOpacityFunction = hRRPUVPWF"
 WRITE(LU_PARAVIEW,'(A)') "        fireImageDisplay.TransferFunction2D = hRRPUVTF2D"
 WRITE(LU_PARAVIEW,'(A)') "        fireImageDisplay.OpacityArrayName = ['POINTS', fireName]"
@@ -4630,7 +4630,14 @@ WRITE(LU_PARAVIEW,'(A)') "        sOOTDENSITYLUT.NanColor = [1.0, 0.0, 0.0]"
 WRITE(LU_PARAVIEW,'(A)') "        sOOTDENSITYLUT.ScalarRangeInitialized = 1.0"
 WRITE(LU_PARAVIEW,'(A)') "        # get opacity transfer function/opacity map for 'SOOTDENSITY'"
 WRITE(LU_PARAVIEW,'(A)') "        sOOTDENSITYPWF = GetOpacityTransferFunction(smokeName)"
-WRITE(LU_PARAVIEW,'(A)') "        sOOTDENSITYPWF.Points = [0.0, 0.0, 0.5, 0.0, 1.0, 0.25, 0.5, 0.0, 254.0, 1.0, 0.5, 0.0]"
+
+! The soot opacity used to reach 0.25 at a scaled soot density of 1 out of 254, so a
+! third of a typical domain was a quarter opaque and the flame inside it never showed.
+! ParaView draws the fire and smoke as two volumes and cannot interleave their samples,
+! so the smoke has to stay thin enough to see through.  The unit distances scale with
+! the domain, otherwise the same input renders differently at different physical sizes.
+
+WRITE(LU_PARAVIEW,'(A)') "        sOOTDENSITYPWF.Points = [0.0, 0.0, 0.5, 0.0, 254.0, 0.3, 0.5, 0.0]"
 WRITE(LU_PARAVIEW,'(A)') "        sOOTDENSITYPWF.ScalarRangeInitialized = 1"
 WRITE(LU_PARAVIEW,'(A)') "        # trace defaults for the display properties."
 WRITE(LU_PARAVIEW,'(A)') "        smokeImageDisplay.Representation = 'Volume'"
@@ -4655,7 +4662,7 @@ WRITE(LU_PARAVIEW,'(A)') "        smokeImageDisplay.OpacityTransferFunction = pi
 WRITE(LU_PARAVIEW,'(A)') "        smokeImageDisplay.DataAxesGrid = gridaxesrep"
 WRITE(LU_PARAVIEW,'(A)') "        smokeImageDisplay.PolarAxes = polaraxesrep"
 WRITE(LU_PARAVIEW,'(A)') "        smokeImageDisplay.ScalarOpacityFunction = sOOTDENSITYPWF"
-WRITE(LU_PARAVIEW,'(A)') "        smokeImageDisplay.ScalarOpacityUnitDistance = 1.2957383373220388"
+WRITE(LU_PARAVIEW,'(A,F15.5)') "        smokeImageDisplay.ScalarOpacityUnitDistance = ",CAM_R/6._EB
 WRITE(LU_PARAVIEW,'(A)') "        smokeImageDisplay.OpacityArrayName = ['POINTS', smokeName]"
 WRITE(LU_PARAVIEW,'(A)') "        smokeImageDisplay.SelectInputVectors = [None, '']"
 WRITE(LU_PARAVIEW,'(A)') "        smokeImageDisplay.WriteLog = ''"
