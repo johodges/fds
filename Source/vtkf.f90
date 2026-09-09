@@ -4227,7 +4227,7 @@ USE COMP_FUNCTIONS, ONLY: CURRENT_TIME
 
 INTEGER, INTENT(IN) :: NMESHES
 TYPE (MESH_TYPE), POINTER :: M
-REAL(EB) :: CX,CY,CZ,XMN,XMX,YMN,YMX,ZMN,ZMX
+REAL(EB) :: CX,CY,CZ,XMN,XMX,YMN,YMX,ZMN,ZMX,CAM_R,CAM_D
 INTEGER :: NM,N
 REAL(FB) :: RGB_PART(3)
 REAL(EB) :: TNOW
@@ -4255,6 +4255,14 @@ CX = (XMX+XMN)/2
 CY = (YMX+YMN)/2
 CZ = (ZMX+ZMN)/2
 
+! Stand the camera off along (-1,-1,1) far enough for the whole domain to be in
+! frame.  _DisableFirstRenderCameraReset() below stops ParaView from framing the
+! scene itself, so without an explicit position the camera is left at its default
+! inside the domain and the view opens empty.
+CAM_R = 0.5_EB*SQRT((XMX-XMN)**2+(YMX-YMN)**2+(ZMX-ZMN)**2)
+IF (CAM_R<=0._EB) CAM_R = 1._EB
+CAM_D = 3.9_EB*CAM_R/SQRT(3._EB)
+
 OPEN(LU_PARAVIEW,FILE=FN_PARAVIEW,FORM='FORMATTED', STATUS='REPLACE',ACTION='WRITE')
 WRITE(LU_PARAVIEW,'(A)') '#Script to import FDS generated data for visualization in Paraview'
 WRITE(LU_PARAVIEW,'(A)') 'import os'
@@ -4281,6 +4289,7 @@ ENDIF
 
 WRITE(LU_PARAVIEW,'(A,F15.3,A,F15.3,A,F15.3,A)') 'CenterOfRotation = [',CX,',',CY,',',CZ,']'
 WRITE(LU_PARAVIEW,'(A,F15.3,A,F15.3,A,F15.3,A)') 'CameraFocalPoint = [',CX,',',CY,',',CZ,']'
+WRITE(LU_PARAVIEW,'(A,F15.3,A,F15.3,A,F15.3,A)') 'CameraPosition = [',CX-CAM_D,',',CY-CAM_D,',',CZ+CAM_D,']'
 WRITE(LU_PARAVIEW,'(A)') 'diff = [abs(x-y) for x,y in zip(CenterOfRotation,CameraFocalPoint)]'
 WRITE(LU_PARAVIEW,'(A)') 'if max(diff) < 0.1:'
 WRITE(LU_PARAVIEW,'(A)') '    CameraFocalPoint[0] = CameraFocalPoint[0] + 0.1'
@@ -4309,6 +4318,7 @@ WRITE(LU_PARAVIEW,'(A)') "renderView1.AxesGrid = axesactor"
 WRITE(LU_PARAVIEW,'(A)') "renderView1.CenterOfRotation = CenterOfRotation"
 WRITE(LU_PARAVIEW,'(A)') "renderView1.StereoType = 'Crystal Eyes'"
 WRITE(LU_PARAVIEW,'(A)') "renderView1.CameraFocalPoint = CameraFocalPoint"
+WRITE(LU_PARAVIEW,'(A)') "renderView1.CameraPosition = CameraPosition"
 WRITE(LU_PARAVIEW,'(A)') "renderView1.CameraViewUp = [0.0, 0.0, 1.0]"
 WRITE(LU_PARAVIEW,'(A)') "paraview.simple.LoadPalette('WhiteBackground')"
 WRITE(LU_PARAVIEW,'(A)') "renderView1.BackEnd = 'OSPRay raycaster'"
@@ -4329,6 +4339,11 @@ WRITE(LU_PARAVIEW,'(A)') "else:"
 WRITE(LU_PARAVIEW,'(A)') "    indir = os.path.dirname(os.path.realpath(__file__))"
 WRITE(LU_PARAVIEW,'(A)') "    sep = os.sep"
 WRITE(LU_PARAVIEW,'(A)') "    uri = None"
+WRITE(LU_PARAVIEW,'(A)') "    # this script is written into VTK_DIR, so step back up to the case"
+WRITE(LU_PARAVIEW,'(A)') "    # root and give indir the meaning it has for a remote connection"
+WRITE(LU_PARAVIEW,'(A)') "    _rdir = r'"//TRIM(VTK_DIR)//"'.replace('/',sep).replace(chr(92),sep).strip(sep)"
+WRITE(LU_PARAVIEW,'(A)') "    if _rdir and not os.path.isabs(_rdir) and indir.endswith(sep+_rdir):"
+WRITE(LU_PARAVIEW,'(A)') "        indir = indir[:-(len(_rdir)+1)]"
 WRITE(LU_PARAVIEW,'(A)') "rdir = r'"//TRIM(VTK_DIR)//"'"
 WRITE(LU_PARAVIEW,'(A)') "if rdir == '':"
 WRITE(LU_PARAVIEW,'(A)') "    namespace=indir+sep+chid"
