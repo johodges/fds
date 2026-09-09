@@ -532,6 +532,88 @@ ENDDO
 
 ENDSUBROUTINE BUILD_VTK_SOLID_PHASE_GEOMETRY
 
+!> \brief Report whether one face of an obstruction belongs in the VTKHDF geometry
+!>
+!> The geometry file is built from the obstruction list rather than from the boundary
+!> PATCHes.  A PATCH is only created where an obstruction face abuts a gas cell of the
+!> same mesh, so a face lying in a mesh interface plane has none and used to be left
+!> out, opening a seam in the rendered solid.  EXPOSED_FACE_INDEX marks the faces that
+!> abut gas or a mesh boundary and is what the .smv file hands Smokeview, so keying off
+!> it here makes the two renderings agree.  Faces permanently covered by another
+!> obstruction stay unset and remain hidden.
+!>
+!> \param OB Obstruction
+!> \param IOR Orientation index of the face
+
+LOGICAL FUNCTION VTK_OBST_FACE_DRAWN(OB,IOR)
+
+TYPE(OBSTRUCTION_TYPE), INTENT(IN) :: OB
+INTEGER, INTENT(IN) :: IOR
+INTEGER :: FI
+
+VTK_OBST_FACE_DRAWN = .FALSE.
+IF (OB%HIDDEN) RETURN
+FI = ABS(IOR)*2 ; IF (IOR<0) FI = FI-1
+IF (OB%EXPOSED_FACE_INDEX(FI)/=1) RETURN
+
+! A mesh boundary can clip an obstruction to zero cells thick, leaving a copy whose
+! faces coincide with ones the neighboring mesh draws in full.  Leave those out.  An
+! obstruction the user made zero cells thick is flagged THIN and is still drawn.
+
+IF (.NOT.OB%THIN) THEN
+   SELECT CASE(ABS(IOR))
+      CASE(1) ; IF (OB%I1==OB%I2) RETURN
+      CASE(2) ; IF (OB%J1==OB%J2) RETURN
+      CASE(3) ; IF (OB%K1==OB%K2) RETURN
+   END SELECT
+ENDIF
+
+! Skip faces of zero area, which span no cells
+
+SELECT CASE(ABS(IOR))
+   CASE(1) ; IF (OB%J2<=OB%J1 .OR. OB%K2<=OB%K1) RETURN
+   CASE(2) ; IF (OB%I2<=OB%I1 .OR. OB%K2<=OB%K1) RETURN
+   CASE(3) ; IF (OB%I2<=OB%I1 .OR. OB%J2<=OB%J1) RETURN
+END SELECT
+
+VTK_OBST_FACE_DRAWN = .TRUE.
+
+END FUNCTION VTK_OBST_FACE_DRAWN
+
+
+!> \brief Describe one face of an obstruction as a PATCH
+!>
+!> BUILD_VTK_SOLID_PHASE_GEOMETRY works from a PATCH, so an obstruction face is handed
+!> to it as one.  The node indices are collapsed onto the plane of the face and the gas
+!> cell ranges span the two directions the face extends in.
+!>
+!> \param OB Obstruction
+!> \param IOR Orientation index of the face
+!> \param PA PATCH descriptor to fill
+
+SUBROUTINE SET_VTK_OBST_FACE_PATCH(OB,IOR,PA)
+
+TYPE(OBSTRUCTION_TYPE), INTENT(IN) :: OB
+INTEGER, INTENT(IN) :: IOR
+TYPE(PATCH_TYPE), INTENT(OUT) :: PA
+
+PA%IOR = IOR
+PA%I1 = OB%I1 ; PA%I2 = OB%I2 ; PA%IG1 = OB%I1+1 ; PA%IG2 = OB%I2
+PA%J1 = OB%J1 ; PA%J2 = OB%J2 ; PA%JG1 = OB%J1+1 ; PA%JG2 = OB%J2
+PA%K1 = OB%K1 ; PA%K2 = OB%K2 ; PA%KG1 = OB%K1+1 ; PA%KG2 = OB%K2
+
+SELECT CASE(IOR)
+   CASE(-1) ; PA%I2 = OB%I1
+   CASE( 1) ; PA%I1 = OB%I2
+   CASE(-2) ; PA%J2 = OB%J1
+   CASE( 2) ; PA%J1 = OB%J2
+   CASE(-3) ; PA%K2 = OB%K1
+   CASE( 3) ; PA%K1 = OB%K2
+END SELECT
+
+END SUBROUTINE SET_VTK_OBST_FACE_PATCH
+
+
 
 !> \brief Convert an FDS triangulated surface into VTK triangles
 
@@ -1972,6 +2054,8 @@ SUBROUTINE WRITE_VTKHDF_GEOM_FILE()
    INTEGER :: N_WRITTEN, I, IERR, IPROC
    TYPE (MPI_STATUS) :: MPISTATUS
    TYPE(PATCH_TYPE), POINTER :: PA
+   TYPE(PATCH_TYPE), TARGET :: OB_PATCH
+   INTEGER :: IOR, NOB
    INTEGER, ALLOCATABLE, DIMENSION(:) :: LOCATIONS,FACES,SURFIND,GEOMIND
    REAL(FB), ALLOCATABLE, DIMENSION(:) :: VERTS
    REAL(FB), ALLOCATABLE, DIMENSION(:) :: X_PTS, Y_PTS, Z_PTS
@@ -2041,12 +2125,14 @@ SUBROUTINE WRITE_VTKHDF_GEOM_FILE()
       NCELLS_ACCUM = 0
       NPOINTS_ACCUM = 0
       NCONN_ACCUM = 0
-      ! Count OBST patch info
-      IF (MESHES(NM)%N_PATCH>0) THEN
-         PATCH_LOOP1: DO IP=1,N_PATCH
-            PA => PATCH(IP)
-            IF (PA%OBST_INDEX<=0) CYCLE PATCH_LOOP1
-            !INTERPOLATED_BOUNDARY
+      ! Count OBST face info
+      OBST_LOOP1: DO NOB=1,M%N_OBST
+         OB => M%OBSTRUCTION(NOB)
+         FACE_LOOP1: DO IOR=-3,3
+            IF (IOR==0) CYCLE FACE_LOOP1
+            IF (.NOT.VTK_OBST_FACE_DRAWN(OB,IOR)) CYCLE FACE_LOOP1
+            CALL SET_VTK_OBST_FACE_PATCH(OB,IOR,OB_PATCH)
+            PA => OB_PATCH
             ! Initialize piece
             CALL BUILD_VTK_SOLID_PHASE_GEOMETRY(NM, PA, NCELLS(NM1), NPOINTS(NM1),&
                X_PTS, Y_PTS, Z_PTS, CONNECT, OFFSETS, VTKC_TYPE)
@@ -2054,8 +2140,8 @@ SUBROUTINE WRITE_VTKHDF_GEOM_FILE()
             NCELLS_ACCUM = NCELLS_ACCUM + NCELLS(NM1)
             NPOINTS_ACCUM = NPOINTS_ACCUM + NPOINTS(NM1)
             CALL DEALLOCATE_VTK_GAS_PHASE_GEOMETRY(X_PTS,Y_PTS,Z_PTS,OFFSETS,VTKC_TYPE,CONNECT)
-         ENDDO PATCH_LOOP1
-      ENDIF
+         ENDDO FACE_LOOP1
+      ENDDO OBST_LOOP1
       
       NCELLS_VTK(NM1) = NCELLS_ACCUM
       NPOINTS_VTK(NM1) = NPOINTS_ACCUM
@@ -2240,67 +2326,54 @@ SUBROUTINE WRITE_VTKHDF_GEOM_FILE()
       ENDIF
       CALL POINT_TO_MESH(NM)
       ! Build OBST boundary geometry
-      IF (MESHES(NM)%N_PATCH>0) THEN
+      IF (NCELLS_VTK(NM1)>0) THEN
          ALLOCATE(ALL_VERTICES(3,NPOINTS_VTK(NM1)))
          ALLOCATE(ALL_CONNECT(NCONNECTIONS_VTK(NM1)))
          ALLOCATE(ALL_OFFSETS(NCELLS_VTK(NM1)+1))
          ALLOCATE(ALL_VTKC_TYPE(NCELLS_VTK(NM1)))
          ALLOCATE(ALL_COLORS(3,NCELLS_VTK(NM1)))
          ALL_OFFSETS(NOFFSETS_ACCUM-NOFFSETS_START+1) = 0
-         PATCH_LOOP2: DO IP=1,N_PATCH
-            PA => PATCH(IP)
-            IF (PA%OBST_INDEX<=0) CYCLE PATCH_LOOP2
-            M => MESHES(NM)
-            IF (PA%OBST_INDEX >= SIZE(M%OBSTRUCTION)) THEN
-               COLOR = REAL((/0.5,0.5,0.5/))
-            ELSE
-               OB=>M%OBSTRUCTION(PA%OBST_INDEX)
+         M => MESHES(NM)
+         OBST_LOOP2: DO NOB=1,M%N_OBST
+            OB => M%OBSTRUCTION(NOB)
+            FACE_LOOP2: DO IOR=-3,3
+               IF (IOR==0) CYCLE FACE_LOOP2
+               IF (.NOT.VTK_OBST_FACE_DRAWN(OB,IOR)) CYCLE FACE_LOOP2
+               CALL SET_VTK_OBST_FACE_PATCH(OB,IOR,OB_PATCH)
+               PA => OB_PATCH
                IF (OB%RGB(1)==-1) THEN
-                  SELECT CASE(PA%IOR)
-                     CASE (-1)
-                        COLOR = REAL(SURFACE(OB%SURF_INDEX(-1))%RGB,FB)/255._FB
-                     CASE (1)
-                        COLOR = REAL(SURFACE(OB%SURF_INDEX(1))%RGB,FB)/255._FB
-                     CASE (-2)
-                        COLOR = REAL(SURFACE(OB%SURF_INDEX(-2))%RGB,FB)/255._FB
-                     CASE (2)
-                        COLOR = REAL(SURFACE(OB%SURF_INDEX(2))%RGB,FB)/255._FB
-                     CASE (-3)
-                        COLOR = REAL(SURFACE(OB%SURF_INDEX(-3))%RGB,FB)/255._FB
-                     CASE (3)
-                        COLOR = REAL(SURFACE(OB%SURF_INDEX(3))%RGB,FB)/255._FB
-                  ENDSELECT
+                  COLOR = REAL(SURFACE(OB%SURF_INDEX(IOR))%RGB,FB)/255._FB
                ELSE
                   COLOR = REAL(OB%RGB,FB)/255._FB
                ENDIF
-            ENDIF
-               
-            ! Initialize piece
-            CALL BUILD_VTK_SOLID_PHASE_GEOMETRY(NM, PA, PA_NCELLS, PA_NPOINTS,&
-               X_PTS, Y_PTS, Z_PTS, CONNECT, OFFSETS, VTKC_TYPE)
-            ALLOCATE(VERTICES(3,PA_NPOINTS))
-            DO II=1,PA_NPOINTS
-               VERTICES(1:3,II) = (/X_PTS(II),Y_PTS(II),Z_PTS(II)/)
-            ENDDO
-            ALLOCATE(COLORS(3,PA_NCELLS))
-            DO II=1,PA_NCELLS
-               COLORS(1:3,II) = COLOR
-            ENDDO
-            ALL_VERTICES(:,NPOINTS_ACCUM-NPOINTS_START+1:NPOINTS_ACCUM-NPOINTS_START+PA_NPOINTS) = VERTICES
-            ALL_CONNECT(NCONN_ACCUM-NCONN_START+1:NCONN_ACCUM-NCONN_START+PA_NCELLS*4) = CONNECT + NPOINTS_ACCUM-NPOINTS_START
-            OFFSETS = OFFSETS + LAST_OFFSET_VALUE
-            LAST_OFFSET_VALUE = OFFSETS(SIZE(OFFSETS))
-            ALL_OFFSETS(NOFFSETS_ACCUM-NOFFSETS_START+2:NOFFSETS_ACCUM-NOFFSETS_START+PA_NCELLS+1) = OFFSETS
-            ALL_VTKC_TYPE(NCELLS_ACCUM-NCELLS_START+1:NCELLS_ACCUM-NCELLS_START+PA_NCELLS) = VTKC_TYPE
-            ALL_COLORS(:,NCELLS_ACCUM-NCELLS_START+1:NCELLS_ACCUM-NCELLS_START+PA_NCELLS) = COLORS
-            NCONN_ACCUM = NCONN_ACCUM + PA_NCELLS*4
-            NCELLS_ACCUM = NCELLS_ACCUM + PA_NCELLS
-            NPOINTS_ACCUM = NPOINTS_ACCUM + PA_NPOINTS
-            NOFFSETS_ACCUM = NOFFSETS_ACCUM + PA_NCELLS
-            CALL DEALLOCATE_VTK_GAS_PHASE_GEOMETRY(X_PTS,Y_PTS,Z_PTS,OFFSETS,VTKC_TYPE,CONNECT)
-            DEALLOCATE(VERTICES)
-            DEALLOCATE(COLORS)
-         ENDDO PATCH_LOOP2
+
+               ! Initialize piece
+               CALL BUILD_VTK_SOLID_PHASE_GEOMETRY(NM, PA, PA_NCELLS, PA_NPOINTS,&
+                  X_PTS, Y_PTS, Z_PTS, CONNECT, OFFSETS, VTKC_TYPE)
+               ALLOCATE(VERTICES(3,PA_NPOINTS))
+               DO II=1,PA_NPOINTS
+                  VERTICES(1:3,II) = (/X_PTS(II),Y_PTS(II),Z_PTS(II)/)
+               ENDDO
+               ALLOCATE(COLORS(3,PA_NCELLS))
+               DO II=1,PA_NCELLS
+                  COLORS(1:3,II) = COLOR
+               ENDDO
+               ALL_VERTICES(:,NPOINTS_ACCUM-NPOINTS_START+1:NPOINTS_ACCUM-NPOINTS_START+PA_NPOINTS) = VERTICES
+               ALL_CONNECT(NCONN_ACCUM-NCONN_START+1:NCONN_ACCUM-NCONN_START+PA_NCELLS*4) = CONNECT + NPOINTS_ACCUM-NPOINTS_START
+               OFFSETS = OFFSETS + LAST_OFFSET_VALUE
+               LAST_OFFSET_VALUE = OFFSETS(SIZE(OFFSETS))
+               ALL_OFFSETS(NOFFSETS_ACCUM-NOFFSETS_START+2:NOFFSETS_ACCUM-NOFFSETS_START+PA_NCELLS+1) = OFFSETS
+               ALL_VTKC_TYPE(NCELLS_ACCUM-NCELLS_START+1:NCELLS_ACCUM-NCELLS_START+PA_NCELLS) = VTKC_TYPE
+               ALL_COLORS(:,NCELLS_ACCUM-NCELLS_START+1:NCELLS_ACCUM-NCELLS_START+PA_NCELLS) = COLORS
+               NCONN_ACCUM = NCONN_ACCUM + PA_NCELLS*4
+               NCELLS_ACCUM = NCELLS_ACCUM + PA_NCELLS
+               NPOINTS_ACCUM = NPOINTS_ACCUM + PA_NPOINTS
+               NOFFSETS_ACCUM = NOFFSETS_ACCUM + PA_NCELLS
+               CALL DEALLOCATE_VTK_GAS_PHASE_GEOMETRY(X_PTS,Y_PTS,Z_PTS,OFFSETS,VTKC_TYPE,CONNECT)
+               DEALLOCATE(VERTICES)
+               DEALLOCATE(COLORS)
+            ENDDO FACE_LOOP2
+         ENDDO OBST_LOOP2
          NOFFSETS_ACCUM = NOFFSETS_ACCUM + 1
          
          ! Write connectivity data to file
