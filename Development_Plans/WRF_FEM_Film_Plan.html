@@ -1,0 +1,1494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FDS WRF, FEM and Film Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Survey of current FDS capabilities and a phased plan for WRF two-way coupling, an FEM solid heat-transfer solver, and a FireFOAM-style surface liquid-film solver.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+:root {
+  /* Layout: engineering report. A contents rail beside one wide column; prose capped near 70 characters;
+     figures, tables and the roadmap use the full column and scroll in place on phones.
+     Tracks keep one hue each everywhere: 0 slate (shared), A indigo (atmosphere), B ochre (solids), C teal (water). */
+  --bg: #F4F6F9;
+  --surface: #FFFFFF;
+  --fg: #17202B;
+  --muted: #556072;
+  --line: #D7DDE6;
+  --line-strong: #AEB8C6;
+  --code-bg: #EBEFF4;
+  --solid: #DCE1E8;
+  --track-0: #4F5A6B;  --tint-0: #E6EAF0;
+  --track-a: #4146B5;  --tint-a: #E7E8FA;
+  --track-b: #8F5D00;  --tint-b: #F6EDDA;
+  --track-c: #0A737D;  --tint-c: #DCF1F2;
+  --fire: #CF3D16;
+  --bug: #B42318;      --tint-bug: #FBE8E5;
+  --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-math: "Cambria Math", "STIX Two Math", "Latin Modern Math", Georgia, serif;
+  color-scheme: light;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F131A; --surface: #161B24; --fg: #E3E8EF; --muted: #9BA5B6; --line: #283140; --line-strong: #47536A;
+    --code-bg: #1F2632; --solid: #2A3240;
+    --track-0: #A9B3C2; --tint-0: #1F2631;
+    --track-a: #A9ACFF; --tint-a: #23264A;
+    --track-b: #E8B455; --tint-b: #382B12;
+    --track-c: #52CBD4; --tint-c: #0F3236;
+    --fire: #FF7A4D; --bug: #FF8F80; --tint-bug: #3B1B17;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F131A; --surface: #161B24; --fg: #E3E8EF; --muted: #9BA5B6; --line: #283140; --line-strong: #47536A;
+  --code-bg: #1F2632; --solid: #2A3240;
+  --track-0: #A9B3C2; --tint-0: #1F2631;
+  --track-a: #A9ACFF; --tint-a: #23264A;
+  --track-b: #E8B455; --tint-b: #382B12;
+  --track-c: #52CBD4; --tint-c: #0F3236;
+  --fire: #FF7A4D; --bug: #FF8F80; --tint-bug: #3B1B17;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.62 var(--font-body); }
+img, svg { max-width: 100%; }
+[hidden] { display: none !important; }
+a { color: var(--track-a); text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--track-a); outline-offset: 2px; border-radius: 2px; }
+
+/* Page frame */
+.page {
+  max-width: 78rem; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 2.75rem 5rem;
+  display: grid; grid-template-columns: 13.5rem minmax(0, 1fr); gap: 3rem;
+}
+main { min-width: 0; max-width: 58rem; }
+main p, main > section > ul, main > section > ol, .prose ul, .prose ol { max-width: 42rem; }
+
+/* Contents rail */
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1.5rem); align-self: start;
+  max-height: calc(100vh - 3rem); overflow: auto; font-size: .86rem; padding-right: .25rem; }
+.toc h2 { font: 650 .72rem/1 var(--font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin: 0 0 .9rem; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: .15rem; }
+.toc ol ol { margin: .2rem 0 .45rem .75rem; padding-left: .7rem; border-left: 1px solid var(--line); gap: .05rem; font-size: .82rem; }
+.toc a { color: var(--fg); text-decoration: none; display: block; padding: .14rem 0; }
+.toc a:hover { color: var(--track-a); }
+.toc .tk { font: 700 .72rem var(--font-display); letter-spacing: .04em; margin-right: .35rem; }
+.tk-0 { color: var(--track-0); } .tk-a { color: var(--track-a); } .tk-b { color: var(--track-b); } .tk-c { color: var(--track-c); }
+
+@media (max-width: 1060px) {
+  .page { grid-template-columns: minmax(0, 1fr); gap: 1.75rem; }
+  .toc { position: static; max-height: none; background: var(--surface); border: 1px solid var(--line); border-radius: .6rem; padding: 1rem 1.1rem; }
+  .toc > ol { grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); column-gap: 1.25rem; }
+  .toc ol ol { display: none; }
+}
+
+/* Type */
+h1, h2, h3, h4, h5 { font-family: var(--font-display); text-wrap: balance; line-height: 1.18; color: var(--fg); }
+h1 { font-size: clamp(1.9rem, 1.2rem + 2.6vw, 2.75rem); font-weight: 760; font-stretch: 108%; letter-spacing: -.012em; margin: .35rem 0 1rem; max-width: 22ch; }
+h2 { font-size: clamp(1.45rem, 1.2rem + 1vw, 1.85rem); font-weight: 720; font-stretch: 106%; margin: .35rem 0 1rem; }
+h3 { font-size: 1.22rem; font-weight: 680; margin: 2.4rem 0 .7rem; }
+h4 { font-size: 1.02rem; font-weight: 650; margin: 1.6rem 0 .45rem; }
+h5 { font-size: .74rem; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 .4rem; }
+p { margin: 0 0 .9rem; }
+ul, ol { margin: 0 0 1rem; padding-left: 1.25rem; }
+li { margin: .22rem 0; }
+li > ul { margin: .25rem 0 .35rem; }
+strong { font-weight: 600; }
+code { font-family: var(--font-mono); font-size: .84em; background: var(--code-bg); padding: .06em .32em; border-radius: .25rem; overflow-wrap: anywhere; }
+pre { font-family: var(--font-mono); font-size: .82rem; line-height: 1.55; background: var(--code-bg); padding: 1rem 1.1rem; border-radius: .5rem; overflow-x: auto; margin: 0 0 1.1rem; }
+pre code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; }
+sub, sup { font-size: .72em; line-height: 0; }
+
+/* Masthead */
+.masthead { padding-bottom: .25rem; }
+.kicker { font: 650 .76rem/1 var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.dek { font-size: 1.1rem; line-height: 1.55; color: var(--fg); max-width: 40rem; }
+.meta { display: flex; flex-wrap: wrap; gap: .6rem 2rem; margin: 1.4rem 0 0; font-size: .86rem; }
+.meta div { min-width: 0; }
+.meta dt { font: 650 .7rem/1.4 var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.meta dd { margin: .1rem 0 0; }
+
+/* Sections */
+main > section { margin-top: 3.75rem; padding-top: 1.5rem; border-top: 1px solid var(--line); scroll-margin-top: 1rem; }
+main h3, main h4 { scroll-margin-top: 1rem; }
+.eyebrow { display: inline-flex; align-items: center; gap: .5rem; font: 700 .72rem/1 var(--font-display); letter-spacing: .09em; text-transform: uppercase; padding: .32rem .55rem; border-radius: .3rem; }
+.ey-0 { color: var(--track-0); background: var(--tint-0); }
+.ey-a { color: var(--track-a); background: var(--tint-a); }
+.ey-b { color: var(--track-b); background: var(--tint-b); }
+.ey-c { color: var(--track-c); background: var(--tint-c); }
+.lede { font-size: 1.04rem; }
+
+/* Callouts */
+.callout { border-radius: .55rem; padding: 1rem 1.15rem; margin: 1.2rem 0 1.4rem; max-width: 46rem; }
+.callout > :last-child { margin-bottom: 0; }
+.callout h5 { margin-bottom: .35rem; }
+.co-0 { background: var(--tint-0); } .co-a { background: var(--tint-a); } .co-b { background: var(--tint-b); } .co-c { background: var(--tint-c); }
+.co-0 h5 { color: var(--track-0); } .co-a h5 { color: var(--track-a); } .co-b h5 { color: var(--track-b); } .co-c h5 { color: var(--track-c); }
+
+/* Summary track cards */
+.tracks { display: grid; gap: 1rem; margin: 1.5rem 0; }
+.track { background: var(--surface); border: 1px solid var(--line); border-radius: .6rem; padding: 1.15rem 1.3rem 1.25rem; min-width: 0; }
+.track-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; }
+.track-head h3 { margin: 0; font-size: 1.15rem; }
+.track-title { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; min-width: 0; }
+.pm { font: 500 .8rem/1.3 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.track-cols { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 1rem 1.6rem; margin-top: .9rem; }
+.track-cols > div { min-width: 0; }
+.track-cols p, .track-cols ul { font-size: .92rem; margin: 0; }
+.track-cols ul { padding-left: 1.05rem; }
+.track-cols li { margin: .18rem 0; }
+.track.slim .track-cols { grid-template-columns: 1fr; }
+@media (max-width: 760px) { .track-cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* Effort chart */
+.effort { display: grid; gap: .55rem; }
+.e-row, .e-scale { display: grid; grid-template-columns: 11rem minmax(0, 1fr) 4.6rem; gap: .9rem; align-items: center; }
+.e-label { font-size: .9rem; }
+.e-bar { position: relative; height: 1.05rem;
+  background-image: repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px calc(100% / 6));
+  border-right: 1px solid var(--line); }
+.e-bar span { position: absolute; top: 0; bottom: 0; }
+.e-lo { left: 0; border-radius: 2px 0 0 2px; }
+.e-hi { opacity: .32; border-radius: 0 2px 2px 0; }
+.fill-0 { background: var(--track-0); } .fill-a { background: var(--track-a); } .fill-b { background: var(--track-b); } .fill-c { background: var(--track-c); }
+.e-val { font: 500 .84rem var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.e-ticks { position: relative; height: 1.1rem; font: .72rem var(--font-mono); color: var(--muted); }
+.e-ticks span { position: absolute; top: 0; transform: translateX(-50%); }
+.e-total { border-top: 1px solid var(--line); padding-top: .55rem; font-weight: 600; }
+@media (max-width: 560px) { .e-row, .e-scale { grid-template-columns: 6.8rem minmax(0, 1fr) 3.9rem; gap: .55rem; } .e-label { font-size: .8rem; } }
+
+/* Figures */
+figure { margin: 1.6rem 0 1.9rem; background: var(--surface); border: 1px solid var(--line); border-radius: .6rem; padding: 1.1rem 1.1rem .95rem; }
+.fig-scroll { overflow-x: auto; }
+.fig-scroll > svg { display: block; width: 100%; height: auto; min-width: 560px; }
+figcaption { font-size: .88rem; line-height: 1.5; color: var(--muted); margin-top: .8rem; max-width: 46rem; }
+figcaption b { color: var(--fg); font-weight: 600; }
+.diagram { color: var(--fg); font-family: var(--font-body); font-size: 12px; }
+.diagram text { fill: currentColor; }
+.diagram .t-muted { fill: var(--muted); }
+.diagram .t-a { fill: var(--track-a); } .diagram .t-b { fill: var(--track-b); } .diagram .t-c { fill: var(--track-c); } .diagram .t-fire { fill: var(--fire); }
+.diagram .t-on { fill: var(--surface); }
+.diagram .t-bold { font-weight: 600; }
+.diagram .t-head { font-family: var(--font-display); font-weight: 680; font-size: 13.5px; }
+.diagram .t-small { font-size: 10.5px; }
+.diagram .sub { font-size: 8.5px; }
+.halo { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.f-none { fill: none; } .f-surface { fill: var(--surface); } .f-solid { fill: var(--solid); } .f-fg { fill: currentColor; }
+.f-a { fill: var(--track-a); } .f-b { fill: var(--track-b); } .f-c { fill: var(--track-c); } .f-fire { fill: var(--fire); }
+.f-tint-a { fill: var(--tint-a); } .f-tint-b { fill: var(--tint-b); } .f-tint-c { fill: var(--tint-c); }
+.s-fg { stroke: currentColor; } .s-muted { stroke: var(--muted); } .s-line { stroke: var(--line-strong); }
+.s-a { stroke: var(--track-a); } .s-b { stroke: var(--track-b); } .s-c { stroke: var(--track-c); } .s-on { stroke: var(--surface); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: .55rem; margin: 1rem 0 1.5rem; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { text-align: left; vertical-align: top; padding: .6rem .8rem; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+th { font: 650 .7rem/1.3 var(--font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); background: var(--surface); white-space: nowrap; }
+td:first-child { white-space: nowrap; }
+td.wrap, td.wrap:first-child { white-space: normal; }
+.t-files { min-width: 40rem; }
+.t-files td:first-child { width: 11rem; }
+.t-inv { min-width: 38rem; }
+.t-inv td:first-child { font-weight: 600; white-space: normal; width: 10rem; }
+.t-inv td:last-child { width: 13rem; }
+.t-risk { min-width: 36rem; }
+.t-risk td { width: 50%; }
+.t-risk td:first-child { white-space: normal; }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Decision blocks */
+.decisions { list-style: none; padding: 0; margin: 1rem 0 1.5rem; display: grid; gap: 1.2rem; counter-reset: dec; max-width: 46rem; }
+.decisions > li { counter-increment: dec; display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: 0 .75rem; margin: 0; }
+.decisions > li::before { content: counter(dec); font: 700 .95rem/1.55 var(--font-display); color: var(--track-a); text-align: right; font-variant-numeric: tabular-nums; }
+.decisions.dec-b > li::before { color: var(--track-b); }
+.decisions.dec-c > li::before { color: var(--track-c); }
+.decisions > li > div { min-width: 0; }
+.decisions h4 { margin: 0 0 .3rem; font-size: 1rem; }
+.decisions p, .decisions ul { margin-bottom: .5rem; }
+
+/* Phases */
+.phases { display: grid; gap: .8rem; margin: 1rem 0 1.6rem; }
+.phase { display: grid; grid-template-columns: 3.8rem minmax(0, 1fr); gap: 0 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: .55rem; padding: 1rem 1.15rem; }
+.pid { font: 720 1.1rem/1.3 var(--font-display); font-stretch: 106%; }
+.ph-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .2rem 1rem; margin-bottom: .35rem; }
+.ph-head h4 { margin: 0; font-size: 1rem; }
+.phase ul { margin: 0 0 .5rem; font-size: .93rem; }
+.exit { font-size: .9rem; border-radius: .35rem; padding: .5rem .7rem; margin: .4rem 0 0; }
+.exit b { font: 700 .68rem var(--font-display); letter-spacing: .08em; text-transform: uppercase; margin-right: .4rem; }
+.ph-a .pid, .ph-a .exit b { color: var(--track-a); } .ph-a .exit { background: var(--tint-a); }
+.ph-b .pid, .ph-b .exit b { color: var(--track-b); } .ph-b .exit { background: var(--tint-b); }
+.ph-c .pid, .ph-c .exit b { color: var(--track-c); } .ph-c .exit { background: var(--tint-c); }
+.ph-0 .pid, .ph-0 .exit b { color: var(--track-0); } .ph-0 .exit { background: var(--tint-0); }
+@media (max-width: 560px) { .phase { grid-template-columns: minmax(0, 1fr); } }
+
+/* Equations */
+.eq { font-family: var(--font-math); font-size: 1.06rem; line-height: 1.7; background: var(--code-bg); border-radius: .45rem; padding: .7rem 1rem; margin: .6rem 0 1rem; overflow-x: auto; white-space: nowrap; max-width: 46rem; }
+.eq-label { font: 650 .7rem var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 1.1rem 0 0; }
+.v { font-style: italic; }
+.bv { font-weight: 700; font-style: normal; }
+
+/* Roadmap */
+.gantt { min-width: 46rem; table-layout: fixed; border-collapse: separate; border-spacing: 4px; font-size: .84rem; }
+.gantt th, .gantt td { border: 0; }
+.gantt th { text-align: center; padding: .35rem; }
+.gantt th:first-child { text-align: left; width: 7.5rem; }
+.gantt td { padding: .5rem .55rem; border-radius: .35rem; line-height: 1.35; white-space: normal; }
+.gantt td:first-child { font: 650 .82rem var(--font-display); padding-left: .2rem; background: none; }
+.gantt td strong { display: block; font: 700 .9rem var(--font-display); }
+.gantt .g-a { background: var(--tint-a); } .gantt .g-a strong { color: var(--track-a); }
+.gantt .g-b { background: var(--tint-b); } .gantt .g-b strong { color: var(--track-b); }
+.gantt .g-c { background: var(--tint-c); } .gantt .g-c strong { color: var(--track-c); }
+.deps { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .6rem 1.5rem; padding: 0; list-style: none; max-width: none; font-size: .92rem; }
+.deps li { margin: 0; padding: .55rem .75rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--surface); }
+
+/* Issues */
+.issues { margin: 1rem 0; display: grid; gap: 0; }
+.issue { display: grid; grid-template-columns: 7.8rem minmax(0, 1fr); gap: .35rem 1.1rem; padding: 1rem 0; border-top: 1px solid var(--line); }
+.issue:last-child { border-bottom: 1px solid var(--line); }
+.issue h4 { margin: 0 0 .3rem; font-size: 1rem; }
+.issue p, .issue ul { margin-bottom: .4rem; font-size: .94rem; }
+.tag { display: inline-block; align-self: start; justify-self: start; font: 650 .68rem/1 var(--font-display); letter-spacing: .07em; text-transform: uppercase; padding: .35rem .5rem; border-radius: 1rem; white-space: nowrap; }
+.tag-bug { color: var(--bug); background: var(--tint-bug); }
+.tag-doc { color: var(--track-0); background: var(--tint-0); }
+.tag-code { color: var(--track-a); background: var(--tint-a); }
+@media (max-width: 560px) { .issue { grid-template-columns: minmax(0, 1fr); } }
+
+.refs { padding-left: 1.2rem; font-size: .92rem; }
+.refs li { margin: .45rem 0; }
+footer.colophon { margin-top: 3.5rem; padding-top: 1.25rem; border-top: 1px solid var(--line); font-size: .84rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav class="toc" aria-label="Contents">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#summary">At a glance</a></li>
+    <li><a href="#phase-0"><span class="tk tk-0">0</span>Shared foundations</a></li>
+    <li><a href="#wrf"><span class="tk tk-a">A</span>WRF coupling</a>
+      <ol>
+        <li><a href="#wrf-today">What exists today</a></li>
+        <li><a href="#wrf-arch">Architecture</a></li>
+        <li><a href="#wrf-decisions">Design decisions</a></li>
+        <li><a href="#wrf-files">FDS work by file</a></li>
+        <li><a href="#wrf-side">WRF-side work</a></li>
+        <li><a href="#wrf-phases">Phases</a></li>
+        <li><a href="#wrf-vv">Verification &amp; validation</a></li>
+        <li><a href="#wrf-risks">Risks</a></li>
+      </ol>
+    </li>
+    <li><a href="#fem"><span class="tk tk-b">B</span>FEM solid heat transfer</a>
+      <ol>
+        <li><a href="#fem-today">What exists today</a></li>
+        <li><a href="#fem-rec">Recommendation</a></li>
+        <li><a href="#fem-form">Formulation</a></li>
+        <li><a href="#fem-mesh">Meshes and input</a></li>
+        <li><a href="#fem-interface">Gas–solid interface</a></li>
+        <li><a href="#fem-pyro">Pyrolysis in 3-D</a></li>
+        <li><a href="#fem-mpi">Parallelization</a></li>
+        <li><a href="#fem-files">Work by file</a></li>
+        <li><a href="#fem-phases">Phases</a></li>
+        <li><a href="#fem-vv">Verification &amp; validation</a></li>
+        <li><a href="#fem-risks">Risks</a></li>
+      </ol>
+    </li>
+    <li><a href="#film"><span class="tk tk-c">C</span>Surface liquid film</a>
+      <ol>
+        <li><a href="#film-today">What exists today</a></li>
+        <li><a href="#film-parity">FireFOAM parity</a></li>
+        <li><a href="#film-eq">Governing equations</a></li>
+        <li><a href="#film-disc">Discretization</a></li>
+        <li><a href="#film-coupling">Coupling</a></li>
+        <li><a href="#film-mpi">MPI</a></li>
+        <li><a href="#film-files">Work by file</a></li>
+        <li><a href="#film-phases">Phases</a></li>
+        <li><a href="#film-risks">Risks</a></li>
+      </ol>
+    </li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#decisions">Decisions needed</a></li>
+    <li><a href="#issues">Issues found</a></li>
+    <li><a href="#references">References</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="masthead">
+  <p class="kicker">Fire Dynamics Simulator · development plan</p>
+  <h1>WRF two-way coupling, FEM solid heat transfer, and a surface liquid-film solver</h1>
+  <p class="dek">What FDS does today, and a phased plan for three new capabilities. The first is two-way coupling with the WRF weather model, in the spirit of WRF-SFIRE. The second is a finite-element solver for complex 3-D conduction in solids. The third is a FireFOAM-style thin-film model for water flowing over surfaces.</p>
+  <dl class="meta">
+    <div><dt>Baseline</dt><dd><code>firemodels/fds</code> at <code>9bb47f3</code>, fork <code>johodges/fds</code></dd></div>
+    <div><dt>Prepared</dt><dd>October 2026</dd></div>
+    <div><dt>Method</dt><dd>Survey of <code>Source/*.f90</code>, the four manuals, Verification and Validation</dd></div>
+    <div><dt>Line references</dt><dd>Valid at the baseline commit</dd></div>
+  </dl>
+</header>
+
+<!-- ============================================================ SUMMARY -->
+<section id="summary">
+  <span class="eyebrow ey-0">Summary</span>
+  <h2>At a glance</h2>
+  <p class="lede">Once a small set of shared foundations is in place, the three tracks are independent of each other. Effort figures are rough person-month ranges for an experienced FDS developer. Refine them after Phase 0.</p>
+
+  <div class="tracks">
+    <article class="track">
+      <div class="track-head">
+        <div class="track-title"><span class="eyebrow ey-a">Track A</span><h3>Two-way coupling with WRF</h3></div>
+        <span class="pm">14–20 pm FDS + 3–5 pm WRF</span>
+      </div>
+      <div class="track-cols">
+        <div><h5>Approach</h5><p>FDS runs as a fine-scale LES nest inside WRF. WRF supplies time-varying boundary and initial fields. FDS returns the fire's heat, water vapour and smoke on WRF's grid, injected through WRF-Fire's tendency code (the SFIRE analogue). Offline one-way first, then online two-way.</p></div>
+        <div><h5>Reuses</h5><ul><li>OPEN boundaries and DFSEM</li><li><code>PATCH_VELOCITY_FLUX</code> forcing pattern</li><li>CSVF initial fields</li><li><code>UPDATE_HRR</code> integrals</li><li>External-control heartbeat</li><li>Unused <code>ORIGIN_LAT/LON</code>, <code>NORTH_BEARING</code></li></ul></div>
+        <div><h5>Obstacles</h5><ul><li>Wind is one U(z) profile per mesh</li><li>Inflow T and humidity are uniform</li><li><code>MPI_COMM_WORLD</code> hard-coded 307 times</li><li>No geolocation or projection</li><li>DT is not clipped to exchange times</li></ul></div>
+      </div>
+    </article>
+
+    <article class="track">
+      <div class="track-head">
+        <div class="track-title"><span class="eyebrow ey-b">Track B</span><h3>FEM solid heat transfer</h3></div>
+        <span class="pm">18–28 pm</span>
+      </div>
+      <div class="track-cols">
+        <div><h5>Approach</h5><p>An unstructured 3-D conduction and pyrolysis solver that <strong>replaces HT3D</strong>. It uses linear tetrahedra with a lumped mass matrix (equivalent to vertex-centred finite volumes), implicit time stepping, and HYPRE PCG/AMG. The 1-D solver stays the default for ordinary surfaces.</p></div>
+        <div><h5>Reuses</h5><ul><li>Tetrahedra already stored in <code>GEOMETRY%VOLUS</code></li><li><code>.bingeom</code>, <code>BOX2TETRA</code></li><li><code>PROC_MATL</code> tables, <code>PYROLYSIS</code> kinetics</li><li><code>HYPRE_INTERFACE</code></li><li>HT3D verification suite, including an ANSYS I-beam benchmark</li></ul></div>
+        <div><h5>Obstacles</h5><ul><li>HT3D is direction-split 1-D lines with replicated state</li><li>Face-centric data, Cartesian <code>IOR</code> assumptions</li><li><code>PYROLYSIS</code> reads gas arrays directly</li><li>Solid partition tied to gas meshes</li></ul></div>
+      </div>
+    </article>
+
+    <article class="track">
+      <div class="track-head">
+        <div class="track-title"><span class="eyebrow ey-c">Track C</span><h3>Surface liquid film</h3></div>
+        <span class="pm">14–22 pm</span>
+      </div>
+      <div class="track-cols">
+        <div><h5>Approach</h5><p>Depth-averaged film mass, momentum and energy, solved on a dedicated surface mesh: wall-cell quads for OBSTs and GEOM triangles for complex shapes. The film is an extra implicit node in the solid's surface heat balance. It couples to sprays (absorb, drip, separate, splash) and to the gas through the wall mass-flux path.</p></div>
+        <div><h5>Reuses</h5><ul><li>Surface-droplet hooks in <code>MOVE_PARTICLES</code></li><li>Droplet evaporation correlations</li><li>Wall-function mass transfer from condensation</li><li><code>CALCULATE_ZZ_F</code> mass-flux path</li><li><code>EDGE_FACES</code> triangle adjacency</li></ul></div>
+        <div><h5>Obstacles</h5><ul><li>No wall-cell connectivity</li><li>CFACEs have no adjacency</li><li>Mixed WALL and CFACE surfaces</li><li>Droplet–wall coupling is explicit and lagged</li></ul></div>
+      </div>
+    </article>
+
+    <article class="track slim">
+      <div class="track-head">
+        <div class="track-title"><span class="eyebrow ey-0">Phase 0</span><h3>Shared foundations</h3></div>
+        <span class="pm">3–5 pm</span>
+      </div>
+      <div class="track-cols">
+        <div><p>An FDS MPI communicator, a surface-mesh layer, a sparse-solver wrapper, and an explicit solid–gas exchange contract. Each is small, and together they unblock all three tracks.</p></div>
+      </div>
+    </article>
+  </div>
+
+  <figure>
+    <div class="effort" role="img" aria-label="Effort ranges in person-months: Phase 0, 3 to 5; Track A FDS side, 14 to 20; Track A WRF side, 3 to 5; Track B, 18 to 28; Track C, 14 to 22; total 52 to 80.">
+      <div class="e-row"><span class="e-label">Phase 0, shared</span><div class="e-bar"><span class="e-lo fill-0" style="width:10%"></span><span class="e-hi fill-0" style="left:10%;width:6.667%"></span></div><span class="e-val">3–5</span></div>
+      <div class="e-row"><span class="e-label">A · WRF, FDS side</span><div class="e-bar"><span class="e-lo fill-a" style="width:46.667%"></span><span class="e-hi fill-a" style="left:46.667%;width:20%"></span></div><span class="e-val">14–20</span></div>
+      <div class="e-row"><span class="e-label">A · WRF, WRF side</span><div class="e-bar"><span class="e-lo fill-a" style="width:10%"></span><span class="e-hi fill-a" style="left:10%;width:6.667%"></span></div><span class="e-val">3–5</span></div>
+      <div class="e-row"><span class="e-label">B · FEM solids</span><div class="e-bar"><span class="e-lo fill-b" style="width:60%"></span><span class="e-hi fill-b" style="left:60%;width:33.333%"></span></div><span class="e-val">18–28</span></div>
+      <div class="e-row"><span class="e-label">C · Surface film</span><div class="e-bar"><span class="e-lo fill-c" style="width:46.667%"></span><span class="e-hi fill-c" style="left:46.667%;width:26.667%"></span></div><span class="e-val">14–22</span></div>
+      <div class="e-scale"><span></span><div class="e-ticks" aria-hidden="true"><span style="left:0%">0</span><span style="left:16.667%">5</span><span style="left:33.333%">10</span><span style="left:50%">15</span><span style="left:66.667%">20</span><span style="left:83.333%">25</span><span style="left:100%">30</span></div><span class="e-val" style="color:var(--muted)">pm</span></div>
+      <div class="e-row e-total"><span class="e-label">Total</span><span></span><span class="e-val">52–80</span></div>
+    </div>
+    <figcaption><b>Effort by track, in person-months.</b> The solid bar is the low estimate, and the lighter extension reaches the high estimate. With three developers working in parallel (one per track), the plan runs about 18 months.</figcaption>
+  </figure>
+
+  <h3>Recommended order</h3>
+  <ol>
+    <li><strong>Phase 0 first.</strong> It is small and unblocks all three tracks.</li>
+    <li><strong>Then run the tracks in parallel.</strong> A1 (offline WRF → FDS) and B1 (serial FEM conduction) deliver results earliest.</li>
+    <li><strong>Film work</strong> starts on Cartesian walls over 1-D solids. It moves onto FEM solid surfaces once B5 lands.</li>
+  </ol>
+</section>
+
+<!-- ============================================================ PHASE 0 -->
+<section id="phase-0">
+  <span class="eyebrow ey-0">Phase 0</span>
+  <h2>Shared foundations</h2>
+
+  <h3 id="p0-comm">0.1 An FDS communicator</h3>
+  <p><strong>Today.</strong> <code>MPI_COMM_WORLD</code> appears 307 times in 11 files: main 152, ccib 74, pres 26, geom 26, dump 7, fire 6, hvac 5, read 4, func 3, turb 2 and radi 2. FDS also owns MPI start-up and shut-down:</p>
+  <ul>
+    <li><code>MPI_INIT_THREAD</code> at <code>main.f90:89</code>.</li>
+    <li><code>MPI_FINALIZE</code> then <code>STOP</code> in <code>END_FDS</code> (<code>main.f90:1794-1869</code>).</li>
+    <li><code>MPI_ABORT</code> on WORLD at <code>main.f90:3987</code> and <code>ccib.f90:5124</code>.</li>
+  </ul>
+  <p>Several communicators are derived from WORLD: <code>MPI_COMM_NEIGHBORS</code> (<code>main.f90:1238-1260</code>) and <code>ZSL_COMM</code> (<code>pres.f90:4470</code>). The MKL cluster solver is handed WORLD directly (<code>pres.f90:3361</code> ff.).</p>
+  <p><strong>Change.</strong></p>
+  <ul>
+    <li>Add <code>TYPE(MPI_COMM) :: MPI_COMM_FDS</code> next to <code>MPI_COMM_NEIGHBORS</code> (<code>cons.f90:389</code>). Standalone it is WORLD; coupled, it is FDS's colour of an <code>MPI_COMM_SPLIT</code>.</li>
+    <li>Take <code>MY_RANK</code> and <code>N_MPI_PROCESSES</code> from it, and replace every use of WORLD. This is mechanical because the code uses <code>MPI_F08</code>.</li>
+    <li>Skip <code>MPI_INIT</code> when <code>MPI_INITIALIZED</code> is already true, and let the coupler finalize in coupled mode.</li>
+  </ul>
+  <p><strong>Acceptance.</strong> The whole verification suite is bit-identical. <strong>Needed by</strong> A2 (MPMD with WRF), plus B3 and C3 (sub-communicators for solid and film ranks).</p>
+
+  <h3 id="p0-surface">0.2 Surface-mesh layer</h3>
+  <p>A new module (for example <code>smsh.f90</code>) that holds a conformal polygonal surface mesh with edge adjacency. It is independent of the gas grid and carries conservative maps to the gas-side boundary faces.</p>
+  <ul>
+    <li><strong>Facets</strong> store area, unit normal, centroid, vertices and owner mesh or rank. <strong>Edges</strong> store two facets, fold angle and edge vector.</li>
+    <li><strong>Maps</strong> from each facet to <code>WALL(IW)</code> or <code>CFACE(ICF)</code>, with area weights.</li>
+    <li><strong>Halo exchange</strong> through a new <code>MESH_EXCHANGE</code> code with persistent requests. Model it on codes 66 and 67 (<code>main.f90:3341-3372</code>, <code>3726-3760</code>) and <code>INITIALIZE_BACK_WALL_EXCHANGE</code> (<code>main.f90:2204-2460</code>).</li>
+    <li><strong>Static in v1.</strong> Stop with an error if a filmed or FEM surface belongs to a removable OBST. Dynamic rebuild later hooks into <code>REASSIGN_WALL_CELLS</code> (<code>init.f90:4909</code>).</li>
+  </ul>
+
+  <h4>Builders</h4>
+  <ol>
+    <li><strong>Cartesian OBST surfaces.</strong> One quad per solid WALL cell. Neighbours across the four edges are derived from <code>CELL%WALL_INDEX(-3:3)</code> (<code>type.f90:2174-2186</code>), as the figure shows. Cross-mesh neighbours use <code>FIND_WALL_INDEX</code> (<code>func.f90:5501</code>) and the remote <code>CELL</code> data from <code>EXCHANGE_GEOMETRY_INFO</code> (<code>func.f90:5377</code>).</li>
+    <li><strong>GEOM surfaces.</strong> Use <code>GEOMETRY%FACES</code> with <code>FACE_EDGES</code> and <code>EDGE_FACES</code> (<code>type.f90:1191</code>, built by <code>GET_GEOM_EDGES</code> at <code>geom.f90:946</code>). Closed manifold geometry is already enforced (<code>geom.f90:876-893</code>), so every edge has two triangles. Add optional refinement to about one gas cell. Map facets to CFACEs through <code>CUT_FACE%BODTRI</code> (<code>type.f90:1305</code>) with area weights; the map is many-to-many because cut cells can be merged or blocked.</li>
+    <li><strong>FEM boundary triangles</strong> from Track B.</li>
+  </ol>
+
+  <figure>
+    <div class="fig-scroll">
+      <svg class="diagram" viewBox="0 0 620 256" role="img" aria-label="Cross-section of a block standing on a floor. A facet on the block top has a planar neighbour beside it and a convex-edge neighbour on the block's side face. A floor facet next to the block has a planar neighbour beside it and a concave-corner neighbour on the block's side face.">
+        <defs>
+          <marker id="adj-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-c"/></marker>
+        </defs>
+        <g class="s-line" stroke-width="1" stroke-dasharray="2 3"><line x1="40" y1="20" x2="40" y2="200"/><line x1="100" y1="20" x2="100" y2="200"/><line x1="160" y1="20" x2="160" y2="200"/><line x1="220" y1="20" x2="220" y2="200"/><line x1="280" y1="20" x2="280" y2="200"/><line x1="340" y1="20" x2="340" y2="200"/><line x1="400" y1="20" x2="400" y2="200"/><line x1="460" y1="20" x2="460" y2="200"/><line x1="520" y1="20" x2="520" y2="200"/><line x1="580" y1="20" x2="580" y2="200"/><line x1="40" y1="20" x2="580" y2="20"/><line x1="40" y1="80" x2="580" y2="80"/><line x1="40" y1="140" x2="580" y2="140"/></g>
+        <rect x="40" y="200" width="540" height="46" class="f-solid"/>
+        <rect x="220" y="80" width="120" height="120" class="f-solid"/>
+        <g class="s-fg" stroke-width="2.5"><line x1="42" y1="200" x2="98" y2="200"/><line x1="102" y1="200" x2="158" y2="200"/><line x1="162" y1="200" x2="218" y2="200"/><line x1="220" y1="198" x2="220" y2="142"/><line x1="220" y1="138" x2="220" y2="82"/><line x1="222" y1="80" x2="278" y2="80"/><line x1="282" y1="80" x2="338" y2="80"/><line x1="340" y1="82" x2="340" y2="138"/><line x1="340" y1="142" x2="340" y2="198"/><line x1="342" y1="200" x2="398" y2="200"/><line x1="402" y1="200" x2="458" y2="200"/><line x1="462" y1="200" x2="518" y2="200"/><line x1="522" y1="200" x2="578" y2="200"/></g>
+        <line x1="222" y1="80" x2="278" y2="80" class="s-c" stroke-width="5.5"/>
+        <line x1="162" y1="200" x2="218" y2="200" class="s-c" stroke-width="5.5"/>
+        <path d="M257 67 H303" class="f-none s-c" stroke-width="1.6" marker-end="url(#adj-arrow)"/>
+        <text x="280" y="58" text-anchor="middle" class="t-c">planar</text>
+        <path d="M238 69 C 224 55, 204 62, 208 104" class="f-none s-c" stroke-width="1.6" marker-end="url(#adj-arrow)"/>
+        <text x="200" y="47" text-anchor="end" class="t-c">convex edge</text>
+        <path d="M200 189 Q 202 168 211 166" class="f-none s-c" stroke-width="1.6" marker-end="url(#adj-arrow)"/>
+        <text x="196" y="150" text-anchor="end" class="t-c">concave corner</text>
+        <path d="M178 188 H136" class="f-none s-c" stroke-width="1.6" marker-end="url(#adj-arrow)"/>
+        <text x="157" y="180" text-anchor="middle" class="t-c">planar</text>
+        <text x="250" y="102" text-anchor="middle" class="t-c t-bold">F</text>
+        <text x="190" y="226" text-anchor="middle" class="t-c t-bold">G</text>
+        <text x="470" y="112" text-anchor="middle" class="t-muted">gas cells</text>
+        <text x="470" y="228" text-anchor="middle" class="t-muted">solid (OBST)</text>
+      </svg>
+    </div>
+    <figcaption><b>Wall-cell facets find their neighbours in three ways.</b> For gas cell G, face normal n and tangential direction d, the three cases are:
+      <br>planar: <code>CELL(G+d)%WALL_INDEX(−n)</code>
+      <br>concave corner: <code>CELL(G)%WALL_INDEX(d)</code>
+      <br>convex edge: <code>CELL(G+d−n)%WALL_INDEX(−d)</code>
+      <br>Particle motion follows these links implicitly today (<code>part.f90:2515-2553</code>), but no structure stores them. The film solver needs them.</figcaption>
+  </figure>
+
+  <h3 id="p0-solver">0.3 Sparse linear-solver wrapper</h3>
+  <ul>
+    <li>Generalize <code>HYPRE_INTERFACE</code> (<code>imkl.f90:200-543</code>) into a small API:
+      <ul>
+        <li>IJ assembly, including off-process entries.</li>
+        <li>PCG for SPD systems and GMRES for others.</li>
+        <li>BoomerAMG with setup reuse.</li>
+        <li>A communicator argument.</li>
+        <li>Runtime tolerances and iteration limits. Today these are compile-time <code>PARAMETER</code>s at <code>imkl.f90:204-229</code>.</li>
+      </ul>
+    </li>
+    <li>Keep PARDISO (<code>imkl.f90:7-96</code>) as an optional single-rank direct solver.</li>
+    <li>Copy the global unknown numbering from <code>GET_MATRIX_INDEXES_H</code> (<code>pres.f90:5406-5513</code>).</li>
+    <li>HYPRE is already fetched by default in <code>CMakeLists.txt</code> (<code>USE_HYPRE</code> is ON), so this adds no new dependency.</li>
+  </ul>
+
+  <h3 id="p0-contract">0.4 Solid–gas exchange contract</h3>
+  <p>Make explicit the per-face contract the 1-D solver already satisfies. Then the FEM and film solvers can plug in without touching gas-phase code.</p>
+  <div class="table-wrap">
+    <table class="t-files">
+      <thead><tr><th>Direction</th><th>Fields on <code>BOUNDARY_PROP1/2</code></th></tr></thead>
+      <tbody>
+        <tr><td>Gas → solid</td><td class="wrap"><code>TMP_G</code>, <code>HEAT_TRANS_COEF</code>, <code>Q_RAD_IN</code>, <code>ZZ_G</code>, <code>Q_CONDENSE</code>, <code>B2%LP_CPUA</code></td></tr>
+        <tr><td>Solid → gas</td><td class="wrap"><code>TMP_F</code>; <code>Q_CON_F</code>, time-averaged over sub-steps (<code>wall.f90:2920-2928</code>, <code>2968-2969</code>); <code>Q_RAD_OUT</code>; <code>EMISSIVITY</code>; <code>M_DOT_G_PP_ADJUST/ACTUAL</code>; <code>Q_DOT_G_PP</code>; <code>M_DOT_PART_ACTUAL</code>; <code>T_IGN</code>; <code>BURNAWAY</code></td></tr>
+        <tr><td>Consumers</td><td class="wrap"><code>CALCULATE_ZZ_F</code> (<code>wall.f90:1036</code>), <code>divg.f90:532-554</code>, <code>ccib.f90:10948-11119</code>, <code>radi.f90:4220-4250</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Split the pointwise kinetics in <code>PYROLYSIS</code> (<code>wall.f90:3197-3607</code>) from its direct reads of gas arrays (<code>ZZ</code>, <code>TMP</code>, <code>PBAR</code>, <code>RSUM</code>, <code>RDX</code> at <code>IIG/JJG/KKG</code>). The result is a pure routine of temperature, component densities and local gas state, shared by the 1-D and FEM solvers.</p>
+
+  <h3 id="p0-rules">0.5 Ground rules for all tracks</h3>
+  <ul>
+    <li><strong>Opt-in only.</strong> Every feature is off by default, and default inputs give bit-identical results (Firebot regression).</li>
+    <li><strong>Each phase ships with</strong> Verification cases registered in <code>Verification/FDS_Cases.sh</code>, User Guide and Technical Reference Guide sections, and Validation cases where data exist.</li>
+    <li><strong>New files</strong> follow the 4-letter naming of the existing sources: <code>cplr.f90</code> (coupler), <code>sfem.f90</code> (solid FEM), <code>film.f90</code> and <code>smsh.f90</code>. Add each one to both the explicit list in <code>CMakeLists.txt</code> and <code>obj_mpi</code> in <code>Build/makefile</code>, in dependency order.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ TRACK A -->
+<section id="wrf">
+  <span class="eyebrow ey-a">Track A</span>
+  <h2>Two-way coupling with WRF</h2>
+  <p class="lede">The wind FDS imposes today is a single vertical profile per mesh, the same everywhere horizontally. The plan replaces it with spatially and temporally varying WRF boundary data, and returns the fire's sources to WRF.</p>
+
+  <h3 id="wrf-today">What exists today</h3>
+  <div class="table-wrap">
+    <table class="t-inv">
+      <thead><tr><th>Area</th><th>Current behaviour</th><th>Where</th></tr></thead>
+      <tbody>
+        <tr><td>Imposed wind</td><td>One profile <code>U_WIND/V_WIND/W_WIND(0:KBP1)</code> per mesh, horizontally uniform</td><td><code>read.f90:2091-2331</code>, <code>mesh.f90:100-102</code>, <code>func.f90:2679-2840</code></td></tr>
+        <tr><td>ABL physics</td><td>Monin–Obukhov profiles, pressure-gradient force, <code>FORCE_VECTOR</code>, geostrophic wind, Coriolis</td><td><code>func.f90:2539-2574</code>, <code>velo.f90:860-1031</code></td></tr>
+        <tr><td>OPEN boundary velocity</td><td>Tangential ghost velocity is <code>U_WIND(K)</code> plus SEM eddies. Normal velocity is set only indirectly, through Dirichlet H.</td><td><code>velo.f90:2112-2198</code>, <code>pres.f90:147-224</code></td></tr>
+        <tr><td>OPEN boundary T, species</td><td><code>TMP_0(z)</code> or one <code>TMP_EXTERIOR</code> per VENT. Species are the uniform ambient values.</td><td><code>wall.f90:668-721</code></td></tr>
+        <tr><td>Background state</td><td><code>TMP_0/P_0/RHO_0(z)</code> are static, from a hydrostatic integration at start-up. <code>HUMIDITY</code> is one value folded into <code>AIR</code>.</td><td><code>init.f90:438-487</code>, <code>read.f90:3169</code>, <code>3828-3830</code></td></tr>
+        <tr><td>Synthetic turbulence</td><td>DFSEM. Eddies are advected by one height-mean wind.</td><td><code>turb.f90:1623-1909</code>, <code>1726-1738</code></td></tr>
+        <tr><td>In-domain relaxation</td><td><code>PATCH_VELOCITY_FLUX</code>: IBM-like forcing toward a target velocity</td><td><code>velo.f90:1065-1200</code></td></tr>
+        <tr><td>Initial 3-D fields</td><td>CSVF route for velocity, temperature and species</td><td><code>init.f90:5322-5539</code></td></tr>
+        <tr><td>Runtime input</td><td>Rank 0 reads scalar RAMP/CTRL values from a CSV, with a heartbeat. A ramp marked external loses its z-dependence.</td><td><code>func.f90:545-622</code>, <code>826-828</code></td></tr>
+        <tr><td>Geolocation</td><td><code>ORIGIN_LAT/LON</code> and <code>NORTH_BEARING</code> are only echoed to <code>.out</code>. There is no projection, and the code assumes x = east and y = north.</td><td><code>cons.f90:361-363</code>, <code>dump.f90:2817-2821</code></td></tr>
+        <tr><td>Outputs for feedback</td><td>Per-cell <code>Q</code>, <code>QR</code>, <code>M_DOT_PPP</code>; wall <code>Q_CON_F</code>, <code>M_DOT_G_PP_ADJUST</code>; <code>UPDATE_HRR</code> integrals</td><td><code>dump.f90:10455-10641</code></td></tr>
+        <tr><td>MPI</td><td><code>MPI_COMM_WORLD</code> hard-coded. FDS owns <code>MPI_INIT</code> and <code>MPI_FINALIZE</code>.</td><td><code>main.f90:89</code>, <code>1794-1869</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout co-0">
+    <h5>History worth asking about</h5>
+    <p>A one-way WRF mean-forcing experiment existed in 2014. The commit log records <code>MEAN_FORCING</code>, <code>RAMP_U0</code> and "z profile ramps for mean forcing, WRF coupling" (<code>Utilities/Misc/GoogleCode_Commit_Log.txt:2560-2568</code>). It was later removed, but <code>Verification/Atmospheric_Effects/wind_example_5/10/32.fds</code> still carry "one-way WRF coupling" titles. The log hints at MPI problems with nudging. Ask the NIST developers why it was dropped before re-introducing nudging.</p>
+  </div>
+
+  <h3 id="wrf-arch">Architecture</h3>
+  <p>FDS becomes a nest inside WRF's innermost domain. WRF values are interpolated onto FDS boundary faces with precomputed weights. The fire's sources go back to every WRF cell the FDS domain overlaps, weighted by the overlap.</p>
+  <figure>
+    <div class="fig-scroll">
+      <svg class="diagram" viewBox="0 0 640 330" role="img" aria-label="Plan view of a coarse WRF grid with a fine FDS domain overlapping nine WRF cells. FDS boundary points take values interpolated from the four nearest WRF cell centres. WRF cells are shaded by how much of each is covered by FDS, which weights the fire sources returned to them.">
+        <defs>
+          <pattern id="nest-fine" width="15" height="15" patternUnits="userSpaceOnUse" x="190" y="80"><path d="M15 0 V15 M0 15 H15" class="f-none s-fg" stroke-width=".5" stroke-opacity=".28"/></pattern>
+          <marker id="nest-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-a"/></marker>
+        </defs>
+        <rect x="160" y="30" width="80" height="80" class="f-a" fill-opacity="0.135"/><rect x="160" y="110" width="80" height="80" class="f-a" fill-opacity="0.260"/><rect x="160" y="190" width="80" height="80" class="f-a" fill-opacity="0.140"/><rect x="240" y="30" width="80" height="80" class="f-a" fill-opacity="0.180"/><rect x="240" y="110" width="80" height="80" class="f-a" fill-opacity="0.380"/><rect x="240" y="190" width="80" height="80" class="f-a" fill-opacity="0.188"/><rect x="320" y="30" width="80" height="80" class="f-a" fill-opacity="0.135"/><rect x="320" y="110" width="80" height="80" class="f-a" fill-opacity="0.260"/><rect x="320" y="190" width="80" height="80" class="f-a" fill-opacity="0.140"/>
+        <rect x="190" y="80" width="180" height="142" fill="url(#nest-fine)"/>
+        <g class="s-fg f-none" stroke-width="1.2" stroke-opacity=".55"><rect x="80" y="30" width="480" height="240"/><line x1="160" y1="30" x2="160" y2="270"/><line x1="240" y1="30" x2="240" y2="270"/><line x1="320" y1="30" x2="320" y2="270"/><line x1="400" y1="30" x2="400" y2="270"/><line x1="480" y1="30" x2="480" y2="270"/><line x1="80" y1="110" x2="560" y2="110"/><line x1="80" y1="190" x2="560" y2="190"/></g>
+        <circle cx="120" cy="70" r="2.6" class="f-a"/><circle cx="120" cy="150" r="2.6" class="f-a"/><circle cx="120" cy="230" r="2.6" class="f-a"/><circle cx="200" cy="70" r="2.6" class="f-a"/><circle cx="200" cy="150" r="2.6" class="f-a"/><circle cx="200" cy="230" r="2.6" class="f-a"/><circle cx="280" cy="70" r="2.6" class="f-a"/><circle cx="280" cy="150" r="2.6" class="f-a"/><circle cx="280" cy="230" r="2.6" class="f-a"/><circle cx="360" cy="70" r="2.6" class="f-a"/><circle cx="360" cy="150" r="2.6" class="f-a"/><circle cx="360" cy="230" r="2.6" class="f-a"/><circle cx="440" cy="70" r="2.6" class="f-a"/><circle cx="440" cy="150" r="2.6" class="f-a"/><circle cx="440" cy="230" r="2.6" class="f-a"/><circle cx="520" cy="70" r="2.6" class="f-a"/><circle cx="520" cy="150" r="2.6" class="f-a"/><circle cx="520" cy="230" r="2.6" class="f-a"/>
+        <g class="s-a" stroke-width="1.2" stroke-dasharray="3 3">
+          <line x1="120" y1="150" x2="190" y2="155"/><line x1="200" y1="150" x2="190" y2="155"/>
+          <line x1="120" y1="230" x2="190" y2="155"/><line x1="200" y1="230" x2="190" y2="155"/>
+        </g>
+        <rect x="190" y="80" width="180" height="142" class="f-none s-fg" stroke-width="2.2"/>
+        <rect x="202.5" y="77.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="202.5" y="219.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="232.5" y="77.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="232.5" y="219.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="262.5" y="77.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="262.5" y="219.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="292.5" y="77.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="292.5" y="219.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="322.5" y="77.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="322.5" y="219.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="352.5" y="77.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="352.5" y="219.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="187.5" y="92.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="367.5" y="92.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="187.5" y="122.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="367.5" y="122.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="187.5" y="152.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="367.5" y="152.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="187.5" y="182.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="367.5" y="182.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="187.5" y="212.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/><rect x="367.5" y="212.5" width="5" height="5" class="f-surface s-a" stroke-width="1.2"/>
+        <rect x="186" y="151" width="8" height="8" class="f-a"/>
+        <path d="M300 158 C 311 170, 313 181, 300 191 C 287 181, 289 170, 300 158 z" class="f-fire"/>
+        <text x="300" y="208" text-anchor="middle" class="t-fire t-bold halo">fire</text>
+        <path d="M18 150 H70" class="f-none s-a" stroke-width="2" marker-end="url(#nest-arrow)"/>
+        <text x="44" y="140" text-anchor="middle" class="t-a">WRF flow</text>
+        <text x="80" y="20" class="t-head">WRF grid <tspan class="t-muted" font-weight="400" font-size="12">· Δx ≈ 100 m to 1 km</tspan></text>
+        <text x="190" y="73" class="t-bold halo">FDS nest <tspan class="t-muted" font-weight="400">· Δx ≈ 1–2 m</tspan></text>
+        <circle cx="86" cy="292" r="2.8" class="f-a"/><text x="96" y="296">WRF cell centre</text>
+        <rect x="214" y="289" width="6" height="6" class="f-surface s-a" stroke-width="1.2"/><text x="228" y="296">FDS boundary point (dashed: interpolation from WRF)</text>
+        <rect x="80" y="308" width="12" height="12" class="f-a" fill-opacity=".3"/><text x="98" y="318">shading: share of the WRF cell covered by FDS, which weights the returned sources</text>
+      </svg>
+    </div>
+    <figcaption><b>WRF feeds the FDS boundary, and FDS feeds the WRF cells it overlaps.</b> Interpolation and rotation weights are computed once by a preprocessor. At runtime FDS only applies sparse weights. Shading is proportional to overlap; the centre cell is fully covered.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="fig-scroll">
+      <svg class="diagram" viewBox="0 0 640 232" role="img" aria-label="Timeline of one coupling interval. Step 1: WRF advances from t n to t n plus 1 using FDS sources from the previous interval. Step 2: WRF sends its state at t n plus 1 to FDS. Step 3: FDS advances over the same interval in many small steps, the last one clipped. Step 4: FDS sends sources averaged over the interval, which WRF uses for the next interval.">
+        <defs>
+          <marker id="loop-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-a"/></marker>
+          <marker id="loop-arrow-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-fg" fill-opacity=".45"/></marker>
+        </defs>
+        <text x="16" y="58" class="t-head">WRF</text>
+        <text x="16" y="148" class="t-head">FDS</text>
+        <rect x="110" y="40" width="150" height="26" rx="3" class="f-tint-a"/>
+        <rect x="410" y="40" width="150" height="26" rx="3" class="f-tint-a"/>
+        <rect x="110" y="130" width="150" height="26" rx="3" class="f-tint-a"/>
+        <rect x="410" y="130" width="150" height="26" rx="3" class="f-tint-a"/>
+        <rect x="260" y="40" width="150" height="26" rx="3" class="f-a"/>
+        <text x="335" y="57" text-anchor="middle" class="t-on t-bold">advance t<tspan class="sub" dy="3">n</tspan><tspan dy="-3"> → t</tspan><tspan class="sub" dy="3">n+1</tspan></text>
+        <rect x="260" y="130" width="150" height="26" rx="3" class="f-a"/>
+        <g class="s-on" stroke-width="1" stroke-opacity=".7"><line x1="271" y1="133" x2="271" y2="153"/><line x1="282" y1="133" x2="282" y2="153"/><line x1="293" y1="133" x2="293" y2="153"/><line x1="304" y1="133" x2="304" y2="153"/><line x1="315" y1="133" x2="315" y2="153"/><line x1="326" y1="133" x2="326" y2="153"/><line x1="337" y1="133" x2="337" y2="153"/><line x1="348" y1="133" x2="348" y2="153"/><line x1="359" y1="133" x2="359" y2="153"/><line x1="370" y1="133" x2="370" y2="153"/><line x1="381" y1="133" x2="381" y2="153"/><line x1="392" y1="133" x2="392" y2="153"/><line x1="403" y1="133" x2="403" y2="153"/></g>
+        <text x="335" y="176" text-anchor="middle" class="t-muted">many FDS steps; the last is clipped to land on t<tspan class="sub" dy="3">n+1</tspan></text>
+        <path d="M266 127 L274 70" class="f-none s-fg" stroke-opacity=".45" stroke-width="1.5" marker-end="url(#loop-arrow-g)"/>
+        <text x="282" y="118" class="t-muted halo">sources [t<tspan class="sub" dy="3">n−1</tspan><tspan dy="-3">, t</tspan><tspan class="sub" dy="3">n</tspan><tspan dy="-3">]</tspan></text>
+        <path d="M398 68 V127" class="f-none s-a" stroke-width="1.8" marker-end="url(#loop-arrow)"/>
+        <path d="M418 127 L428 70" class="f-none s-a" stroke-width="1.8" marker-end="url(#loop-arrow)"/>
+        <text x="384" y="93" text-anchor="end" class="t-a halo">state at t<tspan class="sub" dy="3">n+1</tspan></text>
+        <text x="436" y="93" class="t-a halo">sources [t<tspan class="sub" dy="3">n</tspan><tspan dy="-3">, t</tspan><tspan class="sub" dy="3">n+1</tspan><tspan dy="-3">]</tspan></text>
+        <g class="t-bold">
+          <circle cx="248" cy="53" r="9" class="f-surface s-a" stroke-width="1.5"/><text x="248" y="57" text-anchor="middle" class="t-a">1</text>
+          <circle cx="398" cy="108" r="9" class="f-surface s-a" stroke-width="1.5"/><text x="398" y="112" text-anchor="middle" class="t-a">2</text>
+          <circle cx="248" cy="143" r="9" class="f-surface s-a" stroke-width="1.5"/><text x="248" y="147" text-anchor="middle" class="t-a">3</text>
+          <circle cx="421" cy="108" r="9" class="f-surface s-a" stroke-width="1.5"/><text x="421" y="112" text-anchor="middle" class="t-a">4</text>
+        </g>
+        <line x1="90" y1="198" x2="590" y2="198" class="s-muted" stroke-width="1"/>
+        <g class="s-muted" stroke-width="1"><line x1="110" y1="194" x2="110" y2="202"/><line x1="260" y1="194" x2="260" y2="202"/><line x1="410" y1="194" x2="410" y2="202"/><line x1="560" y1="194" x2="560" y2="202"/></g>
+        <g class="t-muted" text-anchor="middle">
+          <text x="110" y="218">t<tspan class="sub" dy="3">n−1</tspan></text>
+          <text x="260" y="218">t<tspan class="sub" dy="3">n</tspan></text>
+          <text x="410" y="218">t<tspan class="sub" dy="3">n+1</tspan></text>
+          <text x="560" y="218">t<tspan class="sub" dy="3">n+2</tspan></text>
+        </g>
+        <text x="598" y="202" class="t-muted">time</text>
+      </svg>
+    </div>
+    <figcaption><b>One coupling interval, run in order 1 to 4.</b> The coupling is sequential, staggered and explicit. The feedback lags by one interval, much like SFIRE's explicit coupling. FDS dominates the cost, so WRF gets few ranks. A lag-two variant can later overlap the two codes' execution.</figcaption>
+  </figure>
+
+  <h3 id="wrf-decisions">Key design decisions</h3>
+  <ol class="decisions">
+    <li><div>
+      <h4>FDS is a nest, not an embedded fire module</h4>
+      <p>WRF-SFIRE embeds a semi-empirical level-set spread model on a refined fire grid inside WRF. Because WRF has no flux boundary conditions, the fire's sensible and latent heat is inserted as forcing over a layer above the surface, with an assumed exponential decay in height (Mandel et al. 2011). FDS's value is its resolved fire and plume physics, so FDS should receive WRF boundary data and return sources.</p>
+      <p>An <strong>SFIRE-equivalent mode</strong> is still worth building as a stepping stone (A2a). In it, <code>LEVEL_SET_MODE=1</code> is driven by WRF winds and returns surface fluxes. That isolates the coupling infrastructure from LES issues, and the result can be compared directly with WRF-SFIRE.</p>
+    </div></li>
+    <li><div>
+      <h4>What WRF sends</h4>
+      <ul>
+        <li>u, v, w, converted from grid-relative to earth-relative and then rotated into FDS axes.</li>
+        <li>T, computed from θ (θ<sub>m</sub> in WRF v4) and p = P + PB.</li>
+        <li>Y<sub>H2O</sub> = q<sub>v</sub>/(1 + q<sub>v</sub>).</li>
+        <li>PBL diagnostics (u*, TKE or PBL height, surface heat flux) for the inflow turbulence generator.</li>
+        <li>Surface pressure.</li>
+      </ul>
+      <p>These are sent on the FDS lateral and top boundary points and on relaxation-zone cells. Full 3-D initial fields are sent once.</p>
+    </div></li>
+    <li><div>
+      <h4>What FDS returns: feedback mode <code>SOURCES</code> (default)</h4>
+      <p>For every WRF cell that overlaps the FDS domain, FDS returns interval-averaged values of:</p>
+      <ul>
+        <li><strong>Sensible heating.</strong> This is the sum of (q‴ + QR)·dV over the FDS gas cells, plus wall convective heat to the gas (−<code>Q_CON_F</code>·A), minus droplet-evaporation sinks. WRF applies it as a θ tendency.</li>
+        <li><strong>Water vapour</strong> from combustion, fuel moisture and suppression water, applied as a q<sub>v</sub> tendency.</li>
+        <li><strong>Smoke and soot</strong>, plus optionally CO and CO<sub>2</sub> for WRF-Chem, applied as tracer tendencies.</li>
+      </ul>
+      <p>This generalizes SFIRE's assumed exponential profile with FDS's resolved 3-D distribution. WRF still carries the plume beyond the FDS box. The fire-induced far-field indraft then comes back through the FDS lateral boundaries, which closes the two-way loop.</p>
+      <p>A <strong>2-D variant</strong> sends column integrals only. These map directly onto WRF-Fire's ground and canopy heat and moisture flux arrays, so a first version can reuse WRF-Fire's injection code unchanged.</p>
+      <p>A later, optional mode, <code>STATE</code>, relaxes WRF fields in the overlap toward box-filtered FDS fields, as WRF's own nest feedback does. It is mutually exclusive with <code>SOURCES</code> to avoid double counting.</p>
+    </div></li>
+    <li><div>
+      <h4>Coordinates and geolocation</h4>
+      <ul>
+        <li>Give <code>ORIGIN_LAT</code>, <code>ORIGIN_LON</code> and <code>NORTH_BEARING</code> real meaning, and add <code>ORIGIN_ELEVATION</code> for the vertical datum.</li>
+        <li>The preprocessor maps WRF projection coordinates (Lambert, Mercator, polar stereographic, lat-lon) to local x, y.</li>
+        <li>Winds are rotated from grid-relative to earth-relative (WRF <code>COSALPHA/SINALPHA</code>) and then to FDS axes (<code>NORTH_BEARING</code>).</li>
+        <li>All weights are stored in a SCRIP-style file, so FDS only does sparse dot-products at runtime.</li>
+      </ul>
+    </div></li>
+    <li><div>
+      <h4>Vertical interpolation and terrain mismatch</h4>
+      <p>WRF heights come from (PH + PHB)/g on w-levels, and WRF terrain (<code>HGT</code>) is much smoother than the FDS DEM.</p>
+      <ul>
+        <li>Interpolate in height above ground at each boundary column.</li>
+        <li>Offer a terrain-blending strip along the lateral boundaries, applied in preprocessing next to qgis2fds.</li>
+        <li>For FDS points below WRF's lowest level, extrapolate with a Monin–Obukhov profile from WRF's u* and L.</li>
+      </ul>
+    </div></li>
+    <li><div>
+      <h4>Thermodynamics</h4>
+      <ul>
+        <li>Set <code>P_INF</code> and <code>TMP_0(z)</code> from the WRF footprint-mean column at start-up, using the existing <code>RAMP_TMP0_Z</code> route.</li>
+        <li>Hold the background frozen in v1. This is a documented limitation for multi-hour runs. A time-varying P<sub>0</sub> needs the dp̄/dt term in the divergence.</li>
+        <li>Variable humidity needs an explicitly tracked <code>WATER VAPOR</code> species over a dry-<code>AIR</code> background, because <code>HUMIDITY</code> is folded into <code>AIR</code> today.</li>
+      </ul>
+    </div></li>
+    <li><div>
+      <h4>FDS boundary conditions</h4>
+      <p>Replace the 1-D <code>U_WIND(K)</code> with per-external-wall-cell targets at two time levels (<code>U_BC</code>, <code>V_BC</code>, <code>W_BC</code>, <code>TMP_BC</code>, <code>ZZ_BC(:)</code>), interpolated linearly in time.</p>
+      <p>Keep the existing OPEN formulation, applied per face: Dirichlet H for normal velocity, ghost-cell tangential velocity, and upwind selection of T and Y. If the soft coupling drifts in strong cross-flow, evaluate a specified-normal-velocity inflow with a global mass-flux correction, as PALM's offline nesting does.</p>
+    </div></li>
+    <li><div>
+      <h4>Inflow turbulence</h4>
+      <p>Mesoscale WRF fields carry no resolved turbulence. There are two options:</p>
+      <ul>
+        <li>DFSEM with per-face statistics scaled from WRF PBL diagnostics. Today it uses one mean wind and one intensity (<code>turb.f90:1726-1738</code>, <code>2021-2023</code>).</li>
+        <li>The stochastic cell-perturbation method (Muñoz-Esparza et al.) applied to θ in a boundary strip. It is cheap and widely used for WRF → LES nesting.</li>
+      </ul>
+      <p>When the parent is WRF-LES, the fluctuations are resolved, and the exchange interval should be no longer than the WRF time step.</p>
+    </div></li>
+    <li><div>
+      <h4>Lateral relaxation zone (optional)</h4>
+      <p>A Davies-type relaxation of velocity toward WRF over N cells inside the boundary. Implement it like <code>PATCH_VELOCITY_FLUX</code> and call it next to <code>DIRECT_FORCE</code> (<code>velo.f90:839-841</code>). It absorbs plume-induced reflections. It covers velocity only in v1, because scalar relaxation would have to pass through the divergence and the species sources.</p>
+    </div></li>
+    <li><div>
+      <h4>Time synchronization</h4>
+      <p>Sequential, staggered and explicit, as in the timeline above. Before ignition, spin FDS turbulence up for 10–30 minutes with feedback off.</p>
+<pre><code>for each coupling interval [t_n, t_n+1]   (Δc = integer × WRF dt):
+    WRF advances t_n → t_n+1 using FDS sources averaged over [t_n-1, t_n]
+    WRF → FDS: boundary state at t_n+1
+    FDS advances t_n → t_n+1, BCs interpolated in time, DT clipped to land on t_n+1
+    FDS → WRF: sources accumulated over [t_n, t_n+1]</code></pre>
+    </div></li>
+    <li><div>
+      <h4>Coupler backends</h4>
+      <p>An abstract <code>cplr.f90</code> API: <code>CPL_INIT</code>, <code>CPL_RECV_BOUNDARY</code>, <code>CPL_SEND_SOURCES</code>, <code>CPL_FINALIZE</code>. It has three backends:</p>
+      <ul>
+        <li><strong>OFFLINE</strong>: pre-generated boundary files, one-way.</li>
+        <li><strong>OASIS3-MCT</strong>: parallel regridding with precomputed weights and MPMD launch. WRF contains an OASIS3-MCT interface for ocean coupling (<code>frame/module_cpl*.F</code> in recent releases); confirm this for the target version.</li>
+        <li><strong>Plain MPI intercommunicator</strong>: the fallback.</li>
+      </ul>
+      <p>preCICE and ESMF/NUOPC are alternatives, but they are heavier for 3-D volume data.</p>
+    </div></li>
+  </ol>
+
+  <h3 id="wrf-files">FDS-side work by file</h3>
+  <div class="table-wrap">
+    <table class="t-files">
+      <thead><tr><th>File</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td><code>cons.f90</code> and all MPI users</td><td class="wrap"><code>MPI_COMM_FDS</code> (Phase 0.1).</td></tr>
+        <tr><td><code>read.f90</code></td><td class="wrap">New <code>&amp;CPLR</code> namelist: <code>MODE</code> (<code>OFFLINE</code>/<code>ONLINE</code>), <code>BOUNDARY_FILE</code>, <code>WEIGHTS_FILE</code>, <code>DT_COUPLE</code>, <code>FEEDBACK</code> (<code>NONE</code>/<code>SOURCES</code>/<code>STATE</code>), <code>RELAXATION_ZONE_CELLS</code>, <code>INFLOW_TURBULENCE</code>, <code>ORIGIN_ELEVATION</code>. Validate the existing MISC <code>ORIGIN_*</code>/<code>NORTH_BEARING</code>. Require an explicit <code>WATER VAPOR</code> species when coupled.</td></tr>
+        <tr><td><code>mesh.f90</code>, <code>init.f90</code></td><td class="wrap">Per-external-wall-cell boundary arrays at two time levels. Allocate them like <code>U_GHOST</code> (<code>init.f90:972-986</code>), after <code>INITIALIZE_ATMOSPHERE</code> and <code>INITIALIZE_WALL_ARRAY</code> (<code>main.f90:182-185</code>). Initial fields come through CSVF (<code>init.f90:5322-5539</code>) or a new binary reader.</td></tr>
+        <tr><td><code>func.f90</code></td><td class="wrap">A per-face path through <code>COMPUTE_WIND_COMPONENTS</code> and <code>GET_WIND_AT_HEIGHT</code> (<code>func.f90:2679-2840</code>), plus a time-interpolation helper.</td></tr>
+        <tr><td><code>velo.f90</code></td><td class="wrap">The <code>VELOCITY_BC</code> OPEN_AND_WIND block (<code>velo.f90:2112-2198</code>) uses per-face targets. Relaxation forcing goes next to <code>velo.f90:839-841</code>. Clip DT to the coupling time in <code>CHECK_STABILITY</code> (<code>velo.f90:3028-3208</code>).</td></tr>
+        <tr><td><code>pres.f90</code>, <code>ccib.f90</code></td><td class="wrap">Per-face H0 target velocity (<code>pres.f90:172-183</code>) and its cut-cell equivalent (<code>ccib.f90:2540-2542</code>). Per-face tangential velocity in <code>GET_OPENBC_TANGENTIAL_CUTFACE_VEL</code> (<code>ccib.f90:410-444</code>).</td></tr>
+        <tr><td><code>wall.f90</code></td><td class="wrap">Inflow T and ZZ in the <code>SURFACE_HEAT_TRANSFER</code> INFLOW_OUTFLOW case (<code>wall.f90:682-706</code>).</td></tr>
+        <tr><td><code>turb.f90</code></td><td class="wrap">Per-face SEM advection velocity and intensity, and a new cell-perturbation routine.</td></tr>
+        <tr><td><code>main.f90</code></td><td class="wrap">
+          <ul>
+            <li>Init after <code>READ_DATA</code> and <code>MPI_INITIALIZATION_CHORES(3)</code> (<code>main.f90:119</code>, <code>168</code>).</li>
+            <li>Receive next to the external-file block (<code>main.f90:654-661</code>), outside <code>CHANGE_TIME_STEP_LOOP</code>.</li>
+            <li>Clip DT next to the T_END clip (<code>main.f90:620</code>).</li>
+            <li>Send after <code>EXCHANGE_GLOBAL_OUTPUTS</code> and <code>UPDATE_CONTROLS</code> (<code>main.f90:1037-1041</code>).</li>
+            <li>Finalize in <code>END_FDS</code>.</li>
+          </ul>
+        </td></tr>
+        <tr><td><code>dump.f90</code></td><td class="wrap">Source aggregation modelled on <code>UPDATE_HRR</code> (<code>dump.f90:10455-10641</code>). A new <code>CHID_cpl.csv</code> budget of exchanged fluxes. Coupler state in <code>DUMP_RESTART</code>/<code>READ_RESTART</code> (<code>dump.f90:3575</code>, <code>3762</code>).</td></tr>
+        <tr><td><code>vege.f90</code></td><td class="wrap">For the SFIRE-equivalent mode: spatially varying WRF wind for <code>LEVEL_SET_MODE=1</code> (<code>vege.f90:356-365</code>), and a surface heat and moisture flux from fuel consumption.</td></tr>
+        <tr><td><code>cplr.f90</code> (new)</td><td class="wrap">Backend-neutral API, sparse weight application, time interpolation and accumulators.</td></tr>
+        <tr><td><code>wrf2fds</code> (new, Python)</td><td class="wrap">In <code>Utilities/Python</code>. Reads wrfout (netCDF); computes projection, rotation and AGL weights and the terrain blend; writes boundary files, initial fields and the weights file. This keeps FDS free of netCDF.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="wrf-side">WRF-side work (in a WRF fork)</h3>
+  <ul>
+    <li><strong>Registry.</strong> Namelist options (for example <code>fds_coupling</code>, <code>fds_coupling_interval</code> and a feedback mode) and state arrays for the received sources.</li>
+    <li><strong>Communicator.</strong> Run WRF on its colour of the split. WRF's DM layer accepts an externally supplied communicator, which is how MPMD-coupled systems such as COAWST run it. Confirm the mechanism for the target version.</li>
+    <li><strong>Send.</strong> At each coupling time, sample WRF fields on FDS boundary points; the coupler gathers them from the WRF tiles.</li>
+    <li><strong>Receive.</strong> Add the FDS sources as θ, q<sub>v</sub> and tracer tendencies, reusing WRF-Fire's fire-tendency arrays with its own spread model switched off.
+      <ul>
+        <li>For the 2-D variant, fill WRF-Fire's ground and canopy flux arrays and keep its <code>fire_ext_grnd</code>/<code>fire_ext_crwn</code> extinction-depth distribution.</li>
+        <li>The array names differ between NCAR WRF (WRF-Fire in <code>phys/module_fr_fire_*.F</code>) and OpenWFM WRF-SFIRE. Pick the target first.</li>
+      </ul>
+    </li>
+    <li><strong>Restart.</strong> Align WRF and FDS restart times.</li>
+  </ul>
+
+  <h3 id="wrf-phases">Phases</h3>
+  <div class="phases">
+    <div class="phase ph-a"><div class="pid">A1</div><div>
+      <div class="ph-head"><h4>Offline one-way, WRF → FDS</h4><span class="pm">5–7 pm</span></div>
+      <ul>
+        <li><code>wrf2fds</code> preprocessor.</li>
+        <li>Per-face boundary arrays, reader, time interpolation and DT clip.</li>
+        <li>Geolocation and explicit water vapour.</li>
+        <li>Per-face SEM or cell perturbation, and the relaxation zone.</li>
+      </ul>
+      <p class="exit"><b>Exit</b>Uniform-profile files reproduce the existing <code>MO_velocity_profile_*</code> and <code>atmospheric_boundary_layer_*</code> results. The mapping reproduces linear fields exactly, and the mass budget closes.</p>
+    </div></div>
+    <div class="phase ph-a"><div class="pid">A2a</div><div>
+      <div class="ph-head"><h4>Online infrastructure and SFIRE-equivalent mode</h4><span class="pm">3–4 pm FDS, 2–3 WRF</span></div>
+      <ul>
+        <li><code>MPI_COMM_FDS</code>.</li>
+        <li>The OASIS3-MCT or MPI backend, and MPMD launch scripts.</li>
+        <li>FDS <code>LEVEL_SET_MODE=1</code> driven by WRF winds, returning surface fluxes.</li>
+      </ul>
+      <p class="exit"><b>Exit</b>On WRF's idealized fire test, spread rate, plume and heat-flux totals agree with WRF-SFIRE.</p>
+    </div></div>
+    <div class="phase ph-a"><div class="pid">A2b</div><div>
+      <div class="ph-head"><h4>Full LES nest with <code>SOURCES</code> feedback</h4><span class="pm">3–5 pm FDS, 1–2 WRF</span></div>
+      <ul>
+        <li>Volumetric source binning, and restart for both codes.</li>
+      </ul>
+      <p class="exit"><b>Exit</b>The energy budget closes. Heat returned to WRF equals FDS HRR, minus radiation lost through the boundaries, minus conduction into solids (from the <code>.hrr</code> columns).</p>
+    </div></div>
+    <div class="phase ph-a"><div class="pid">A3</div><div>
+      <div class="ph-head"><h4>Validation and hardening</h4><span class="pm">3–4 pm</span></div>
+      <ul>
+        <li>FireFlux I and II grass fires (used for WRF-SFIRE evaluation), and RxCADRE if the data can be obtained.</li>
+        <li>Sensitivity to coupling interval, FDS domain size and feedback mode.</li>
+        <li>The <code>STATE</code> feedback option.</li>
+        <li>Optional: time-varying background pressure, and dead-fuel moisture driven by WRF relative humidity. Fuel moisture is currently static (<code>vege.f90:56</code>).</li>
+      </ul>
+    </div></div>
+  </div>
+
+  <h3 id="wrf-vv">Verification and validation</h3>
+  <ul>
+    <li><strong>Verification.</strong>
+      <ul>
+        <li>Weights reproduce constant and linear fields exactly.</li>
+        <li>Binned sources conserve totals.</li>
+        <li>A restart reproduces a continuous run.</li>
+        <li>Results are invariant to the FDS MPI process count.</li>
+      </ul>
+    </li>
+    <li><strong>Regression.</strong> The existing <code>&amp;WIND</code> profiles, fed through the new file path, reproduce <code>Verification/Atmospheric_Effects/*</code> and <code>Verification/Turbulence/sem_open_wind*</code>.</li>
+    <li><strong>Flow validation.</strong> <code>Validation/Askervein_Hill</code> driven by WRF instead of M-O inflow, and <code>Validation/Schoenberg_Ekman_Layers</code> compared against WRF-LES.</li>
+    <li><strong>Coupled fire.</strong> FireFlux, and <code>Validation/CSIRO_Grassland_Fires</code> cases with WRF-supplied winds.</li>
+  </ul>
+
+  <h3 id="wrf-risks">Risks and mitigations</h3>
+  <div class="table-wrap">
+    <table class="t-risk">
+      <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>Soft OPEN coupling drifts in strong or rotating cross-flow</td><td class="wrap">Relaxation zone, or specified-velocity inflow with mass correction</td></tr>
+        <tr><td>WRF and FDS terrain disagree at the lateral boundaries</td><td class="wrap">Interpolation in height above ground, plus the blending strip</td></tr>
+        <tr><td>Inflow turbulence needs fetch to develop, which inflates domain size</td><td class="wrap">Cell perturbation; WRF at LES resolution</td></tr>
+        <tr><td>Double counting between feedback modes</td><td class="wrap"><code>SOURCES</code> and <code>STATE</code> mutually exclusive; budget check every interval</td></tr>
+        <tr><td>Low-Mach vs compressible: WRF pressure perturbations reach FDS only through velocities</td><td class="wrap">Document it; add a WRF-derived mean pressure-gradient force through <code>RAMP_PGF_T</code> if needed</td></tr>
+        <tr><td>WRF fork maintenance</td><td class="wrap">Keep WRF changes to one send hook and one receive hook, reusing WRF-Fire paths</td></tr>
+        <tr><td>Scale: km-scale domains at about 1 m resolution reach 10<sup>9</sup> cells or more</td><td class="wrap"><code>SOURCES</code> feedback works for any FDS domain size relative to the WRF grid</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ TRACK B -->
+<section id="fem">
+  <span class="eyebrow ey-b">Track B</span>
+  <h2>FEM solid-phase heat transfer</h2>
+  <p class="lede">The existing "3-D" option, HT3D, is not a 3-D solve. It is sets of 1-D lines advanced one axis at a time and stitched together by exchanging temperature changes. The plan replaces it with one implicit solve on an unstructured mesh.</p>
+
+  <h3 id="fem-today">What exists today</h3>
+  <div class="table-wrap">
+    <table class="t-inv">
+      <thead><tr><th>Area</th><th>Current behaviour</th><th>Where</th></tr></thead>
+      <tbody>
+        <tr><td>1-D solver</td><td>One problem per face along its normal (WALL, CFACE, THIN_WALL, particle). Crank–Nicolson with a Thomas solve; ghost-node surface BC with linearized εσT<sup>4</sup>; lagged h and q<sub>rad,in</sub>; adaptive sub-steps.</td><td><code>wall.f90:1810-3156</code>, <code>2854-2910</code>, <code>2307-2336</code></td></tr>
+        <tr><td>Geometry, properties</td><td>Cartesian, cylindrical or spherical; multi-layer, multi-component; k(T), c(T) from 1 K tables; Lagrangian shrink/swell with conservative remap</td><td><code>read.f90:7524-7869</code>, <code>wall.f90:2366-2815</code></td></tr>
+        <tr><td>Cadence</td><td>Runs every <code>WALL_INCREMENT</code> gas steps (default 2), in the corrector</td><td><code>wall.f90:89-99</code></td></tr>
+        <tr><td>HT3D</td><td>Each exposed face owns a 1-D line through the solid. Each call advances one axis direction over 3·DT_BC. Temperature increments are then copied to overlapping nodes of the other directions with static volume-overlap weights.</td><td><code>wall.f90:1875</code>, <code>3615-3725</code>, <code>init.f90:1831-2284</code></td></tr>
+        <tr><td>HT3D consequences</td><td>State replicated per direction and per side; densities never reconciled; remeshing invalidates the overlap map; isotropic conductivity only</td><td>—</td></tr>
+        <tr><td>Documented HT3D limits</td><td>No exterior boundaries; no lateral conduction where 1-D meets 3-D; no <code>BURN_AWAY</code> or significant shrink/swell; no create/remove</td><td><code>FDS_User_Guide.tex:2537-2549</code></td></tr>
+        <tr><td>GEOM solids</td><td>1-D through-thickness conduction only</td><td>—</td></tr>
+        <tr><td>Reusable meshes</td><td><code>GEOMETRY_TYPE</code> stores tetrahedra (<code>VOLUS</code>) and <code>MATLS</code>; <code>.bingeom</code> carries them; boundary triangles are extracted from tetrahedra; <code>BOX2TETRA</code>. A comment anticipates this use: "When Tetrahedrons are actually used for heat transfer and pyrolysis this will be needed."</td><td><code>type.f90:1181-1190</code>, <code>geom.f90:1317-1343</code>, <code>2322</code>, <code>2334</code>, <code>3266</code></td></tr>
+        <tr><td>GEOM input gaps</td><td><code>VOLUS</code> and <code>MATL_ID</code> cannot be given in <code>&amp;GEOM</code>; <code>MATL_ID</code> is reset</td><td><code>geom.f90:1147-1152</code>, <code>3217</code></td></tr>
+        <tr><td>Linear algebra</td><td>HYPRE IJ with PCG/BoomerAMG; global numbering in <code>GLOBMAT_SOLVER</code></td><td><code>imkl.f90:200-543</code>, <code>pres.f90:3072-5813</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="fem-rec">Recommendation: replace HT3D, keep the 1-D solver</h3>
+  <div class="callout co-b">
+    <h5>Recommendation</h5>
+    <p>Replace HT3D and the <code>VARIABLE_THICKNESS</code> path with an unstructured 3-D solver. Keep the 1-D solver as the default wherever 1-D conduction is adequate.</p>
+    <p>The 1-D solver is fast and embarrassingly parallel. It also carries validated physics with no 3-D counterpart: liquid-fuel B-number evaporation, SPyro, TGA, shrink/swell remeshing and thermally thick particles. Most of the Validation suite rests on it. A 1-D column is a degenerate FEM mesh, so replacing it gains nothing and puts every pyrolysis validation case at risk.</p>
+    <p>Existing HT3D inputs (<code>SURF HT3D=T</code> plus <code>OBST MATL_ID</code>) run unchanged on the new solver. Keep the legacy HT3D behind <code>MISC HT3D_SOLVER='LEGACY'</code> until the FEM matches it on the full HT3D verification suite.</p>
+  </div>
+
+  <figure>
+    <div class="fig-scroll">
+      <svg class="diagram" viewBox="0 0 640 316" role="img" aria-label="Left: HT3D represents a solid as horizontal and vertical 1-D lines of nodes, advanced on separate sweeps, with temperature changes copied between overlapping lines. Right: the proposed FEM meshes the solid into triangles in this 2-D cut, tetrahedra in 3-D, solves all nodes in one implicit system, and aligns boundary facets with gas wall cells.">
+        <text x="60" y="24" class="t-head">HT3D today</text>
+        <text x="60" y="42" class="t-muted">1-D lines, one axis per sweep</text>
+        <text x="400" y="24" class="t-head">Proposed FEM</text>
+        <text x="400" y="42" class="t-muted">P1 tetrahedra (triangles in this 2-D cut)</text>
+        <rect x="60" y="80" width="180" height="180" class="f-solid"/>
+        <g class="s-b" stroke-width="2"><line x1="60" y1="110" x2="240" y2="110"/><line x1="60" y1="170" x2="240" y2="170"/><line x1="60" y1="230" x2="240" y2="230"/></g>
+        <g class="s-b" stroke-width="1.6" stroke-dasharray="5 4"><line x1="90" y1="80" x2="90" y2="260"/><line x1="150" y1="80" x2="150" y2="260"/><line x1="210" y1="80" x2="210" y2="260"/></g>
+        <circle cx="75" cy="110" r="3" class="f-b"/><circle cx="105" cy="110" r="3" class="f-b"/><circle cx="135" cy="110" r="3" class="f-b"/><circle cx="165" cy="110" r="3" class="f-b"/><circle cx="195" cy="110" r="3" class="f-b"/><circle cx="225" cy="110" r="3" class="f-b"/><circle cx="75" cy="170" r="3" class="f-b"/><circle cx="105" cy="170" r="3" class="f-b"/><circle cx="135" cy="170" r="3" class="f-b"/><circle cx="165" cy="170" r="3" class="f-b"/><circle cx="195" cy="170" r="3" class="f-b"/><circle cx="225" cy="170" r="3" class="f-b"/><circle cx="75" cy="230" r="3" class="f-b"/><circle cx="105" cy="230" r="3" class="f-b"/><circle cx="135" cy="230" r="3" class="f-b"/><circle cx="165" cy="230" r="3" class="f-b"/><circle cx="195" cy="230" r="3" class="f-b"/><circle cx="225" cy="230" r="3" class="f-b"/><circle cx="90" cy="95" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="90" cy="125" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="90" cy="155" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="90" cy="185" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="90" cy="215" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="90" cy="245" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="150" cy="95" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="150" cy="125" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="150" cy="155" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="150" cy="185" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="150" cy="215" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="150" cy="245" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="210" cy="95" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="210" cy="125" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="210" cy="155" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="210" cy="185" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="210" cy="215" r="3" class="f-surface s-b" stroke-width="1.3"/><circle cx="210" cy="245" r="3" class="f-surface s-b" stroke-width="1.3"/>
+        <circle cx="143" cy="163" r="17" class="f-none s-fg" stroke-width="1.3" stroke-dasharray="3 3"/>
+        <rect x="400" y="80" width="180" height="180" class="f-solid"/>
+        <g class="s-fg" stroke-width=".9" stroke-opacity=".55"><path d="M400 80 V260 M400 80 H580 M430 80 V260 M400 110 H580 M460 80 V260 M400 140 H580 M490 80 V260 M400 170 H580 M520 80 V260 M400 200 H580 M550 80 V260 M400 230 H580 M580 80 V260 M400 260 H580 M400 110 L430 80 M400 140 L430 110 M400 170 L430 140 M400 200 L430 170 M400 230 L430 200 M400 260 L430 230 M430 110 L460 80 M430 140 L460 110 M430 170 L460 140 M430 200 L460 170 M430 230 L460 200 M430 260 L460 230 M460 110 L490 80 M460 140 L490 110 M460 170 L490 140 M460 200 L490 170 M460 230 L490 200 M460 260 L490 230 M490 110 L520 80 M490 140 L520 110 M490 170 L520 140 M490 200 L520 170 M490 230 L520 200 M490 260 L520 230 M520 110 L550 80 M520 140 L550 110 M520 170 L550 140 M520 200 L550 170 M520 230 L550 200 M520 260 L550 230 M550 110 L580 80 M550 140 L580 110 M550 170 L580 140 M550 200 L580 170 M550 230 L580 200 M550 260 L580 230" class="f-none"/></g>
+        <circle cx="400" cy="80" r="2.4" class="f-b"/><circle cx="400" cy="110" r="2.4" class="f-b"/><circle cx="400" cy="140" r="2.4" class="f-b"/><circle cx="400" cy="170" r="2.4" class="f-b"/><circle cx="400" cy="200" r="2.4" class="f-b"/><circle cx="400" cy="230" r="2.4" class="f-b"/><circle cx="400" cy="260" r="2.4" class="f-b"/><circle cx="430" cy="80" r="2.4" class="f-b"/><circle cx="430" cy="110" r="2.4" class="f-b"/><circle cx="430" cy="140" r="2.4" class="f-b"/><circle cx="430" cy="170" r="2.4" class="f-b"/><circle cx="430" cy="200" r="2.4" class="f-b"/><circle cx="430" cy="230" r="2.4" class="f-b"/><circle cx="430" cy="260" r="2.4" class="f-b"/><circle cx="460" cy="80" r="2.4" class="f-b"/><circle cx="460" cy="110" r="2.4" class="f-b"/><circle cx="460" cy="140" r="2.4" class="f-b"/><circle cx="460" cy="170" r="2.4" class="f-b"/><circle cx="460" cy="200" r="2.4" class="f-b"/><circle cx="460" cy="230" r="2.4" class="f-b"/><circle cx="460" cy="260" r="2.4" class="f-b"/><circle cx="490" cy="80" r="2.4" class="f-b"/><circle cx="490" cy="110" r="2.4" class="f-b"/><circle cx="490" cy="140" r="2.4" class="f-b"/><circle cx="490" cy="170" r="2.4" class="f-b"/><circle cx="490" cy="200" r="2.4" class="f-b"/><circle cx="490" cy="230" r="2.4" class="f-b"/><circle cx="490" cy="260" r="2.4" class="f-b"/><circle cx="520" cy="80" r="2.4" class="f-b"/><circle cx="520" cy="110" r="2.4" class="f-b"/><circle cx="520" cy="140" r="2.4" class="f-b"/><circle cx="520" cy="170" r="2.4" class="f-b"/><circle cx="520" cy="200" r="2.4" class="f-b"/><circle cx="520" cy="230" r="2.4" class="f-b"/><circle cx="520" cy="260" r="2.4" class="f-b"/><circle cx="550" cy="80" r="2.4" class="f-b"/><circle cx="550" cy="110" r="2.4" class="f-b"/><circle cx="550" cy="140" r="2.4" class="f-b"/><circle cx="550" cy="170" r="2.4" class="f-b"/><circle cx="550" cy="200" r="2.4" class="f-b"/><circle cx="550" cy="230" r="2.4" class="f-b"/><circle cx="550" cy="260" r="2.4" class="f-b"/><circle cx="580" cy="80" r="2.4" class="f-b"/><circle cx="580" cy="110" r="2.4" class="f-b"/><circle cx="580" cy="140" r="2.4" class="f-b"/><circle cx="580" cy="170" r="2.4" class="f-b"/><circle cx="580" cy="200" r="2.4" class="f-b"/><circle cx="580" cy="230" r="2.4" class="f-b"/><circle cx="580" cy="260" r="2.4" class="f-b"/>
+        <rect x="460" y="52" width="60" height="26" class="f-tint-b"/>
+        <g class="f-none s-muted" stroke-width="1" stroke-dasharray="4 3"><rect x="400" y="52" width="60" height="26"/><rect x="460" y="52" width="60" height="26"/><rect x="520" y="52" width="60" height="26"/></g>
+        <g class="s-b" stroke-width="4"><line x1="461" y1="80" x2="489" y2="80"/><line x1="491" y1="80" x2="519" y2="80"/></g>
+        <text x="392" y="70" text-anchor="end" class="t-muted">gas cells</text>
+        <line x1="60" y1="280" x2="84" y2="280" class="s-b" stroke-width="2"/><text x="90" y="284">x-lines: sweep 1</text>
+        <line x1="190" y1="280" x2="214" y2="280" class="s-b" stroke-width="1.6" stroke-dasharray="5 4"/><text x="220" y="284">y-lines: sweep 2</text>
+        <circle cx="68" cy="300" r="6" class="f-none s-fg" stroke-width="1.2" stroke-dasharray="2 2"/><text x="80" y="304">ΔT copied between lines by overlap weight</text>
+        <text x="400" y="284">every node in one implicit solve (PCG + AMG)</text>
+        <text x="400" y="304">boundary facets aligned with gas wall cells</text>
+      </svg>
+    </div>
+    <figcaption><b>The choice is between stitched 1-D lines and one global system.</b> In HT3D, state lives separately on each line, and lines exchange only temperature increments; in 3-D there is a third family of z-lines. In the FEM, each node holds one temperature and one composition. Faces on OBST surfaces line up with gas wall cells, so a wall face maps to two boundary triangles in 3-D.</figcaption>
+  </figure>
+
+  <h3 id="fem-form">Numerical formulation</h3>
+  <p class="eq-label">Heat equation in each solid region</p>
+  <div class="eq">ρc(<span class="v">T</span>) ∂<span class="v">T</span>/∂<span class="v">t</span> = ∇·(<span class="bv">k</span>(<span class="v">T</span>) ∇<span class="v">T</span>) + <span class="v">q̇</span>‴</div>
+  <p>q̇‴ is the sum of reaction heat, the user internal source (<code>HEAT_SOURCE</code> with its ramp) and, later, absorbed in-depth radiation. <strong>k</strong> is a scalar or a symmetric tensor per element. Anisotropy, such as wood grain or laminates, is a new capability; HT3D has none.</p>
+
+  <h4>Space discretization</h4>
+  <ul>
+    <li><strong>Continuous P1 Galerkin on tetrahedra with a lumped (diagonal) mass matrix.</strong> For P1 simplices, the Galerkin stiffness matrix equals the vertex-centred median-dual finite-volume (CVFEM) diffusion operator. So this choice is also the conservative finite-volume "equivalent". Nodal unknowns carry dual-cell volumes, which gives local mass and energy conservation for pyrolysis bookkeeping.</li>
+    <li><strong>Mesh quality.</strong> With lumped mass, the discrete maximum principle needs non-obtuse tetrahedra. An orthoscheme (Kuhn) split of the graded box grid used for OBSTs gives non-obtuse tetrahedra. For imported GEOM meshes, quality checks warn on obtuse dihedral angles.</li>
+  </ul>
+
+  <p class="eq-label">Time integration (θ-scheme)</p>
+  <div class="eq">(<span class="v">M</span><sub>L</sub>/Δ<span class="v">t</span> + θ<span class="v">A</span>) <span class="v">T</span><sup>n+1</sup> = (<span class="v">M</span><sub>L</sub>/Δ<span class="v">t</span> − (1−θ)<span class="v">A</span>) <span class="v">T</span><sup>n</sup> + <span class="v">F</span></div>
+  <p>The default is θ = 1 (backward Euler), which is L-stable and does not oscillate at large Fourier numbers. Crank–Nicolson is an option for one-to-one comparison with the 1-D solver, and BDF2 comes later.</p>
+
+  <p class="eq-label">Surface boundary condition (Robin, per boundary facet)</p>
+  <div class="eq">−<span class="v">k</span>∇<span class="v">T</span>·<span class="bv">n</span> = <span class="v">h</span>(<span class="v">T</span> − <span class="v">T</span><sub>g</sub>) + εσ<span class="v">T</span><sup>4</sup> − <span class="v">q</span><sub>rad,in</sub> − <span class="v">q</span><sub>liquid</sub>,  εσ<span class="v">T</span><sup>4</sup> ≈ εσ(4<span class="v">T</span>*<sup>3</sup><span class="v">T</span> − 3<span class="v">T</span>*<sup>4</sup>)</div>
+  <ul>
+    <li>The radiation linearization is the same trick the 1-D solver uses, and h, T<sub>g</sub> and q<sub>rad,in</sub> are lagged as in 1-D.</li>
+    <li>Dirichlet (<code>TMP_FRONT</code>) and insulated options are supported.</li>
+    <li>Facets on exterior boundaries use the SURF backing condition, which removes HT3D limitation 1.</li>
+  </ul>
+
+  <h4>Nonlinearity and the linear solve</h4>
+  <ul>
+    <li><strong>Picard iteration</strong> (1–3 sweeps with a convergence test) on k(T) and ρc(T) from the <code>PROC_MATL</code> tables. Interpolate between table entries; the 1-D solver truncates to <code>INT(T)</code>.</li>
+    <li><strong>An enthalpy-consistent update</strong> keeps energy conserved with T-dependent c<sub>p</sub> and reactions. The <code>ht3d_energy_conservation*</code> cases are the gate.</li>
+    <li><strong>The linear system is SPD</strong>: the Robin and mass terms are symmetric and the coefficients are lagged. Solve it with PCG + BoomerAMG through the Phase 0.3 wrapper, reusing the AMG setup while coefficients change slowly.</li>
+  </ul>
+
+  <h3 id="fem-mesh">Meshes and input</h3>
+  <ol>
+    <li><strong>OBST solids</strong> (<code>SURF HT3D=T</code>).
+      <ul>
+        <li>Generate a box sub-grid that conforms to the gas wall-cell faces on exposed surfaces. Each wall face becomes 2 boundary triangles, or 4 with refinement.</li>
+        <li>Grade the sub-grid inward using the existing <code>CELL_SIZE</code>, <code>CELL_SIZE_FACTOR</code> and <code>STRETCH_FACTOR</code> semantics, then split it into tetrahedra.</li>
+        <li>Connected OBSTs, including ones with different <code>MATL_ID</code>s, are meshed conformally as one region, so material interfaces have perfect contact.</li>
+      </ul>
+    </li>
+    <li><strong>GEOM solids.</strong>
+      <ul>
+        <li>Tetrahedra come from <code>.bingeom</code> (<code>VOLUS</code>) or from a new preprocessing utility, <code>Utilities/Python/fds_tetmesh</code>. It wraps gmsh or TetGen, reads STL, OBJ or STEP, and writes <code>.bingeom</code> with tetrahedra and material tags.</li>
+        <li>Enable <code>MATL_ID</code> and per-tetrahedron materials in <code>&amp;GEOM</code> (remove the reset at <code>geom.f90:3217</code>). Restore the constraint flagged at <code>geom.f90:2322</code>.</li>
+        <li>Do not embed a tetrahedral mesher in FDS.</li>
+      </ul>
+    </li>
+    <li><strong>Contact with 1-D solids.</strong> A 1-D-backed face that touches an FEM solid couples through a Robin or flux exchange equivalent to EXPOSED backing. This removes HT3D limitation 2.</li>
+  </ol>
+<pre><code>&amp;SURF ID='STEEL', HT3D=T, CELL_SIZE=0.005 /                     ! existing syntax → FEM solver
+&amp;OBST XB=..., SURF_ID='STEEL', MATL_ID='STEEL' /
+&amp;GEOM ID='BEAM', BINARY_FILE='beam.bingeom', SURF_ID='STEEL', MATL_ID='STEEL', HT3D=T /
+&amp;MATL ID='WOOD', CONDUCTIVITY_TENSOR=0.12,0.12,0.35, GRAIN_DIRECTION=0,0,1, ... /   ! new, optional</code></pre>
+
+  <h3 id="fem-interface">Gas–solid interface</h3>
+  <ul>
+    <li><strong>FEM-owned faces.</strong> WALL cells of HT3D OBSTs and CFACEs of HT3D GEOMs skip <code>SOLID_HEAT_TRANSFER</code>; the guards at <code>wall.f90:1875</code> and <code>1910</code> become an "FEM-owned" test. After each FEM solve, the Phase 0.4 outputs are written into <code>B1</code>, so gas-phase code is untouched.</li>
+    <li><strong>Mapping.</strong> Area-weighted and conservative in both directions.
+      <ul>
+        <li>Gas → facet: h, T<sub>g</sub>, q<sub>rad,in</sub>, <code>ZZ_G</code>, and q<sub>liquid</sub> or the film node from Track C.</li>
+        <li>Facet → gas: <code>TMP_F</code>, <code>Q_CON_F</code>, <code>Q_RAD_OUT</code>, ε and mass fluxes.</li>
+        <li>For OBSTs the map is one-to-few by construction. For GEOM it goes through <code>CUT_FACE%BODTRI</code> and <code>CF%AREA</code>.</li>
+      </ul>
+    </li>
+    <li><strong>Cadence.</strong>
+      <ul>
+        <li>Keep the <code>WALL_INCREMENT</code> cadence and <code>DT_BC</code> accumulation of <code>WALL_BC</code>.</li>
+        <li>Reproduce the <code>Q_CON_F</code> and <code>Q_RAD_OUT</code> time averaging for energy consistency.</li>
+        <li>For FEM-owned solids, the FEM solve replaces <code>MESH_EXCHANGE(66)</code> plus <code>HT3D_TEMPERATURE_EXCHANGE</code> at <code>main.f90:909-920</code>.</li>
+      </ul>
+    </li>
+    <li><strong>Output.</strong>
+      <ul>
+        <li>Interpolate FEM temperature to gas-cell centres inside OBST solids for SLCF, reusing the trick at <code>wall.f90:3673</code>.</li>
+        <li>Add a point query, <code>DEVC QUANTITY='SOLID TEMPERATURE'</code>.</li>
+        <li>BNDF on wall cells works unchanged; GEOM boundary data goes through BNDE.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3 id="fem-pyro">Pyrolysis and mass transport in 3-D</h3>
+  <ul>
+    <li><strong>Kinetics at nodes.</strong> Nodal (dual-volume) component densities ρ<sub>i</sub>. Rates come from the refactored pure kinetics routine: A, E, n<sub>s</sub>, n<sub>T</sub>, n<sub>O2</sub>, <code>NU_*</code> and H<sub>R</sub>(T).</li>
+    <li><strong>Gas routing.</strong> The 1-D model releases gas instantly at its own face. In 3-D, each node's gas production goes to its nearest exposed facet, using a precomputed graph-distance field (Dijkstra from the boundary nodes) and the same instant-release assumption.
+      <ul>
+        <li>This replaces the <code>LAYER_DIVIDE</code> and <code>HT3D_WEIGHT</code> heuristics. Document the semantic change.</li>
+        <li>Darcy flow in porous char is a later option.</li>
+      </ul>
+    </li>
+    <li><strong>In-depth oxygen.</strong> X<sub>O2</sub> at a node is X<sub>O2</sub> at its routed facet × exp(−d/<code>GAS_DIFFUSION_DEPTH</code>). This generalizes <code>wall.f90:3471-3491</code>.</li>
+    <li><strong>Geometry change.</strong>
+      <ul>
+        <li>v1 has none: density falls at fixed volume, as in HT3D today.</li>
+        <li>B6 adds element deactivation. When all elements in a gas cell are consumed, that cell is removed through the existing <code>BURN_AWAY</code> and <code>REASSIGN_WALL_CELLS</code> machinery (<code>init.f90:4909</code>).</li>
+        <li>GEOM burn-away stays out of scope, because cut-cell geometry is static.</li>
+      </ul>
+    </li>
+    <li><strong>Stays 1-D:</strong> liquid fuels, thermally thick particles, SPyro and TGA.</li>
+  </ul>
+
+  <h3 id="fem-mpi">Parallelization</h3>
+  <ul>
+    <li><strong>Ownership.</strong> Elements belong to the rank that owns the gas mesh containing their centroid. Interface facets therefore sit with their WALL or CFACE owners, and interface data needs no extra communication. Shared nodes become ghost nodes.</li>
+    <li><strong>Assembly.</strong> Element-by-element into HYPRE IJ, with off-process contributions handled at assemble time, and contiguous per-rank offsets as in <code>GET_MATRIX_INDEXES_H</code>.</li>
+    <li><strong>Load balance.</strong> Geometric ownership can be unbalanced when solids dominate. Add optional graph partitioning (ParMETIS, or recursive coordinate bisection to avoid a dependency) with a facet-data redistribution step.</li>
+    <li><strong>Invariance.</strong> Results are tested to be independent of the MPI process count, to solver tolerance.</li>
+  </ul>
+
+  <h3 id="fem-files">Work by file</h3>
+  <div class="table-wrap">
+    <table class="t-files">
+      <thead><tr><th>File</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td><code>sfem.f90</code> (new)</td><td class="wrap">Mesh types (nodes, tetrahedra, materials, facets, ghost lists); assembly, θ-scheme and Picard iteration; pyrolysis driver; gas-routing map; output interpolation; restart I/O.</td></tr>
+        <tr><td><code>wall.f90</code></td><td class="wrap"><code>WALL_BC</code> skips FEM-owned faces and calls the FEM solve on the corrector cadence. <code>PYROLYSIS</code> kinetics become a pure routine. Remove the HT3D sweep logic once legacy is retired.</td></tr>
+        <tr><td><code>init.f90</code></td><td class="wrap">Build FEM regions after <code>INITIALIZE_WALL_ARRAY</code> and <code>FIND_WALL_BACK_INDEX</code> (<code>init.f90:27</code>, <code>3877</code>). Retire <code>INITIALIZE_HT3D_WALL_CELLS</code> (<code>init.f90:1831</code>) and the HT3D branches in <code>REALLOCATE_ONE_D_ARRAYS</code> (<code>init.f90:1621</code>).</td></tr>
+        <tr><td><code>geom.f90</code></td><td class="wrap">Accept <code>VOLUS</code> and <code>MATL_ID</code> in <code>&amp;GEOM</code>; material tags per tetrahedron; mesh-quality checks; restore the constraint at <code>geom.f90:2322</code>.</td></tr>
+        <tr><td><code>read.f90</code></td><td class="wrap">MATL <code>CONDUCTIVITY_TENSOR</code> and <code>GRAIN_DIRECTION</code>; <code>HT3D_SOLVER</code>; FEM controls (<code>THETA</code>, <code>PICARD_ITERATIONS</code>, solver tolerances). Relax the HT3D input errors that no longer apply: ERROR 437 (exterior boundary) and 423/424 (exposed faces in each direction).</td></tr>
+        <tr><td><code>main.f90</code></td><td class="wrap">Replace the HT3D exchange at <code>main.f90:909-920</code>. Setup goes after the back-wall exchange initialization (<code>main.f90:285-294</code>).</td></tr>
+        <tr><td><code>imkl.f90</code></td><td class="wrap">Phase 0.3 solver wrapper.</td></tr>
+        <tr><td><code>dump.f90</code></td><td class="wrap">Restart, following the <code>dump.f90:3681</code> and <code>3904</code> pattern; new solid quantities; a solid-storage term in the <code>UPDATE_HRR</code> energy budget.</td></tr>
+        <tr><td>Build</td><td class="wrap"><code>CMakeLists.txt</code> and <code>Build/makefile</code>: new source files, and optional ParMETIS.</td></tr>
+        <tr><td><code>fds_tetmesh</code> (new, Python)</td><td class="wrap">In <code>Utilities/Python</code>. A gmsh or TetGen wrapper that writes <code>.bingeom</code> with tetrahedra and material tags.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="fem-phases">Phases</h3>
+  <div class="phases">
+    <div class="phase ph-b"><div class="pid">B0</div><div>
+      <div class="ph-head"><h4>Refactor</h4><span class="pm">1–2 pm</span></div>
+      <ul><li>Phase 0.3 and 0.4; the kinetics routine becomes pure.</li></ul>
+      <p class="exit"><b>Exit</b>Bit-identical regression.</p>
+    </div></div>
+    <div class="phase ph-b"><div class="pid">B1</div><div>
+      <div class="ph-head"><h4>Serial linear conduction</h4><span class="pm">3–4 pm</span></div>
+      <ul>
+        <li>Box-to-tetrahedron meshing of OBSTs, and <code>.bingeom</code> import.</li>
+        <li>Constant properties and the Robin boundary condition.</li>
+      </ul>
+      <p class="exit"><b>Exit</b><code>ht3d_slab</code>, <code>ht3d_sphere_24/48/96</code>, and <code>ht3d_ibeam</code> against the ANSYS FEM results already in the repository. Manufactured-solution convergence is second order in L2.</p>
+    </div></div>
+    <div class="phase ph-b"><div class="pid">B2</div><div>
+      <div class="ph-head"><h4>Nonlinear properties and radiation</h4><span class="pm">2–3 pm</span></div>
+      <ul><li>k(T) and c(T), multiple materials, and anisotropic k.</li></ul>
+      <p class="exit"><b>Exit</b><code>ht3d_energy_conservation*</code>, <code>ht3d_radiation_exact</code>, SFPE cases 8 and 16, and <code>heat_conduction_a–d</code> on 1-D-like meshes.</p>
+    </div></div>
+    <div class="phase ph-b"><div class="pid">B3</div><div>
+      <div class="ph-head"><h4>MPI</h4><span class="pm">3–4 pm</span></div>
+      <ul><li>Ghost nodes, distributed HYPRE, and ownership.</li></ul>
+      <p class="exit"><b>Exit</b><code>ht3d_2mesh_exact</code>, <code>ht3d_beam_intersection</code>, <code>ht3d_network</code>; partition-invariance tests; a scaling study with <code>ht3d_demo</code>.</p>
+    </div></div>
+    <div class="phase ph-b"><div class="pid">B4</div><div>
+      <div class="ph-head"><h4>Pyrolysis</h4><span class="pm">3–5 pm</span></div>
+      <ul><li>Nodal kinetics, gas routing and the O<sub>2</sub> depth model.</li></ul>
+      <p class="exit"><b>Exit</b><code>ht3d_mass_conservation(_2)</code>; mass and energy closure; 1-D-limit agreement with <code>Verification/Pyrolysis/*</code>.</p>
+    </div></div>
+    <div class="phase ph-b"><div class="pid">B5</div><div>
+      <div class="ph-head"><h4>GEOM coupling</h4><span class="pm">2–4 pm</span></div>
+      <ul><li>CFACE ↔ triangle maps, the tetmesh utility, and Smokeview output.</li></ul>
+      <p class="exit"><b>Exit</b>OBST, GEOM and rotated-GEOM versions of the same solid agree, in the style of <code>back_wall_test_2</code>. HT3D cannot deliver this rotation invariance.</p>
+    </div></div>
+    <div class="phase ph-b"><div class="pid">B6</div><div>
+      <div class="ph-head"><h4>Geometry change and retirement</h4><span class="pm">3–5 pm</span></div>
+      <ul>
+        <li>Element deactivation and burn-away for OBSTs.</li>
+        <li>Contact with 1-D solids.</li>
+        <li>A P1 (diffusion) model for semi-transparent solids.</li>
+        <li>Deprecation of legacy HT3D.</li>
+      </ul>
+    </div></div>
+  </div>
+
+  <h3 id="fem-vv">Verification and validation</h3>
+  <ul>
+    <li><strong>Existing cases to pass</strong> (<code>Verification/Heat_Transfer</code>):
+      <ul>
+        <li><code>ht3d_*</code>: slab, sphere, I-beam, beam heating and intersection, 2-mesh, radiation, energy and mass conservation, pile, network and demo.</li>
+        <li><code>insulated_steel_*</code>, <code>back_wall*</code> and the SFPE cases.</li>
+      </ul>
+    </li>
+    <li><strong>New verification cases.</strong>
+      <ul>
+        <li>3-D manufactured solutions with k(T) on unstructured tetrahedra.</li>
+        <li>An anisotropic analytical solution, by stretching coordinates in an isotropic one.</li>
+        <li>Two-material contact.</li>
+        <li>Rotated-geometry invariance.</li>
+        <li>MPI partition invariance.</li>
+        <li>Solids that touch an exterior boundary.</li>
+      </ul>
+    </li>
+    <li><strong>Validation.</strong>
+      <ul>
+        <li>Sets that already use HT3D: <code>Validation/SNL_Walls</code>, <code>SP_AST</code>, <code>LEMTA_Spray</code>.</li>
+        <li><code>NIST_Composite_Beam</code> and <code>Insulation_Materials</code>.</li>
+        <li>A 1-D-limit regression on the pyrolysis sets: <code>Kashiwagi_Gasification</code>, <code>NIST_Polymers</code>, <code>FAA_Polymers</code>, <code>UMD_Polymers</code> and <code>Scaling_Pyrolysis</code>.</li>
+        <li>The MaCFP condensed-phase cases.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3 id="fem-risks">Risks and mitigations</h3>
+  <div class="table-wrap">
+    <table class="t-risk">
+      <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>Cost of global implicit solves every <code>WALL_INCREMENT</code></td><td class="wrap">Reuse AMG setup; allow a solid step that is a multiple of <code>DT_BC</code>; profile early in B3</td></tr>
+        <tr><td>Mesh quality from external meshers</td><td class="wrap">Quality checks and documented gmsh settings</td></tr>
+        <tr><td>Pyrolysis semantics change: nearest-facet routing replaces <code>LAYER_DIVIDE</code>/<code>HT3D_WEIGHT</code></td><td class="wrap">Document it; keep legacy available during the transition</td></tr>
+        <tr><td>Load imbalance when solids dominate</td><td class="wrap">Optional repartitioning in B3</td></tr>
+        <tr><td>Element deactivation interacting with OBST removal and pressure-matrix rebuild (<code>main.f90:1678-1707</code>)</td><td class="wrap">Defer to B6, after v1 is stable</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ TRACK C -->
+<section id="film">
+  <span class="eyebrow ey-c">Track C</span>
+  <h2>Interfacial solver for water on surfaces</h2>
+  <p class="lede">Today, water on a surface is a set of droplets moving at fixed speeds. The plan adds a depth-averaged film with real momentum and energy. It lives on its own surface mesh and is coupled implicitly to the solid underneath.</p>
+
+  <h3 id="film-today">What exists today</h3>
+  <div class="table-wrap">
+    <table class="t-inv">
+      <thead><tr><th>Area</th><th>Current behaviour</th><th>Where</th></tr></thead>
+      <tbody>
+        <tr><td>Surface motion</td><td>Lagrangian droplets stick on contact and move with prescribed kinematics, x = x<sub>old</sub> + u·DT. Vertical faces use <code>VERTICAL_VELOCITY</code> (default 0.5 m/s); horizontal faces use a random direction at <code>HORIZONTAL_VELOCITY</code> (default 0.2 m/s); GEOM faces use the down-slope direction.</td><td><code>part.f90:2583-2589</code>, <code>2438-2472</code>, <code>2281-2300</code>, <code>read.f90:6350-6351</code></td></tr>
+        <tr><td>Edges</td><td>Drips off edges follow geometric heuristics</td><td><code>part.f90:2515-2553</code></td></tr>
+        <tr><td>Missing physics</td><td>No film momentum, thickness transport, gas shear, surface tension, contact angle, splashing or boiling regime</td><td>—</td></tr>
+        <tr><td>Film thickness</td><td>A cell-local estimate. The depth is zeroed unless droplet footprints cover the cell.</td><td><code>part.f90:3728-3784</code>, <code>3774</code>, <code>3781</code></td></tr>
+        <tr><td>Heat transfer</td><td>Each droplet solves an implicit 3-way exchange using flat-plate correlations with L = 1 m. The wall sees only a lagged, smoothed explicit flux, <code>LP_CPUA</code> → <code>Q_LIQUID_F</code>.</td><td><code>part.f90:4099-4144</code>, <code>wall.f90:1893</code>, <code>1948</code>, <code>2875-2879</code></td></tr>
+        <tr><td>Suppression</td><td>Cooling, plus the empirical exp(−∫E·m″<sub>w</sub> dt) on specified-burning-rate surfaces only. K never decays.</td><td><code>wall.f90:1105-1114</code>, <code>1340-1347</code></td></tr>
+        <tr><td>Eulerian wall liquid</td><td>Only condensate (<code>B1%AWM_AEROSOL</code>), on WALL cells only, with wall-function mass transfer</td><td><code>fire.f90:1922-2224</code></td></tr>
+        <tr><td>Topology</td><td>No wall-cell adjacency anywhere. GEOM has triangle adjacency (<code>EDGE_FACES</code>). CFACEs have no CFACE ↔ CFACE or triangle → CFACE maps.</td><td><code>type.f90:1191</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="film-parity">Target: FireFOAM feature parity</h3>
+  <p>FireFOAM uses OpenFOAM's <code>surfaceFilmModels</code> (kinematic and thermo single-layer) in a separate film region. That region is coupled to the gas, to Lagrangian parcels, and to the <code>reactingOneDim</code> pyrolysis region. In the literature the model is validated against the Nusselt solution and FM Global vertical-film experiments.</p>
+  <div class="table-wrap">
+    <table class="t-files">
+      <thead><tr><th>FireFOAM / OpenFOAM sub-model</th><th>FDS plan</th><th>Phase</th></tr></thead>
+      <tbody>
+        <tr><td class="wrap">Kinematic single layer: depth-averaged mass and momentum, hydrostatic and capillary pressure, wall and gas shear</td><td class="wrap"><code>film.f90</code> on the surface mesh</td><td>C1</td></tr>
+        <tr><td class="wrap">Thermo single layer: film energy, wall and gas heat transfer, evaporation</td><td class="wrap">Film energy plus an implicit film node in the solid solve</td><td>C2</td></tr>
+        <tr><td class="wrap">Film radiation (absorption, emission)</td><td class="wrap">Opaque film with ε ≈ 0.95; absorptance option 1 − exp(−κδ)</td><td>C2</td></tr>
+        <tr><td class="wrap">Lagrangian–film interaction (<code>absorb</code>, <code>bounce</code>, <code>splashBai</code>)</td><td class="wrap">Absorb first; then the Bai–Gosman regime map</td><td>C1, C4</td></tr>
+        <tr><td class="wrap">Injection: <code>drippingInjection</code>, <code>curvatureSeparation</code></td><td class="wrap">Drips from downward-facing facets; separation at convex edges</td><td>C4</td></tr>
+        <tr><td class="wrap">Contact-angle force, partial wetting (rivulets)</td><td class="wrap">Wetted-fraction model; then a contact-angle force</td><td>C2, C4</td></tr>
+        <tr><td class="wrap">Thermocapillary force</td><td class="wrap">Optional</td><td>C4</td></tr>
+        <tr><td class="wrap">Film–pyrolysis coupling (mapped temperature and heat-flux BCs)</td><td class="wrap">Native: the film node sits in the 1-D or FEM solid's surface balance</td><td>C2, C5</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="film-eq">Governing equations</h3>
+  <p>The equations are depth-averaged over the film thickness δ, on each facet with unit normal <strong>n</strong> pointing into the gas. <strong>U</strong> is the tangential film velocity.</p>
+  <p class="eq-label">Mass</p>
+  <div class="eq">∂(ρ<sub>l</sub>δ)/∂<span class="v">t</span> + ∇<sub>s</sub>·(ρ<sub>l</sub>δ<span class="bv">U</span>) = ṁ″<sub>imp</sub> − ṁ″<sub>evap</sub> − ṁ″<sub>drip/sep</sub> + ṁ″<sub>src</sub></div>
+  <p class="eq-label">Momentum</p>
+  <div class="eq">∂(ρ<sub>l</sub>δ<span class="bv">U</span>)/∂<span class="v">t</span> + ∇<sub>s</sub>·(ρ<sub>l</sub>δ<span class="bv">UU</span>) = −δ∇<sub>s</sub><span class="v">p</span><sub>f</sub> + ρ<sub>l</sub>δ<span class="bv">g</span><sub>t</sub> + <span class="bv">τ</span><sub>g</sub> − <span class="bv">τ</span><sub>w</sub> + <span class="bv">S</span><sub>imp</sub></div>
+  <div class="eq"><span class="v">p</span><sub>f</sub> = −ρ<sub>l</sub>(<span class="bv">g</span>·<span class="bv">n</span>)δ − σ∇<sub>s</sub><sup>2</sup>δ,    <span class="bv">τ</span><sub>w</sub> = 3μ<sub>l</sub><span class="bv">U</span>/δ</div>
+  <ul>
+    <li><strong>Film pressure.</strong> On a floor, <strong>g</strong>·<strong>n</strong> = −g, so the pressure is hydrostatic and drives spreading. On a ceiling the sign reverses, and the Rayleigh–Taylor-unstable film drips (C4).</li>
+    <li><strong>Wall shear</strong> assumes a laminar, half-parabolic velocity profile.</li>
+    <li><strong>Gas shear</strong> comes from the wall model's u<sub>τ</sub> and the gas tangential velocity (<code>B2%U_TAU</code>, <code>B1%U_TANG</code>). <code>WALL_MODEL</code> must be called whenever a film is active. Today it runs only for condensation, deposition or wall outputs (<code>wall.f90:163-167</code>).</li>
+  </ul>
+  <p class="eq-label">Energy (single film temperature)</p>
+  <div class="eq">∂(ρ<sub>l</sub>δ<span class="v">h</span><sub>l</sub>)/∂<span class="v">t</span> + ∇<sub>s</sub>·(ρ<sub>l</sub>δ<span class="bv">U</span><span class="v">h</span><sub>l</sub>) = <span class="v">q</span>″<sub>w</sub> + <span class="v">q</span>″<sub>g</sub> + <span class="v">q</span>″<sub>rad,abs</sub> − <span class="v">q</span>″<sub>rad,emit</sub> − ṁ″<sub>evap</sub><span class="v">h</span><sub>fg</sub> + ṁ″<sub>imp</sub><span class="v">h</span><sub>imp</sub> − ṁ″<sub>out</sub><span class="v">h</span><sub>l</sub></div>
+  <ul>
+    <li><strong>Wall-to-film conductance:</strong> h<sub>fw</sub> ≈ 2k<sub>l</sub>/δ.</li>
+    <li><strong>Gas side:</strong> the existing <code>HEAT_TRANSFER_COEFFICIENT</code>.</li>
+    <li><strong>Evaporation:</strong> a Spalding B-number and Sherwood formulation. It reuses <code>GET_FILM_PROPERTIES</code> and <code>FORCED_CONVECTION_MODEL</code> (<code>func.f90:2862</code>, <code>3368</code>), or the wall-function mass transfer from <code>CONDENSATION_EVAPORATION</code> (<code>fire.f90:2153-2220</code>).</li>
+    <li><strong>Wetted fraction</strong> f<sub>w</sub> ∈ [0, 1] comes from δ relative to a critical thickness. That thickness is user-set, or derived from a contact angle and a minimum wetting rate. Fluxes split into a wet path through the film and a dry path from the gas straight to the solid.</li>
+  </ul>
+
+  <h4>Order of magnitude: water, Γ = 0.05 kg/m/s on a vertical wall</h4>
+  <div class="table-wrap">
+    <table class="t-files">
+      <thead><tr><th>Quantity</th><th>Expression</th><th>Estimate</th><th>Consequence</th></tr></thead>
+      <tbody>
+        <tr><td>Nusselt thickness</td><td>δ = (3μΓ / ρ²g)<sup>1/3</sup></td><td class="num">≈ 0.25 mm</td><td class="wrap">—</td></tr>
+        <tr><td>Mean film velocity</td><td>ρgδ² / 3μ</td><td class="num">≈ 0.2 m/s</td><td class="wrap">Film CFL comparable to gas steps at cm-scale cells</td></tr>
+        <tr><td>Wall-friction relaxation</td><td>ρδ² / 3μ</td><td class="num">≈ 0.02 s</td><td class="wrap">Faster than typical DT, so friction is implicit</td></tr>
+        <tr><td>Film thermal time</td><td>ρc<sub>p</sub>δ² / 2k<sub>l</sub></td><td class="num">≈ 0.2 s</td><td class="wrap">Comparable to DT × <code>WALL_INCREMENT</code>, so wall exchange is implicit</td></tr>
+        <tr><td>Gravity-wave speed</td><td>√(gδ)</td><td class="num">≈ 0.05 m/s</td><td class="wrap">Explicit advection is fine</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="film-disc">Discretization</h3>
+  <ul>
+    <li><strong>Control volumes.</strong> Cell-centred finite volumes on the Phase 0.2 surface mesh, one per facet. The unknowns per facet are ρ<sub>l</sub>δ; the momentum ρ<sub>l</sub>δ<strong>U</strong>, stored as a 3-D vector projected onto the facet plane; and T<sub>f</sub>.</li>
+    <li><strong>Fluxes across shared edges.</strong> TVD upwind for advection, using FDS's existing limiters. Green–Gauss gradients for p<sub>f</sub>. An edge-based Laplacian for ∇<sub>s</sub>²δ.</li>
+    <li><strong>Folded edges.</strong> Where a flux crosses an edge between facets with different normals (90° Cartesian edges or GEOM creases), the transported momentum is rotated about the shared edge (Rodrigues rotation). Water flowing over a convex edge then continues down the next face, unless the separation criterion sheds it.</li>
+    <li><strong>Positivity.</strong> Edge outflow is limited to the available mass. Dry facets have δ = 0 and <strong>U</strong> = 0.</li>
+    <li><strong>Time stepping.</strong> Advection is explicit and sub-cycled to a film CFL on Δx/(|<strong>U</strong>| + √(gδ)). Wall friction and source terms are point-implicit.</li>
+    <li><strong>Placement in the corrector.</strong> After <code>PARTICLE_MASS_ENERGY_TRANSFER</code>, <code>MOVE_PARTICLES</code> and the particle exchange (<code>main.f90:888-905</code>), and before <code>WALL_BC</code> (<code>main.f90:911</code>).</li>
+    <li><strong>Staircases.</strong> On Cartesian staircase surfaces, the effective slope emerges from flow over treads and risers, driven by hydrostatic spreading on the treads. GEOM gives true slopes.</li>
+  </ul>
+
+  <h3 id="film-coupling">Coupling</h3>
+  <figure>
+    <div class="fig-scroll">
+      <svg class="diagram" viewBox="0 0 640 300" role="img" aria-label="A gas cell exchanges heat with a film node through convection, radiation and evaporation, and with the solid surface node directly through the dry path. The film node connects to the solid surface node through the wet conductance, and the surface node to the next solid node through k over delta x. The film node, the surface node and the inner solid nodes are solved together implicitly. Film advection to a neighbouring facet is explicit.">
+        <defs>
+          <marker id="film-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-c"/></marker>
+        </defs>
+        <rect x="120" y="20" width="180" height="50" rx="4" class="f-surface s-muted" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <text x="210" y="50" text-anchor="middle">gas cell · T<tspan class="sub" dy="3">g</tspan></text>
+        <rect x="120" y="170" width="180" height="120" class="f-solid"/>
+        <rect x="330" y="170" width="140" height="120" class="f-solid"/>
+        <rect x="120" y="142" width="180" height="28" class="f-tint-c"/>
+        <rect x="330" y="148" width="140" height="22" class="f-tint-c"/>
+        <line x1="120" y1="170" x2="300" y2="170" class="s-fg" stroke-width="2"/>
+        <line x1="330" y1="170" x2="470" y2="170" class="s-fg" stroke-width="2"/>
+        <rect x="152" y="138" width="122" height="128" rx="8" class="f-none s-c" stroke-width="1.4" stroke-dasharray="4 3"/>
+        <line x1="210" y1="70" x2="210" y2="145" class="s-fg" stroke-width="1.6"/>
+        <text x="222" y="102">h<tspan class="sub" dy="3">g</tspan><tspan dy="-3"> · radiation · evaporation</tspan></text>
+        <line x1="210" y1="166" x2="210" y2="192" class="s-c" stroke-width="2.6"/>
+        <text x="222" y="186" class="t-c">f<tspan class="sub" dy="3">w</tspan><tspan dy="-3"> · h</tspan><tspan class="sub" dy="3">fw</tspan></text>
+        <line x1="210" y1="208" x2="210" y2="242" class="s-b" stroke-width="1.6"/>
+        <text x="222" y="230">k / Δx</text>
+        <path d="M120 45 H92 V200 H201" class="f-none s-muted" stroke-width="1.4" stroke-dasharray="5 4"/>
+        <text x="84" y="118" text-anchor="end" class="t-muted">dry path</text>
+        <text x="84" y="134" text-anchor="end" class="t-muted">(1 − f<tspan class="sub" dy="3">w</tspan><tspan dy="-3">)</tspan></text>
+        <circle cx="210" cy="156" r="10" class="f-c"/>
+        <circle cx="210" cy="200" r="8" class="f-b"/>
+        <circle cx="210" cy="250" r="8" class="f-b"/>
+        <text x="146" y="160" text-anchor="end" class="t-c t-bold">film T<tspan class="sub" dy="3">f</tspan></text>
+        <text x="196" y="191" text-anchor="end">T<tspan class="sub" dy="3">1</tspan></text>
+        <text x="146" y="254" text-anchor="end">T<tspan class="sub" dy="3">2</tspan></text>
+        <circle cx="400" cy="159" r="9" class="f-surface s-c" stroke-width="1.4" stroke-dasharray="3 2"/>
+        <path d="M222 156 H389" class="f-none s-c" stroke-width="1.6" marker-start="url(#film-arrow)" marker-end="url(#film-arrow)"/>
+        <text x="402" y="121" text-anchor="middle" class="t-c">film advection to neighbour facet</text>
+        <text x="402" y="135" text-anchor="middle" class="t-muted t-small">explicit, sub-cycled each gas step</text>
+        <text x="400" y="200" text-anchor="middle" class="t-muted">neighbour facet</text>
+        <text x="213" y="284" text-anchor="middle" class="t-c t-small t-bold">solved implicitly together</text>
+      </svg>
+    </div>
+    <figcaption><b>The film is one more node in the solid's implicit surface balance.</b> In the 1-D solver, the tridiagonal system gains one row; in the FEM, each boundary facet gains one degree of freedom. The wet path (film) and the dry path (gas straight to the solid) are weighted by the wetted fraction f<sub>w</sub>. Only transport between facets is explicit.</figcaption>
+  </figure>
+
+  <ol class="decisions dec-c">
+    <li><div>
+      <h4>Solid: the film as an implicit node</h4>
+      <ul>
+        <li>The 1-D solver gains one lumped node in front of the surface node. It has capacity ρ<sub>l</sub>c<sub>l</sub>δ and conductance f<sub>w</sub>h<sub>fw</sub> to the surface, with gas, radiation and evaporation fluxes on its top side. It fits the existing ghost-node Robin formulation (<code>RFACF</code>/<code>QDXKF</code>, <code>wall.f90:2867-2880</code>).</li>
+        <li>Wetted surfaces use <code>WALL_INCREMENT=1</code>, as <code>SURFACE_OXIDATION_MODEL</code> already forces (<code>read.f90:7310</code>).</li>
+        <li>The film solver transports film enthalpy between facets. The solid solver owns the wall–film exchange and writes the updated T<sub>f</sub> back. Both use the same integrated flux, so energy is conserved exactly.</li>
+        <li>On filmed surfaces this replaces the explicit <code>LP_CPUA</code> path. Surfaces without a film are unchanged.</li>
+      </ul>
+    </div></li>
+    <li><div>
+      <h4>Gas</h4>
+      <p>Evaporated water enters the gas as a surface mass flux of <code>WATER VAPOR</code>, through the existing <code>M_DOT_G_PP_ADJUST</code> → <code>CALCULATE_ZZ_F</code> path (<code>wall.f90:1036-1461</code>). That gives the blowing velocity and <code>ZZ_F</code> consistently, exactly as pyrolysate does.</p>
+      <p>On wetted area, the surface temperature and emissivity seen by convection and radiation (<code>TMP_F</code>, <code>EMISSIVITY</code> → <code>radi.f90:4220-4250</code>) are the f<sub>w</sub>-weighted film and solid values.</p>
+    </div></li>
+    <li><div>
+      <h4>Lagrangian droplets</h4>
+      <ul>
+        <li><strong>Impingement.</strong> When a droplet reaches a filmed surface, its mass PWT·m, tangential momentum and enthalpy are deposited into the facet, and the particle is removed. The contact points are in <code>MOVE_PARTICLES</code> (<code>part.f90:2438-2472</code>), <code>CFACE_SEARCH</code> (<code>part.f90:1996-2363</code>) and <code>VENT_PARTICLE_EXTRACTION</code> (<code>part.f90:3067</code>). The Bai–Gosman stick/rebound/spread/splash map comes in C4.</li>
+        <li><strong>Release.</strong>
+          <ul>
+            <li>Drips fall from downward-facing facets once δ exceeds a critical thickness. The drip size scales with the capillary length √(σ/ρg), using the existing <code>DRIP_DIAMETER</code>.</li>
+            <li>Separation at convex edges follows a force-ratio criterion.</li>
+            <li>Re-emitted droplets go through <code>PARTICLE_FACE_INSERT</code> (<code>part.f90:603-944</code>).</li>
+          </ul>
+        </li>
+        <li>Surfaces without a film keep today's surface-droplet model.</li>
+      </ul>
+    </div></li>
+    <li><div>
+      <h4>Suppression and sources</h4>
+      <ul>
+        <li>On MATL-pyrolysis surfaces, suppression follows physically from cooling through the film node.</li>
+        <li><code>E_COEFFICIENT</code> can use film mass per area in place of the summed <code>LP_MPUA</code>, for continuity with existing inputs.</li>
+        <li>A new <code>SURF FILM_MASS_FLUX</code> (kg/m²/s), plus a line-source option at a top edge, models wetted walls, water curtains and run-down.</li>
+      </ul>
+    </div></li>
+  </ol>
+<pre><code>&amp;FILM ID='WATER FILM', SPEC_ID='WATER VAPOR', CONTACT_ANGLE=40., CRITICAL_THICKNESS=1.E-4,
+      DRIP_THICKNESS=2.E-3, SEPARATION_MODEL='FORCE_RATIO', SPLASH_MODEL='BAI_GOSMAN' /
+&amp;SURF ID='GYPSUM', MATL_ID='GYPSUM', THICKNESS=0.0127, FILM_ID='WATER FILM' /
+&amp;SURF ID='WETTED WALL', ..., FILM_ID='WATER FILM', FILM_MASS_FLUX=0.02 /</code></pre>
+
+  <h3 id="film-mpi">MPI</h3>
+  <ul>
+    <li><strong>Ownership.</strong> A facet belongs to the rank that owns its WALL or CFACE. GEOM triangles that straddle meshes belong to the mesh containing the refined triangle's centroid.</li>
+    <li><strong>Halos.</strong> δ, <strong>U</strong> and T<sub>f</sub> of neighbour facets are exchanged with the new Phase 0.2 <code>MESH_EXCHANGE</code> code. Edge fluxes are computed identically on both sides from the same states, so they stay conservative.</li>
+    <li><strong>Invariance.</strong> Results are tested to be invariant to the MPI process count, using <code>cascadempi.fds</code> as the template.</li>
+  </ul>
+
+  <h3 id="film-files">Work by file</h3>
+  <div class="table-wrap">
+    <table class="t-files">
+      <thead><tr><th>File</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td><code>film.f90</code> (new)</td><td class="wrap">Film state, sub-cycled transport, sources, drip/separation/splash, outputs and restart.</td></tr>
+        <tr><td><code>smsh.f90</code> (new)</td><td class="wrap">Phase 0.2 surface mesh and maps.</td></tr>
+        <tr><td><code>part.f90</code></td><td class="wrap">Absorb on impact for filmed surfaces (<code>part.f90:2438-2472</code>, <code>1996-2363</code>, <code>3067</code>). Drip and separation re-emission through <code>PARTICLE_FACE_INSERT</code>. Bypass <code>LP_CPUA</code> for filmed surfaces.</td></tr>
+        <tr><td><code>wall.f90</code></td><td class="wrap">Film node in the <code>SOLID_HEAT_TRANSFER</code> front BC (<code>wall.f90:2867-2880</code>). Evaporation into <code>M_DOT_G_PP_ADJUST</code>. <code>E_COEFFICIENT</code> from film mass (<code>wall.f90:1105-1114</code>). <code>WALL_MODEL</code> always on for filmed surfaces (<code>wall.f90:163-167</code>).</td></tr>
+        <tr><td><code>main.f90</code></td><td class="wrap">Film step in the corrector (<code>main.f90:888-911</code>), and the halo exchange.</td></tr>
+        <tr><td><code>read.f90</code></td><td class="wrap"><code>&amp;FILM</code> namelist; SURF <code>FILM_ID</code> and <code>FILM_MASS_FLUX</code>; force <code>WALL_INCREMENT=1</code> when films exist.</td></tr>
+        <tr><td><code>type.f90</code>, <code>func.f90</code></td><td class="wrap">Film types; allocation and <code>PACK_*</code> for restart (<code>func.f90:4279</code>, <code>5127</code>).</td></tr>
+        <tr><td><code>data.f90</code>, <code>dump.f90</code></td><td class="wrap">New outputs: <code>FILM THICKNESS</code>, <code>FILM VELOCITY</code>, <code>FILM TEMPERATURE</code>, <code>WETTED FRACTION</code>, <code>FILM MASS PER UNIT AREA</code> and <code>FILM EVAPORATION RATE</code>, as BNDF and DEVC (BNDE for GEOM). An energy-budget column.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="film-phases">Phases</h3>
+  <div class="phases">
+    <div class="phase ph-c"><div class="pid">C1</div><div>
+      <div class="ph-head"><h4>Kinematic film on Cartesian walls, one mesh</h4><span class="pm">4–5 pm</span></div>
+      <ul><li>Surface mesh (Cartesian builder), mass and momentum, and droplet absorption.</li></ul>
+      <p class="exit"><b>Exit</b>The Nusselt film on inclined and vertical plates. Huppert's (1982) viscous gravity-current similarity solution on a horizontal plate. Mass conservation around a box: over the top, down the sides and off the bottom.</p>
+    </div></div>
+    <div class="phase ph-c"><div class="pid">C2</div><div>
+      <div class="ph-head"><h4>Thermal film</h4><span class="pm">3–4 pm</span></div>
+      <ul><li>Energy, evaporation, the implicit film node in the 1-D solver, radiation, and wetted fraction.</li></ul>
+      <p class="exit"><b>Exit</b>Analytical film heating on an isothermal wall. Evaporation rate against the correlation. <code>water_evaporation_6/7</code> and <code>LEMTA_Spray_Cooling_*</code> compared against both the surface-droplet model and the data.</p>
+    </div></div>
+    <div class="phase ph-c"><div class="pid">C3</div><div>
+      <div class="ph-head"><h4>MPI and GEOM</h4><span class="pm">3–4 pm</span></div>
+      <ul><li>Halos, a refined GEOM triangle film mesh, and CFACE maps.</li></ul>
+      <p class="exit"><b>Exit</b>MPI invariance. An inclined GEOM plate matches a rotated OBST staircase in the limit. <code>geom_particle_cascade*</code> runs with a film.</p>
+    </div></div>
+    <div class="phase ph-c"><div class="pid">C4</div><div>
+      <div class="ph-head"><h4>Interfacial sub-models</h4><span class="pm">3–5 pm</span></div>
+      <ul>
+        <li>Dripping, checked against the Rayleigh–Taylor drip spacing of about 2π√2·l<sub>c</sub> under a ceiling.</li>
+        <li>Edge separation and Bai–Gosman splashing.</li>
+        <li>Contact angle and partial wetting (rivulets).</li>
+        <li>A nucleate and film boiling curve with a Leidenfrost cut-off.</li>
+      </ul>
+    </div></div>
+    <div class="phase ph-c"><div class="pid">C5</div><div>
+      <div class="ph-head"><h4>Suppression and FEM surfaces</h4><span class="pm">2–3 pm</span></div>
+      <ul><li>Film on pyrolysing MATL surfaces, and film on FEM solids (after B5).</li></ul>
+      <p class="exit"><b>Exit</b><code>Validation/UL_NFPRF</code> without a tuned <code>E_COEFFICIENT</code>. FM vertical-film rupture and panel data. <code>Validation/LEMTA_Spray</code>, whose HT3D steel plate exercises FEM and film together.</p>
+    </div></div>
+  </div>
+
+  <h3 id="film-risks">Risks and mitigations</h3>
+  <div class="table-wrap">
+    <table class="t-risk">
+      <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>Staircase OBST geometry gives non-physical slope flow</td><td class="wrap">Document it; recommend GEOM for sloped wetted surfaces</td></tr>
+        <tr><td>CFACE fragments and merged cut cells complicate the facet ↔ CFACE map</td><td class="wrap">Run the film on GEOM triangles, not CFACEs, with area-weighted many-to-many maps</td></tr>
+        <tr><td>Partial-wetting physics is empirical</td><td class="wrap">Start with a calibrated critical thickness, then add a contact-angle force; validate against FM data</td></tr>
+        <tr><td>Stiff thermal coupling, about 0.2 s film time constant</td><td class="wrap">Implicit film node with <code>WALL_INCREMENT=1</code>; explicit coupling would oscillate</td></tr>
+        <tr><td>OBST create/remove and burn-away</td><td class="wrap">v1 forbids films on removable OBSTs; later, rebuild the surface mesh in <code>REASSIGN_WALL_CELLS</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ ROADMAP -->
+<section id="roadmap">
+  <span class="eyebrow ey-0">Roadmap</span>
+  <h2>Integrated roadmap</h2>
+  <p>This assumes three developers, one per track, sharing Phase 0 in the first quarter. It runs to about 18 months.</p>
+  <div class="table-wrap">
+    <table class="gantt">
+      <thead><tr><th>Track</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Q5</th><th>Q6</th></tr></thead>
+      <tbody>
+        <tr><td class="tk-a">A · WRF</td>
+          <td class="g-a"><strong>0.1 · A1</strong>MPI_COMM_FDS; preprocessor, boundary arrays</td>
+          <td class="g-a"><strong>A1</strong>complete; Askervein, WRF-LES ABL</td>
+          <td class="g-a"><strong>A2a</strong>MPMD, SFIRE-equivalent mode</td>
+          <td class="g-a"><strong>A2b</strong>LES nest, SOURCES feedback</td>
+          <td class="g-a"><strong>A3</strong>FireFlux, sensitivity</td>
+          <td class="g-a"><strong>A3+</strong>STATE feedback, fuel moisture, docs</td></tr>
+        <tr><td class="tk-b">B · FEM</td>
+          <td class="g-b"><strong>0.3 · 0.4 · B1</strong>solver wrapper, contract, serial FEM</td>
+          <td class="g-b"><strong>B2</strong>k(T), radiation, anisotropy</td>
+          <td class="g-b"><strong>B3</strong>MPI</td>
+          <td class="g-b"><strong>B4</strong>pyrolysis</td>
+          <td class="g-b"><strong>B5</strong>GEOM coupling, tet mesher</td>
+          <td class="g-b"><strong>B6</strong>burn-away, retire HT3D</td></tr>
+        <tr><td class="tk-c">C · Film</td>
+          <td class="g-c"><strong>0.2</strong>surface mesh, Cartesian builder</td>
+          <td class="g-c"><strong>C1</strong>kinematic film</td>
+          <td class="g-c"><strong>C2</strong>thermal film</td>
+          <td class="g-c"><strong>C3</strong>MPI, GEOM</td>
+          <td class="g-c"><strong>C4</strong>drip, splash, wetting, boiling</td>
+          <td class="g-c"><strong>C5</strong>suppression, film on FEM</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h4>Dependencies</h4>
+  <ul class="deps">
+    <li><strong>0.1</strong> FDS communicator → <strong>A2a</strong> online coupling</li>
+    <li><strong>0.3</strong> solver wrapper and <strong>0.4</strong> exchange contract → <strong>B1</strong></li>
+    <li><strong>0.4</strong> exchange contract → <strong>C2</strong> thermal film</li>
+    <li><strong>0.2</strong> surface mesh → <strong>C1</strong> and <strong>B5</strong></li>
+    <li><strong>B5</strong> FEM on GEOM → <strong>C5</strong> film on FEM surfaces</li>
+    <li><strong>A1</strong> has no prerequisites and can start immediately</li>
+  </ul>
+</section>
+
+<!-- ============================================================ DECISIONS -->
+<section id="decisions">
+  <span class="eyebrow ey-0">Before starting</span>
+  <h2>Decisions needed</h2>
+  <ol>
+    <li><strong>WRF flavour and version.</strong> NCAR WRF v4.x (WRF-Fire in <code>phys/</code>) or OpenWFM WRF-SFIRE. This decides where the WRF-side hooks go and which flux arrays are reused.</li>
+    <li><strong>Coupler backend.</strong> OASIS3-MCT is recommended if the target WRF has its OASIS interface. The alternative is a bespoke MPI intercommunicator.</li>
+    <li><strong>Scope of "replace".</strong> Replace HT3D and keep the 1-D solver (recommended), or replace the 1-D solver as well. Replacing the 1-D solver too is not recommended.</li>
+    <li><strong>Element types.</strong> P1 tetrahedra only for v1 (recommended), or also Q1 hexahedra for OBSTs.</li>
+    <li><strong>Tooling dependencies.</strong> Python preprocessors in <code>Utilities/</code> (<code>wrf2fds</code> with netCDF and pyproj; <code>fds_tetmesh</code> with gmsh) keep the FDS runtime free of dependencies beyond HYPRE and an optional OASIS3-MCT. Is that acceptable?</li>
+    <li><strong>Upstream intent.</strong> If the goal is to merge into <code>firemodels/fds</code>, engage the NIST developers early. This matters for the 2014 <code>MEAN_FORCING</code>/WRF history, HT3D ownership, and manual and Firebot conventions.</li>
+    <li><strong>Priority</strong> if resources are limited. Each track is independent after Phase 0.</li>
+  </ol>
+</section>
+
+<!-- ============================================================ ISSUES -->
+<section id="issues">
+  <span class="eyebrow ey-0">Found along the way</span>
+  <h2>Pre-existing issues</h2>
+  <p>These turned up while mapping the code. They are outside the three features, but they affect them.</p>
+  <div class="issues">
+    <div class="issue"><span class="tag tag-bug">Bug</span><div>
+      <h4>Droplet wall cooling is undercounted when the evaporation step sub-cycles</h4>
+      <ul>
+        <li><code>LP_CPUA</code> accumulates <code>Q_CON_WALL/DT</code> (<code>part.f90:4361-4362</code>), but <code>Q_CON_WALL</code> is only the last sub-step's energy.</li>
+        <li><code>Q_CON_SUM</code> is summed over all sub-steps (<code>part.f90:4338</code>) and never used.</li>
+        <li>The gas-phase energy budget (<code>Q_DOT(5)</code>, <code>part.f90:4322</code>) counts every sub-step.</li>
+      </ul>
+      <p>So the wall cooling and the energy budget disagree in hot-wall cases.</p>
+    </div></div>
+    <div class="issue"><span class="tag tag-doc">Doc mismatch</span><div>
+      <h4>Documented minimum film thickness is not implemented</h4>
+      <p>The Technical Reference Guide gives the droplet film thickness as δ = max(δ<sub>min</sub> = 10<sup>−5</sup> m, …) (<code>Particle_Chapter.tex</code>, "Droplet Transport on a Surface"). The code uses a footprint-coverage test instead (<code>part.f90:3774</code>, <code>3781</code>).</p>
+    </div></div>
+    <div class="issue"><span class="tag tag-doc">Doc mismatch</span><div>
+      <h4>Outdated Verification Guide note on HT3D</h4>
+      <p>It says HT3D "is not yet connected to the 1-D pyrolysis" (<code>FDS_Verification_Guide.tex:4868</code>). But <code>ht3d_mass_conservation.fds</code> exercises HT3D with pyrolysis.</p>
+    </div></div>
+    <div class="issue"><span class="tag tag-code">Dead branch</span><div>
+      <h4><code>LEVEL_SET_MODE=5</code> is undocumented, and its prescribed-wind branch never takes effect</h4>
+      <ul>
+        <li>Mode 5 sets <code>LEVEL_SET_COUPLED_WIND=.TRUE.</code> (<code>read.f90:2012</code>).</li>
+        <li>Its prescribed-wind branch (<code>vege.f90:356-365</code>) is then overwritten by the CFD sampling block (<code>vege.f90:371-402</code>).</li>
+      </ul>
+      <p>This is relevant to A2a, which needs a fire-coupled mode whose spread-rate wind is supplied from outside.</p>
+    </div></div>
+    <div class="issue"><span class="tag tag-code">Performance</span><div>
+      <h4>The lighter back-wall exchange is never used</h4>
+      <p><code>MESH_EXCHANGE(67)</code> (<code>PACK_WALL_LITE</code>) is never called. Code 66 sends the full <code>PACK_WALL</code> every step (<code>main.f90:1009</code>). This matters for B3 and C3.</p>
+    </div></div>
+    <div class="issue"><span class="tag tag-code">Configuration</span><div>
+      <h4>HYPRE solver settings are compile-time parameters</h4>
+      <p>They are fixed at <code>imkl.f90:204-229</code>. Phase 0.3 addresses this.</p>
+    </div></div>
+  </div>
+</section>
+
+<!-- ============================================================ REFERENCES -->
+<section id="references">
+  <span class="eyebrow ey-0">Sources</span>
+  <h2>References</h2>
+  <ol class="refs">
+    <li>Mandel, J., Beezley, J. D., &amp; Kochanski, A. K. (2011). Coupled atmosphere-wildland fire modeling with WRF 3.3 and SFIRE 2011. <em>Geosci. Model Dev.</em>, 4, 591–610. <a href="https://gmd.copernicus.org/articles/4/591/2011/">gmd.copernicus.org/articles/4/591/2011</a></li>
+    <li>Kochanski, A. K., et al. Evaluation of WRF-SFIRE performance with field observations from the FireFlux experiment. <a href="https://arxiv.org/abs/1206.3345">arxiv.org/abs/1206.3345</a></li>
+    <li>Lin, D., et al. (2021). WRF4PALM v1.0: a mesoscale dynamical driver for the microscale PALM model system 6.0. <em>Geosci. Model Dev.</em>, 14, 2503–2524. <a href="https://gmd.copernicus.org/articles/14/2503/2021/">gmd.copernicus.org/articles/14/2503/2021</a></li>
+    <li>Kadasch, E., et al. (2021). Mesoscale nesting interface of the PALM model system 6.0. <em>Geosci. Model Dev.</em>, 14, 5435–5465. <a href="https://gmd.copernicus.org/articles/14/5435/2021/">gmd.copernicus.org/articles/14/5435/2021</a></li>
+    <li>Muñoz-Esparza, D., Kosović, B., et al. Stochastic cell perturbation method for mesoscale-to-microscale (WRF → LES) inflow turbulence. <em>Boundary-Layer Meteorology</em> (2014); <em>JAMES</em> (2015).</li>
+    <li>OpenFOAM <code>surfaceFilmModels</code>: <code>kinematicSingleLayer</code>, <code>thermoSingleLayer</code>. <a href="https://api.openfoam.com/2312/classFoam_1_1regionModels_1_1surfaceFilmModels_1_1thermoSingleLayer.html">api.openfoam.com</a></li>
+    <li>FireFOAM overview. <a href="https://openfoamwiki.net/index.php/FireFoam">openfoamwiki.net/index.php/FireFoam</a></li>
+    <li>Meredith, K. V., &amp; de Vries, J. FireFOAM thin-film model and vertical-film validation (OpenFOAM Workshop 2010; critical heat flux for film rupture, 2013). <a href="https://www.tfd.chalmers.se/~hani/OFW5/timeSchedule_workshop_online-filer/Abstract_final/KarlMeredithAbstractOFW5.pdf">OFW5 abstract (PDF)</a></li>
+    <li>Bai, C., &amp; Gosman, A. D. (1995). Development of methodology for spray impingement simulation. SAE 950283.</li>
+    <li>Huppert, H. E. (1982). The propagation of two-dimensional and axisymmetric viscous gravity currents over a rigid horizontal surface. <em>J. Fluid Mech.</em>, 121, 43–58.</li>
+  </ol>
+  <footer class="colophon">
+    <p>A companion Markdown version of this plan is at <code>Development_Plans/WRF_FEM_Film_Plan.md</code> in <code>johodges/fds</code>, branch <code>ccr-3976053a-e4dpbh</code>. Code references were checked against commit <code>9bb47f3</code>. Effort figures are estimates, not commitments.</p>
+  </footer>
+</section>
+
+</main>
+</div>
+</body>
+</html>
